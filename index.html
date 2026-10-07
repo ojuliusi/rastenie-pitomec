@@ -65,6 +65,12 @@ h2 { font: 500 13px/1.2 var(--f-display); text-transform: uppercase; letter-spac
 .pill.bad { background: var(--danger-soft); color: var(--danger); }
 #scene { display: block; width: 100%; height: auto; max-width: 100%; aspect-ratio: 400 / 440; }
 #scene .bub { animation: rise 3.2s linear infinite; }
+svg .maskify [fill]:not([fill="none"]) { fill: #fff; }
+svg .maskify [stroke]:not([stroke="none"]) { stroke: #fff; stroke-width: 5px; }
+.sick { border: 1px solid var(--danger); background: var(--danger-soft); border-radius: 10px; padding: 12px; display: grid; gap: 10px; }
+.sick p { margin: 0; font-size: 14px; }
+.sick .row-label { color: var(--danger); font-weight: 600; margin: 0; }
+.sick .look { font-style: italic; }
 #scene .spark { animation: twinkle 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 @keyframes twinkle { 0%, 100% { opacity: 0; transform: scale(.4); } 50% { opacity: .95; transform: scale(1); } }
 .lvl { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 3px 10px 3px 4px; border-radius: 99px; border: 1px solid var(--line); }
@@ -308,6 +314,13 @@ footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-co
               <button class="btn" id="aShade" aria-pressed="false"><span class="dot" style="background:var(--muted)"></span>Притенить</button>
               <button class="btn" id="aRepro"><span class="dot" style="background:#e0b52c"></span><span class="lbl">Опылить</span></button>
             </div>
+          </div>
+          <div class="sick" id="sick" hidden>
+            <p class="row-label">Растение заболело</p>
+            <p id="sickSym"></p>
+            <div class="row"><button class="btn" id="aLoupe"><span class="dot" style="background:var(--muted)"></span>Осмотреть под лупой</button></div>
+            <p class="look" id="sickLook" hidden></p>
+            <div><div class="row-label">Чем лечить?</div><div class="row" id="cures"></div></div>
           </div>
           <p class="locked-note" id="lockNote"></p>
         </div>
@@ -595,7 +608,8 @@ const TX = {
     burn: 'Корни «сгорели» от избытка удобрений: вода уходила из них в крепкий солевой раствор.',
     starve: 'Растение погибло от голода: без света нет фотосинтеза, а без него нет крахмала.',
     heat: 'Растение перегрелось и не успевало пить столько, сколько испаряло.',
-    sun: 'Растение погибло от солнечных ожогов: ему нужна полутень.' },
+    sun: 'Растение погибло от солнечных ожогов: ему нужна полутень.',
+    disease: 'Растение погибло от болезни: её не вылечили вовремя.' },
 };
 function tx(sp, key, vars = {}) {
   let t = (SPECIES[sp].tx && SPECIES[sp].tx[key]) || TX[key];
@@ -614,11 +628,66 @@ function addXP(s, n) {
   const after = levelOf(s.xp);
   if (after > before) { s.lvlUp = after; note(s, null, `Новый уровень ${after} — «${LEVEL_NAMES[after - 1]}»!` + (REWARDS[after] ? ` Награда: ${REWARDS[after]}.` : ''), 'good'); }
 }
+/* Болезни и вредители. Начинаются от ошибок ухода (when), признаки видны на растении,
+   ученик ставит диагноз и выбирает лечение (cure — средства, которые помогают). */
+const CURES = {
+  fungicide: ['Обработать фунгицидом', 'грибов'],
+  cutleaves: ['Удалить поражённые части', 'грибковых пятен на листьях'],
+  soap: ['Промыть мыльным раствором', 'насекомых'],
+  ladybug: ['Подселить божьих коровок', 'тли и других мелких насекомых'],
+  mist: ['Опрыскивать, увлажнять воздух', 'клещей, которые любят сухой воздух'],
+  dry: ['Подсушить почву, присыпать золой', 'грибов, живущих в сырой почве'],
+  changewater: ['Сменить часть воды', 'того, что размножается в воде'],
+};
+const DISEASES = {
+  mildew: { name: 'Мучнистая роса', kind: 'грибковое заболевание', sp: ['angio'],
+    when: (s, e) => s.moisture > 78 && e.temp > 16 && e.temp < 27 && s.lightHist < 0.45,
+    symptom: 'На листьях появился белый налёт, похожий на муку. Если провести пальцем, он стирается.',
+    look: 'Под лупой видны тонкие белые нити — это грибница. Гриб питается соком растения, листья желтеют.',
+    cure: ['fungicide', 'cutleaves'], hurts: 'chl',
+    cured: 'Гриб остановлен. Мучнистой росе нравятся сырость и полутень, поэтому не переливай растение и давай ему больше света.' },
+  aphid: { name: 'Тля', kind: 'насекомые-вредители', sp: ['angio', 'fern'], bg: 0.0015,
+    when: (s, e) => s.minerals > 70 && e.temp > 21,
+    symptom: 'Молодые листья скрутились и стали липкими.',
+    look: 'На нижней стороне листьев сидят колонии мелких зелёных насекомых. Они прокалывают растение хоботком и высасывают сок с сахарами.',
+    cure: ['soap', 'ladybug'], hurts: 'starch',
+    cured: 'Тля уничтожена. Тлю привлекает избыток азота: сочные мягкие побеги после перекорма удобрениями. Божьи коровки — её естественные враги.' },
+  mite: { name: 'Паутинный клещ', kind: 'клещи-вредители', sp: ['angio', 'fern', 'gymno'],
+    when: (s, e) => e.temp > 27 && s.moisture < 40,
+    symptom: 'Листья покрылись мелкими светлыми точками, между ними появилась тонкая паутинка.',
+    look: 'Под лупой видны крошечные паукообразные клещи. Они высасывают клетки, а размножаются в сухом горячем воздухе.',
+    cure: ['mist', 'soap'], hurts: 'chl',
+    cured: 'Клещ отступил. Клещи не любят влажный воздух, поэтому в жару опрыскивай растение и не пересушивай почву.' },
+  blackleg: { name: 'Чёрная ножка', kind: 'грибковое заболевание всходов', sp: ['angio', 'gymno'], young: true,
+    when: (s, e) => s.moisture > 85,
+    symptom: 'Стебелёк у самой земли потемнел и стал тонким, как ниточка. Росток заваливается.',
+    look: 'Основание стебля поражено грибком, который живёт в сырой почве. Он опасен для молодых всходов.',
+    cure: ['dry'], hurts: 'root',
+    cured: 'Почва подсохла, зола подсушила стебелёк, и гриб отступил. Всходы нельзя переливать.' },
+  shutte: { name: 'Шютте', kind: 'грибковое заболевание хвои', sp: ['gymno'],
+    when: (s, e) => s.moisture > 75 && s.lightHist < 0.4,
+    symptom: 'На хвое появились бурые пятна, хвоинки начали осыпаться.',
+    look: 'На побуревшей хвое видны мелкие чёрные точки — плодовые тела гриба. Он развивается в сырости и тени.',
+    cure: ['fungicide', 'cutleaves'], hurts: 'chl',
+    cured: 'Больную хвою убрали, гриб остановлен. Сосна любит солнце и сухую почву.' },
+  mould: { name: 'Серая плесень', kind: 'грибковое заболевание', sp: ['moss', 'lycopod', 'fern'],
+    when: (s, e) => s.moisture > 90 && e.temp > 19,
+    symptom: 'Часть растения покрылась серым пушистым налётом и начала подгнивать.',
+    look: 'Серый пушок — это грибница с массой спор. Плесень разрастается, когда долго сыро и тепло, а воздух не движется.',
+    cure: ['dry', 'fungicide'], hurts: 'root',
+    cured: 'Плесень остановлена. Даже влаголюбивым растениям вредно, когда вода стоит в горшке.' },
+  bloom: { name: 'Цветение воды', kind: 'размножение цианобактерий', sp: ['algae'],
+    when: (s, e) => e.temp > 25 && s.minerals > 62,
+    symptom: 'Вода помутнела и стала сине-зелёной, появился неприятный запах.',
+    look: 'Под микроскопом — масса одноклеточных цианобактерий. Они бурно размножаются в тёплой воде с избытком солей и затеняют спирогиру.',
+    cure: ['changewater'], hurts: 'chl',
+    cured: 'Свежая вода разбавила соли, и цианобактерии отступили. Не перегревай банку и не пересаливай воду.' },
+};
 function newState(sp = 'angio') {
   return { sp, hour: 6, biomass: 0.6, moisture: sp === 'algae' ? 90 : 60, minerals: 50, starch: 6, hp: 100, rootHP: 100,
     turgor: 0.9, chl: 0.85, lightHist: 0.5, soggy: 0, lean: 0, loc: SPECIES[sp].start, lamp: false, shade: false,
     unlocked: {}, pollinated: false, fruit: 0, lastP: 0,
-    done: false, dead: null, rootHarm: null, cause: null, stageIdx: 0, log: [], cool: {}, iodine: null, xp: 0, gen: 1, lvlUp: 0 };
+    done: false, dead: null, rootHarm: null, cause: null, stageIdx: 0, log: [], cool: {}, iodine: null, xp: 0, gen: 1, lvlUp: 0, disease: null };
 }
 function daylight(h) { const x = h % 24; return (x > 6 && x < 20) ? Math.sin(Math.PI * (x - 6) / 14) : 0; }
 function env(s) {
@@ -682,8 +751,32 @@ function step(s) {
   }
   if (s.pollinated && s.fruit < 1 && s.starch > 1 && s.turgor > 0.3) { s.fruit = Math.min(1, s.fruit + PACE / 40); s.starch -= 0.4; }
 
+  // болезни
+  if (!s.disease && s.biomass > 0.8 && !(s.cool.cured > s.hour - 36)) {
+    for (const id in DISEASES) {
+      const D = DISEASES[id];
+      if (!D.sp.includes(s.sp) || (D.young && stageOf(s) > 1)) continue;
+      const chance = (D.when(s, e) ? 0.008 : 0) + (D.bg && s.biomass > 5 ? D.bg : 0);
+      if (chance && Math.random() < chance * (1 + (100 - s.hp) / 50)) {
+        s.disease = { id, sev: 0.05, looked: false };
+        note(s, null, 'Что-то не так! ' + D.symptom + ' Осмотри растение и выбери лечение.', 'warn');
+        break;
+      }
+    }
+  }
+  if (s.disease) {
+    const d = s.disease, D = DISEASES[d.id];
+    const before = d.sev;
+    d.sev = Math.min(1, d.sev + (D.when(s, e) ? 0.03 : 0.012));
+    if (before < 0.6 && d.sev >= 0.6) note(s, null, `Болезнь усиливается: ${D.symptom.toLowerCase()} Нужно лечение.`, 'warn');
+    if (D.hurts === 'chl') s.chl = Math.max(0.2, s.chl - d.sev * 0.012);
+    if (D.hurts === 'starch') s.starch = Math.max(0, s.starch - d.sev * 0.3);
+    if (D.hurts === 'root') s.rootHP = clamp(s.rootHP - d.sev * 1.2, 0, 100);
+  }
+
   // здоровье
   const harm = [];
+  if (s.disease) harm.push(['disease', 0.3 + s.disease.sev * 1.1]);
   if (s.turgor < 0.3) harm.push([s.rootHP < 50 && s.rootHarm ? s.rootHarm : 'wilt', SP.wiltDmg]);
   if (s.rootHP < 35) harm.push([s.rootHarm || 'rot', 0.9]);
   if (starving) harm.push(['starve', 0.7]);
@@ -723,7 +816,7 @@ function step(s) {
     const start = LEVELS[levelOf(s.xp) - 1];
     if (s.xp > start) { note(s, null, `Опыт текущего уровня потерян: ${s.xp - start}. Уровень ${levelOf(s.xp)} сохранился.`, 'warn'); s.xp = start; }
   }
-  else if (!s.done && s.hp >= 70 && s.turgor >= 0.5) addXP(s, 1);
+  else if (!s.done && !s.disease && s.hp >= 70 && s.turgor >= 0.5) addXP(s, 1);
 }
 /*ENDSIM*/
 
@@ -1133,6 +1226,18 @@ function drawAlgae(s, ctx) {
   return o;
 }
 
+// Признаки болезни: узор из точек, наложенный маской точно по силуэту растения
+function diseaseLayer(s, plant) {
+  const d = s.disease, a = (0.35 + 0.65 * d.sev).toFixed(2);
+  if (d.id === 'bloom') { const lv = 404 - 236 * s.moisture / 100; return `<rect x="128" y="${f1(lv)}" width="144" height="${f1(406 - lv)}" rx="12" fill="#2f8f88" opacity="${(d.sev * 0.6).toFixed(2)}"/>`; }
+  if (d.id === 'blackleg') return `<rect x="196.5" y="276" width="7" height="26" rx="3" fill="#24170e" opacity="${a}"/>`;
+  const [c, r, step] = { mildew: ['#f6f5ee', 2.2, 8], aphid: ['#c4e05a', 2.3, 10], mite: ['#f1e7a2', 1.1, 6], shutte: ['#7a4518', 1.9, 9], mould: ['#c4c4bb', 3, 9] }[d.id];
+  let web = '';
+  if (d.id === 'mite') for (let k = 0; k < 5; k++) { const x = 160 + k * 18, y = 150 + (k * 37) % 110; web += `M${x} ${y} l22 -14 M${x} ${y} l14 18 M${x + 10} ${y - 6} l6 16 `; }
+  return `<defs><pattern id="dz" width="${step}" height="${step}" patternUnits="userSpaceOnUse"><circle cx="${step / 3}" cy="${step / 3}" r="${r}" fill="${c}"/><circle cx="${step * 0.8}" cy="${step * 0.78}" r="${r * 0.7}" fill="${c}"/></pattern>
+    <mask id="plantMask" maskUnits="userSpaceOnUse" x="0" y="0" width="400" height="300"><g class="maskify">${plant.replace(/<defs>[\s\S]*?<\/defs>/g, '').replace(/ id="[^"]*"/g, '')}</g></mask></defs>
+    <rect width="400" height="300" fill="url(#dz)" mask="url(#plantMask)" opacity="${a}"/>` + (web ? `<path d="${web}" stroke="#ffffff" stroke-width=".6" opacity="${(d.sev * 0.8).toFixed(2)}" fill="none"/>` : '');
+}
 function sparkles(lvl, st) {
   let o = '';
   const n = lvl >= 10 ? 9 : 6;
@@ -1149,7 +1254,9 @@ function drawScene() {
   const ctx = { droop: clamp(1 - s.turgor, 0, 1), col: leafColor(s), st: stageOf(s), lush: (lvl - 1) / 9, lvl };
   let o = drawBackground(s, e);
   if (s.sp !== 'algae') o += drawPot(s, lvl);
-  o += DRAW[s.sp](s, ctx);
+  const plant = DRAW[s.sp](s, ctx);
+  o += plant;
+  if (s.disease && !s.dead) o += diseaseLayer(s, plant);
   if (lvl >= 8 && !s.dead) o += sparkles(lvl, ctx.st);
   svg.innerHTML = o;
   svg.setAttribute('aria-label', `${SPc().name}: ${SPc().stages[ctx.st][0].toLowerCase()}`);
@@ -1230,6 +1337,16 @@ function render() {
   $('banner').hidden = !over;
   if (s.dead) { $('bTitle').textContent = 'Растение погибло'; $('bText').textContent = s.dead + ' Попробуй ещё раз и следи за приборами.'; }
   else if (s.done) { $('bTitle').textContent = 'Цикл завершён!'; $('bText').textContent = `${SP.stages[6][1]} На это ушло ${Math.floor(s.hour / 24) + 1} дн.`; }
+  $('sick').hidden = !s.disease || over;
+  if (s.disease && !over) {
+    const D = DISEASES[s.disease.id];
+    $('sickSym').textContent = D.symptom + (s.disease.sev >= 0.6 ? ' Болезнь зашла далеко!' : '');
+    $('sickLook').hidden = !s.disease.looked;
+    $('sickLook').textContent = s.disease.looked ? D.look : '';
+    const opts = s.sp === 'algae' ? ['changewater', 'fungicide', 'soap', 'dry'] : ['fungicide', 'cutleaves', 'soap', 'ladybug', 'mist', 'dry'];
+    const html = opts.map(k => `<button class="btn" id="cure-${k}" data-cure="${k}">${CURES[k][0]}</button>`).join('');
+    if ($('cures').dataset.sig !== s.sp) { $('cures').innerHTML = html; $('cures').dataset.sig = s.sp; }
+  }
   if (s.iodine) { $('iodine').hidden = false; $('iodLeaf').setAttribute('fill', s.iodine.color); $('iodText').textContent = s.iodine.text; }
   else $('iodine').hidden = true;
   drawScene();
@@ -1269,6 +1386,25 @@ $('aIodine').onclick = () => {
   if (S.cool.iodXP === undefined || S.hour - S.cool.iodXP >= 12) { S.cool.iodXP = S.hour; addXP(S, 5); }
   note(S, null, 'Проба йодом. ' + text, 'act'); render(); save();
 };
+
+$('aLoupe').onclick = () => {
+  if (!S.disease) return;
+  const D = DISEASES[S.disease.id];
+  if (!S.disease.looked) { S.disease.looked = true; note(S, null, 'Осмотр под лупой: ' + D.look, 'act'); }
+  render(); save();
+};
+$('cures').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-cure]'); if (!b || !S.disease) return;
+  const k = b.dataset.cure, D = DISEASES[S.disease.id];
+  if (D.cure.includes(k)) {
+    note(S, null, `Диагноз: ${D.name.toLowerCase()} (${D.kind}). «${CURES[k][0]}» помогло! ${D.cured}`, 'good');
+    S.disease = null; S.cool.cured = S.hour;
+    addXP(S, 25);
+  } else {
+    note(S, null, `«${CURES[k][0]}» не помогает: это средство против ${CURES[k][1]}. Присмотрись к признакам ещё раз.`, 'warn');
+  }
+  render(); renderGarden(); save();
+});
 
 let speed = 1, acc = 0;
 document.querySelectorAll('.speed button').forEach(b => b.onclick = () => {
@@ -1328,6 +1464,7 @@ $('teacher').onclick = () => {
 function plantStatus(P) {
   if (P.dead) return ['bad', 'погибло'];
   if (P.done) return ['done', 'цикл завершён'];
+  if (P.disease) return ['bad', 'болеет'];
   const st = SPECIES[P.sp].stages[stageOf(P)][0].toLowerCase();
   return [P.hp < 40 || P.turgor < 0.35 ? 'warn' : 'ok', st];
 }
