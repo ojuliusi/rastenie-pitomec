@@ -1,0 +1,1382 @@
+<title>Растение-питомец</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: живая сцена с горшком слева, приборы и действия справа, дневник наблюдений снизу; настройки раскрываются под шапкой */
+:root {
+  --bg: #eef1e7;
+  --panel: #f9fbf5;
+  --ink: #1d281b;
+  --muted: #5e6a57;
+  --line: #d3dbc8;
+  --leaf: #357f3a;
+  --leaf-soft: #dcebd5;
+  --water: #2a73ad;
+  --sun: #c98a12;
+  --soil: #7a5634;
+  --danger: #b8402b;
+  --danger-soft: #f6dfd8;
+  --lock: #9aa491;
+  --f-display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --f-body: "Golos Text", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10150e; --panel: #181f15; --ink: #e5ecdd; --muted: #98a38f; --line: #2b3526;
+    --leaf: #6fc26b; --leaf-soft: #213220; --water: #63aee6; --sun: #f0bd4a; --soil: #b08458;
+    --danger: #ec7259; --danger-soft: #3a1f19; --lock: #5f6a58; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10150e; --panel: #181f15; --ink: #e5ecdd; --muted: #98a38f; --line: #2b3526;
+  --leaf: #6fc26b; --leaf-soft: #213220; --water: #63aee6; --sun: #f0bd4a; --soil: #b08458;
+  --danger: #ec7259; --danger-soft: #3a1f19; --lock: #5f6a58; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 40px; }
+header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 20px; margin-bottom: 16px; }
+header > div { min-width: 0; flex: 1 1 320px; }
+h1 { font: 700 clamp(22px, 4vw, 32px)/1.1 var(--f-display); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h1 span { color: var(--leaf); }
+.sub { color: var(--muted); margin: 4px 0 0; max-width: 60ch; }
+h2 { font: 500 13px/1.2 var(--f-display); text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 12px; color: var(--muted); }
+
+.game { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 860px) { .game { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; min-width: 0; }
+.col { display: grid; gap: 16px; min-width: 0; }
+
+/* сцена */
+.stage { padding: 0; overflow: hidden; }
+.stage-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.clock { font: 500 14px var(--f-mono); font-variant-numeric: tabular-nums; }
+.who { font-size: 13px; color: var(--muted); }
+.who b { color: var(--ink); font-weight: 600; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 99px; background: var(--leaf-soft); color: var(--leaf); }
+.pill.bad { background: var(--danger-soft); color: var(--danger); }
+#scene { display: block; width: 100%; height: auto; max-width: 100%; aspect-ratio: 400 / 440; }
+#scene .bub { animation: rise 3.2s linear infinite; }
+@keyframes rise { from { transform: translateY(0); opacity: .9; } to { transform: translateY(-60px); opacity: 0; } }
+.speed { display: flex; gap: 4px; }
+.speed button { font: 500 12px var(--f-mono); padding: 5px 9px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; }
+.speed button[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.vitals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 14px; border-top: 1px solid var(--line); }
+.vital label { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.vital b { font: 500 12px var(--f-mono); color: var(--ink); }
+.bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 50%; background: var(--leaf); border-radius: 4px; transition: width .4s, background .4s; }
+
+/* приборы */
+.gauges { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.gauge { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.gauge .k { font-size: 12px; color: var(--muted); }
+.gauge .v { font: 500 20px/1.3 var(--f-mono); font-variant-numeric: tabular-nums; }
+.gauge .v small { font-size: 12px; color: var(--muted); margin-left: 3px; }
+.gauge .scale { position: relative; height: 6px; border-radius: 3px; background: var(--line); margin-top: 6px; }
+.gauge .ok { position: absolute; top: 0; bottom: 0; background: var(--leaf-soft); border-radius: 3px; outline: 1px solid color-mix(in srgb, var(--leaf) 40%, transparent); }
+.gauge .mark { position: absolute; top: -3px; width: 3px; height: 12px; border-radius: 2px; background: var(--ink); transform: translateX(-1px); transition: left .4s; }
+.gauge .hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.gauge.alert { border-color: var(--danger); }
+.gauge.alert .v { color: var(--danger); }
+
+/* действия */
+.actions { display: grid; gap: 14px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.row-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.btn { font: 600 14px var(--f-body); padding: 9px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-align: left; }
+.btn:hover:not(:disabled) { border-color: var(--ink); }
+.btn:focus-visible, .speed button:focus-visible, .sp-card:focus-within { outline: 2px solid var(--water); outline-offset: 2px; }
+.btn:disabled { color: var(--lock); cursor: not-allowed; }
+.btn .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.btn.primary { background: var(--water); color: #fff; border-color: var(--water); }
+.btn.primary .dot { background: #fff; }
+.btn.danger { color: var(--danger); border-color: var(--danger); }
+.btn.danger.armed { background: var(--danger); color: #fff; }
+.btn[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.btn .lockico { width: 12px; height: 12px; flex: none; }
+.locs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.locs .btn { justify-content: space-between; }
+.locs .btn small { font: 500 11px var(--f-mono); color: inherit; opacity: .7; }
+.locked-note { font-size: 12px; color: var(--muted); margin: 0; }
+.gear { width: 16px; height: 16px; flex: none; }
+
+#iodine { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 12px; align-items: center; border: 1px dashed var(--line); border-radius: 10px; padding: 10px 12px; }
+#iodine p { margin: 0; font-size: 14px; }
+
+/* настройки и выбор растения */
+#settings { margin-bottom: 16px; display: grid; gap: 18px; }
+#settings .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+#settings h2 { margin: 0; }
+#settings .lead { margin: 6px 0 0; color: var(--muted); max-width: 70ch; }
+.species { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 10px; }
+.sp-card { position: relative; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px 12px 40px; cursor: pointer; display: block; min-width: 0; }
+.sp-card input { position: absolute; left: 14px; top: 15px; accent-color: var(--leaf); }
+.sp-card:has(input:checked) { border-color: var(--leaf); background: var(--leaf-soft); }
+.sp-card .g { font: 600 15px var(--f-body); display: block; }
+.sp-card .e { font-size: 13px; color: var(--muted); display: block; }
+.sp-card .t { font-size: 13px; display: block; margin-top: 4px; }
+.sp-card .n { font: 500 11px var(--f-mono); color: var(--muted); letter-spacing: .04em; }
+.sp-card .have { font: 500 12px var(--f-body); color: var(--leaf); display: block; margin-top: 4px; }
+.sp-card .have:empty { display: none; }
+.garden { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-bottom: 16px; }
+.garden > .row-label { margin: 0; width: 100%; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.tab { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; text-align: left; font: inherit; }
+.tab b { display: block; font-size: 14px; font-weight: 600; }
+.tab small { display: block; font-size: 12px; color: var(--muted); }
+.tab[aria-selected="true"] { border-color: var(--leaf); background: var(--leaf-soft); }
+.tab:focus-visible { outline: 2px solid var(--water); outline-offset: 2px; }
+.tab .st { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--leaf); }
+.tab .st.warn { background: var(--sun); }
+.tab .st.bad { background: var(--danger); }
+.tab .st.done { background: var(--water); }
+.danger-zone { border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+.danger-zone p { margin: 0; font-size: 13px; color: var(--muted); max-width: 60ch; }
+
+/* блоки */
+.blocks { display: grid; gap: 10px; }
+.block { border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.block-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.block-head h3 { font: 600 16px var(--f-body); margin: 0; }
+.block-head p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.badge { font: 500 11px var(--f-mono); text-transform: uppercase; letter-spacing: .06em; padding: 3px 8px; border-radius: 6px; background: var(--line); color: var(--muted); }
+.block.open .badge { background: var(--leaf-soft); color: var(--leaf); }
+.quiz { margin-top: 12px; display: grid; gap: 12px; }
+.quiz fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 4px; }
+.quiz legend { font-weight: 600; margin-bottom: 4px; padding: 0; }
+.quiz label { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; cursor: pointer; padding: 3px 0; }
+.quiz input { margin-top: 4px; accent-color: var(--leaf); }
+.quiz fieldset.wrong legend { color: var(--danger); }
+.quiz .msg { font-size: 13px; margin: 0; }
+
+/* дневник */
+.journal { margin-top: 16px; }
+.log { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 340px; overflow-y: auto; }
+.log li { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 10px; padding: 8px 10px; border-left: 3px solid var(--line); background: color-mix(in srgb, var(--bg) 60%, transparent); border-radius: 0 8px 8px 0; font-size: 14px; }
+.log li time { font: 500 12px var(--f-mono); color: var(--muted); padding-top: 2px; font-variant-numeric: tabular-nums; }
+.log li.warn { border-left-color: var(--danger); }
+.log li.good { border-left-color: var(--leaf); }
+.log li.act { color: var(--muted); }
+@media (max-width: 520px) { .log li { grid-template-columns: minmax(0, 1fr); gap: 2px; } .vitals { grid-template-columns: minmax(0, 1fr); } }
+
+.over { position: relative; }
+#banner { position: absolute; inset: auto 12px 12px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+#banner h3 { margin: 0; font: 700 17px var(--f-display); }
+#banner p { margin: 0; font-size: 14px; }
+
+footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; color: var(--muted); font-size: 13px; }
+.link { background: none; border: 0; padding: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font: inherit; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } #scene .bub { animation: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Растение-<span>питомец</span></h1>
+      <p class="sub">Вырасти растение и доведи его до размножения. Оно отвечает на свет, воду, жару и удобрения так же, как настоящее. Следи за приборами и читай дневник наблюдений.</p>
+    </div>
+    <button class="btn" id="openSettings" aria-expanded="false" aria-controls="settings">
+      <svg class="gear" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M9.4 1l.3 1.8c.5.2.9.4 1.3.7l1.7-.7 1.4 2.4-1.4 1.1c.1.5.1 1 0 1.5l1.4 1.1-1.4 2.4-1.7-.7c-.4.3-.8.5-1.3.7L9.4 15H6.6l-.3-1.8c-.5-.2-.9-.4-1.3-.7l-1.7.7-1.4-2.4 1.4-1.1a4 4 0 0 1 0-1.5L1.9 7.1l1.4-2.4 1.7.7c.4-.3.8-.5 1.3-.7L6.6 1h2.8zM8 5.6a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8z"/></svg>
+      Настройки
+    </button>
+  </header>
+
+  <section class="card" id="settings" hidden aria-labelledby="hSet">
+    <div class="head">
+      <div>
+        <h2 id="hSet">Выбор растения</h2>
+        <p class="lead" id="setLead">У каждой группы своя биология: кому-то нужна тень и сырость, кому-то солнце; одни размножаются семенами, другие спорами.</p>
+      </div>
+      <button class="btn" id="closeSettings">Закрыть</button>
+    </div>
+    <div class="species" id="species" role="radiogroup" aria-label="Группа растений"></div>
+    <div class="row">
+      <button class="btn primary" id="plant"><span class="dot"></span><span class="lbl">Посадить</span></button>
+      <button class="btn danger" id="replant" hidden>Посадить заново</button>
+      <span class="locked-note">Растения разных групп растут одновременно. Переключаться между ними можно вкладками над растением.</span>
+    </div>
+    <div class="danger-zone" id="dangerZone">
+      <p>Сброс удаляет растение, дневник и все пройденные блоки курса. Отменить его нельзя.</p>
+      <button class="btn danger" id="reset">Сбросить весь прогресс</button>
+    </div>
+  </section>
+
+  <nav class="garden" id="garden" aria-label="Мои растения" hidden>
+    <span class="row-label">Мои растения</span>
+    <div class="tabs" id="gardenTabs" role="tablist"></div>
+    <button class="btn" id="addPlant">+ Посадить ещё</button>
+  </nav>
+
+  <div class="game" id="game">
+    <div class="col">
+      <section class="card stage over" aria-label="Растение">
+        <div class="stage-top">
+          <span class="clock" id="clock">День 1 · 06:00</span>
+          <span class="who" id="who"></span>
+          <span class="pill" id="stagePill">Проросток</span>
+          <div class="speed" role="group" aria-label="Скорость времени">
+            <button id="sp0" data-speed="0" aria-pressed="false">II</button>
+            <button id="sp1" data-speed="1" aria-pressed="true">×1</button>
+            <button id="sp4" data-speed="4" aria-pressed="false">×4</button>
+          </div>
+        </div>
+        <svg id="scene" viewBox="0 0 400 440" role="img" aria-label="Растение в разрезе"></svg>
+        <div class="vitals">
+          <div class="vital"><label>Здоровье <b id="vHp">100</b></label><div class="bar"><i id="bHp"></i></div></div>
+          <div class="vital"><label><span id="rootLabel">Корни</span> <b id="vRoot">100</b></label><div class="bar"><i id="bRoot"></i></div></div>
+          <div class="vital"><label>Тургор <b id="vTurg">90</b></label><div class="bar"><i id="bTurg"></i></div></div>
+        </div>
+        <div id="banner" hidden>
+          <h3 id="bTitle"></h3>
+          <p id="bText"></p>
+          <div class="row">
+            <button class="btn primary" id="bRestart"><span class="dot"></span>Посадить снова</button>
+            <button class="btn" id="bChoose">Выбрать другое растение</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="hInstr">
+        <h2 id="hInstr">Приборы</h2>
+        <div class="gauges">
+          <div class="gauge" id="gLight"><div class="k">Освещённость</div><div class="v"><span>0</span><small>лк</small></div><div class="scale"><div class="ok"></div><div class="mark"></div></div><div class="hint"></div></div>
+          <div class="gauge" id="gTemp"><div class="k">Температура воздуха</div><div class="v"><span>0</span><small>°C</small></div><div class="scale"><div class="ok"></div><div class="mark"></div></div><div class="hint"></div></div>
+          <div class="gauge" id="gWet"><div class="k">Влажность почвы</div><div class="v"><span>0</span><small>%</small></div><div class="scale"><div class="ok"></div><div class="mark"></div></div><div class="hint"></div></div>
+          <div class="gauge" id="gEc"><div class="k">Соли в почве (EC)</div><div class="v"><span>0</span><small>мСм/см</small></div><div class="scale"><div class="ok"></div><div class="mark"></div></div><div class="hint">норма 0,6–2,6</div></div>
+          <div class="gauge" id="gTr"><div class="k">Испарение</div><div class="v"><span>0</span><small>мл/ч</small></div><div class="scale"><div class="mark"></div></div><div class="hint">зависит от света, жары и площади листьев</div></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="card" aria-labelledby="hAct">
+        <h2 id="hAct">Уход</h2>
+        <div class="actions">
+          <div>
+            <div class="row-label">Вода и питание</div>
+            <div class="row">
+              <button class="btn primary" id="aWater"><span class="dot"></span><span class="lbl">Полить</span></button>
+              <button class="btn" id="aFeed"><span class="dot" style="background:var(--soil)"></span><span class="lbl">Подкормить</span></button>
+              <button class="btn" id="aIodine"><span class="dot" style="background:#3a3f86"></span>Проба йодом на крахмал</button>
+            </div>
+          </div>
+          <div id="iodine" hidden>
+            <svg viewBox="0 0 72 60" width="72" height="60" aria-hidden="true"><path id="iodLeaf" d="M6 30 Q36 -4 66 30 Q36 64 6 30 Z" fill="#d4a63a" stroke="rgba(0,0,0,.25)"/><path d="M8 30 H64" stroke="rgba(0,0,0,.25)" fill="none"/></svg>
+            <p id="iodText"></p>
+          </div>
+          <div>
+            <div class="row-label" id="locLabel">Куда поставить горшок</div>
+            <div class="locs" id="locs"></div>
+          </div>
+          <div>
+            <div class="row-label">Свет и размножение</div>
+            <div class="row">
+              <button class="btn" id="aLamp" aria-pressed="false"><span class="dot" style="background:var(--sun)"></span>Фитолампа</button>
+              <button class="btn" id="aShade" aria-pressed="false"><span class="dot" style="background:var(--muted)"></span>Притенить</button>
+              <button class="btn" id="aRepro"><span class="dot" style="background:#e0b52c"></span><span class="lbl">Опылить</span></button>
+            </div>
+          </div>
+          <p class="locked-note" id="lockNote"></p>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="hBlocks">
+        <h2 id="hBlocks">Блоки курса</h2>
+        <div class="blocks" id="blocks"></div>
+      </section>
+    </div>
+  </div>
+
+  <section class="card journal" id="journal" aria-labelledby="hLog">
+    <h2 id="hLog">Дневник наблюдений</h2>
+    <ul class="log" id="log"></ul>
+  </section>
+
+  <footer>
+    <span id="modeNote">Режим урока: 1 секунда = 1 час жизни растения.</span>
+    <button class="link" id="teacher">Учителю: открыть все блоки</button>
+  </footer>
+</div>
+
+<script>
+/*SIM*/
+const LOC = {
+  corner:  { name: 'Тёмный угол',      light: 0.06, t0: 18,   amp: 1,   lean: 0.35, win: false },
+  room:    { name: 'Середина комнаты', light: 0.28, t0: 20.5, amp: 2.5, lean: -0.5, win: true },
+  sill:    { name: 'Подоконник',       light: 0.75, t0: 21,   amp: 6,   lean: 0.9,  win: true },
+  balcony: { name: 'Балкон на солнце', light: 1.0,  t0: 19,   amp: 15,  lean: 0.15, win: false },
+};
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+// Темп роста: во сколько раз растение растёт быстрее «базового» (цикл ~12 дней). Затраты крахмала и солей на рост не меняются.
+const PACE = 2.4;
+// Вред от ошибок ускорен меньше, чем рост: растение успевает показать, что ему плохо, а ученик — исправить уход.
+const HARM = 1.6;
+
+/* Параметры групп:
+   sat — при какой освещённости фотосинтез выходит на максимум (теневыносливым хватает меньше света);
+   burnAt — выше этой освещённости листья обжигаются; dryLo/span — при какой влажности теряется тургор;
+   transp — сколько воды испаряет; rotThr — через сколько часов в мокрой почве гниют корни (null — корней нет);
+   heatMax — перегрев. */
+const SPECIES = {
+  algae: {
+    group: 'Водоросли', name: 'Спирогира', trait: 'Нитчатая водоросль в банке с водой. Нет корней, стебля и листьев.',
+    start: 'sill', sat: 0.5, pmax: 0.9, burnAt: 2, dryLo: 8, span: 20, wiltDmg: 1.4, transp: 0.12, rotThr: null, heatMax: 28,
+    green: '#4f9a3a', rootWord: 'Клетки', wetWord: 'Уровень воды в банке', wetOk: [45, 100], trWord: 'Испарение из банки',
+    water: 'Долить отстоянную воду', feed: 'Добавить соли в воду', sample: 'нить спирогиры', leaves: 'нити', pot: 'банку',
+    stages: [
+      ['Несколько клеток', 'В банку с отстоянной водой поместили обрывок нити спирогиры. Нить — это цепочка одинаковых клеток.'],
+      ['Короткие нити', 'Клетки делятся, нити удлиняются. В каждой клетке хлоропласт закручен спиралью — отсюда название «спирогира».'],
+      ['Длинные нити', 'Нити разрослись. Водоросль поглощает воду и соли всей поверхностью тела: корней у неё нет.'],
+      ['Густая тина', 'Нитей стало так много, что получилась тина. На свету на нитях видны пузырьки кислорода.'],
+      ['Пора размножать', 'Колония выросла. Любой кусочек нити может стать новой колонией — это вегетативное размножение.'],
+      ['Новая колония растёт', 'Кусочек нити в новой банке начал расти: клетки делятся одна за другой.'],
+      ['Новая колония выросла', 'В новой банке выросла своя колония спирогиры. Цикл замкнулся!']],
+    repro: { label: 'Отделить кусочек нити', short: 'вегетативное размножение', done: 'Отделили кусочек нити и перенесли его в новую банку с водой.' },
+    tx: {
+      wilt: 'Воды в банке почти не осталось: нити обсыхают на стенках, клетки теряют тургор.',
+      heat: 'Вода в банке нагрелась: воздух {t} °C. В тёплой воде мало кислорода, водоросли плохо.',
+      burn: 'Слишком много солей в воде. Раствор крепче содержимого клеток, и вода выходит из клеток наружу: цитоплазма отстаёт от стенок (плазмолиз). Долей чистой воды.',
+      poor: 'В воде кончились минеральные соли. Нити светлеют и почти не растут.',
+      start: 'В банку с водой посадили спирогиру.',
+      dead: { wilt: 'Банка пересохла, и нити погибли.', burn: 'Клетки погибли от плазмолиза: в воде было слишком много солей.', heat: 'Вода перегрелась, водоросли задохнулись.' } },
+  },
+  moss: {
+    group: 'Мхи', name: 'Кукушкин лён', trait: 'Нет корней, только ризоиды. Любит тень и сырость, без воды не размножится.',
+    start: 'room', sat: 0.25, pmax: 0.75, burnAt: 0.6, dryLo: 28, span: 30, wiltDmg: 0.25, transp: 1.3, rotThr: null, heatMax: 28,
+    green: '#4c8a2e', rootWord: 'Ризоиды', wetWord: 'Влажность почвы', wetOk: [45, 98], trWord: 'Испарение',
+    water: 'Полить и опрыскать', feed: 'Подкормить', sample: 'веточка мха', leaves: 'листочки', pot: 'горшок',
+    stages: [
+      ['Протонема', 'Из споры выросла протонема — зелёная ветвящаяся нить, похожая на водоросль.'],
+      ['Зелёные стебельки', 'На протонеме появились почки, из них растут стебельки с листочками. Это гаметофит — половое поколение мха.'],
+      ['Дерновинка', 'Стебельки разрослись в плотную дерновинку. В почве их держат ризоиды: настоящих корней у мхов нет.'],
+      ['Половые органы', 'На верхушках мужских растений появились антеридии со спермиями, на женских — архегонии с яйцеклетками.'],
+      ['Готов к оплодотворению', 'Спермии созрели. Чтобы доплыть до яйцеклетки, им нужна капля воды.'],
+      ['Растёт коробочка', 'Оплодотворение прошло. На женском растении растёт коробочка на ножке — это спорофит, бесполое поколение.'],
+      ['Споры созрели', 'Коробочка созрела, колпачок слетел, высыпаются споры. Из споры снова вырастет протонема. Цикл замкнулся!']],
+    repro: { label: 'Опрыскать для оплодотворения', short: 'оплодотворение', done: 'Опрыскали мох. В капле воды спермии подплывают к яйцеклеткам в архегониях.' },
+    tx: {
+      wilt: 'Мох высох и съёжился. У него нет корней и сосудов, воду он впитывает всей поверхностью. После полива он оживёт.',
+      heat: 'Жара {t} °C: мох быстро теряет воду, кутикулы у него почти нет.',
+      sun: 'Прямое солнце слишком яркое для мха: листочки буреют и выгорают. Переставь в полутень или притени.',
+      start: 'В горшок с влажной почвой посеяли споры кукушкина льна.',
+      dead: { wilt: 'Мох слишком долго был сухим и не смог ожить.', sun: 'Мох выгорел на прямом солнце: он растёт в тени.' } },
+  },
+  lycopod: {
+    group: 'Плауны', name: 'Плаун булавовидный', trait: 'Первые растения с настоящими корнями. Споры зреют в колосках.',
+    start: 'room', sat: 0.3, pmax: 0.8, burnAt: 0.7, dryLo: 14, span: 30, wiltDmg: 1.1, transp: 0.8, rotThr: 30, heatMax: 29,
+    green: '#3b7a3a', rootWord: 'Корни', wetWord: 'Влажность почвы', wetOk: [35, 90], trWord: 'Испарение листочками',
+    water: 'Полить', feed: 'Подкормить', sample: 'веточка плауна', leaves: 'листочки', pot: 'горшок',
+    stages: [
+      ['Молодой побег', 'Из почки на ползучем стебле вырос молодой побег, густо покрытый мелкими листочками.'],
+      ['Ползучий стебель', 'Стебель стелется по земле и пускает придаточные корни. У плаунов уже есть настоящие корни и проводящие ткани.'],
+      ['Ветвистые побеги', 'Побеги ветвятся вильчато: каждая веточка делится надвое.'],
+      ['Колоски', 'На верхушках побегов появились спороносные колоски, похожие на булавы.'],
+      ['Споры созрели', 'Споры в колосках созрели, плаун пылит жёлтой пыльцой спор.'],
+      ['Заросток', 'Из споры развивается заросток. Оплодотворение на нём возможно только в воде. В природе это занимает годы.'],
+      ['Новый плаун', 'Из заростка вырос новый плаун. Цикл замкнулся!']],
+    repro: { label: 'Рассеять споры и увлажнить', short: 'рассев спор', done: 'Рассеяли споры на влажную почву. Из спор разовьются заростки, на них в воде пройдёт оплодотворение.' },
+    tx: {
+      wilt: 'Побеги плауна поникли: в почве мало воды.',
+      sun: 'Прямое солнце слишком яркое для плауна: листочки желтеют. Плауны растут под пологом леса — переставь в полутень или притени.',
+      start: 'В горшок посадили кусочек ползучего стебля плауна.',
+      dead: { sun: 'Плаун сгорел на прямом солнце: он растёт в тенистом лесу.' } },
+  },
+  fern: {
+    group: 'Папоротники', name: 'Щитовник мужской', trait: 'Вайи и споры в сорусах. Любит тень и влажную почву.',
+    start: 'room', sat: 0.3, pmax: 0.8, burnAt: 0.7, dryLo: 16, span: 30, wiltDmg: 1.1, transp: 1.1, rotThr: 30, heatMax: 29,
+    green: '#3f8a3c', rootWord: 'Корни', wetWord: 'Влажность почвы', wetOk: [35, 90], trWord: 'Испарение вайями',
+    water: 'Полить', feed: 'Подкормить', sample: 'кусочек вайи', leaves: 'вайи', pot: 'горшок',
+    stages: [
+      ['Молодой папоротник', 'Из заростка вырос молодой папоротник. Его первая вайя разворачивается из «улитки».'],
+      ['Первые вайи', 'Вайи разворачиваются из улиток. Под землёй растёт корневище с придаточными корнями.'],
+      ['Куст вай', 'Разросся куст вай. Папоротнику нужны тень и влажность.'],
+      ['Сорусы', 'На нижней стороне вай появились бурые бугорки — сорусы. В них спорангии со спорами.'],
+      ['Споры созрели', 'Споры созрели. Если они попадут на влажную почву, из них вырастут заростки.'],
+      ['Заросток', 'Из споры вырос заросток — зелёная пластинка-сердечко. На нём в капле воды проходит оплодотворение.'],
+      ['Новый папоротник', 'Из заростка вырос новый папоротник. Цикл замкнулся!']],
+    repro: { label: 'Рассеять споры и увлажнить', short: 'рассев спор', done: 'Рассеяли споры на влажную почву и опрыскали. Для оплодотворения на заростке нужна вода.' },
+    tx: {
+      wilt: 'Вайи поникли: папоротнику нужна постоянно влажная почва.',
+      sun: 'Прямое солнце слишком яркое для папоротника: вайи бледнеют и обгорают по краям. Переставь в полутень или притени.',
+      start: 'В горшок посадили молодой папоротник, выросший из заростка.',
+      dead: { sun: 'Папоротник сгорел на прямом солнце: он растёт в тенистом лесу.' } },
+  },
+  gymno: {
+    group: 'Голосеменные', name: 'Сосна обыкновенная', trait: 'Семена лежат открыто на чешуях шишек. Опыление ветром. Любит солнце.',
+    start: 'sill', sat: 0.8, pmax: 0.95, burnAt: 2, dryLo: 0, span: 25, wiltDmg: 0.9, transp: 0.45, rotThr: 12, heatMax: 34,
+    green: '#2d5a36', rootWord: 'Корни', wetWord: 'Влажность почвы', wetOk: [20, 80], trWord: 'Испарение хвоей',
+    water: 'Полить', feed: 'Подкормить', sample: 'хвоинка', leaves: 'хвоя', pot: 'горшок',
+    stages: [
+      ['Проросток', 'Из семени проклюнулся проросток с мутовкой семядолей, похожих на хвоинки.'],
+      ['Сеянец', 'Появилась настоящая хвоя. Хвоинки — узкие листья, покрытые восковым налётом.'],
+      ['Молодая сосна', 'Сосна растёт ярусами-мутовками: в природе каждый год прибавляется одна мутовка ветвей.'],
+      ['Шишки', 'Появились шишки: мелкие мужские у основания побегов и красноватые женские на их концах.'],
+      ['Пылят мужские шишки', 'Мужские шишки выпускают облака пыльцы. У сосны её переносит ветер.'],
+      ['Семена зреют', 'Пыльца попала на семязачатки женской шишки. Шишка зеленеет и растёт. В природе семена зреют почти два года.'],
+      ['Семена созрели', 'Шишка раскрылась, из неё вылетают семена с крылышками. Они лежат на чешуях открыто, поэтому сосна — голосеменное. Цикл замкнулся!']],
+    repro: { label: 'Встряхнуть ветки, как ветер', short: 'опыление', done: 'Встряхнули ветки, как ветер: облачко пыльцы долетело до женских шишек.' },
+    tx: {
+      wilt: 'Хвоя потускнела: в почве совсем нет воды. Сосна долго терпит засуху, узкая хвоя с восковым налётом испаряет мало, но и её запас кончается.',
+      heat: 'Жара {t} °C, а сосна испаряет всего {ml} мл в час: узкая хвоя с толстой кожицей бережёт воду.',
+      rot: 'Почва давно переувлажнена: корням сосны нечем дышать, они загнивают. Сосна любит сухую песчаную почву.',
+      start: 'В горшок посеяли семя сосны.',
+      dead: { wilt: 'Даже сосна не выдержала такой долгой засухи.' } },
+  },
+  angio: {
+    group: 'Покрытосеменные', name: 'Цветковое растение', trait: 'Цветок, опыление и плод с семенами внутри. Любит свет.',
+    start: 'sill', sat: 1, pmax: 0.9, burnAt: 2, dryLo: 6, span: 30, wiltDmg: 1.3, transp: 1, rotThr: 16, heatMax: 32,
+    green: '#3e8a35', rootWord: 'Корни', wetWord: 'Влажность почвы', wetOk: [30, 85], trWord: 'Испарение листьями',
+    water: 'Полить', feed: 'Подкормить', sample: 'лист', leaves: 'листья', pot: 'горшок',
+    stages: [
+      ['Проросток', 'Семя проросло. Сначала раскрылись семядоли: в них запас питательных веществ.'],
+      ['Молодое растение', 'Появились настоящие листья. Семядоли отдали свой запас и сделали своё дело.'],
+      ['Взрослое растение', 'Растение окрепло: много листьев, корень ветвится всё глубже.'],
+      ['Бутоны', 'На верхушке появились бутоны.'],
+      ['Цветение', 'Цветок раскрылся. Чтобы получился плод, пыльца должна попасть на рыльце пестика.'],
+      ['Завязывается плод', 'Пыльца на рыльце. Лепестки опадают, из завязи развивается плод.'],
+      ['Семена созрели', 'Плод созрел, внутри семена. Цикл замкнулся: от семени до семени!']],
+    repro: { label: 'Опылить кисточкой', short: 'опыление', done: 'Кисточкой перенесли пыльцу с тычинок на рыльце пестика.' },
+    tx: { start: 'Семя проросло на подоконнике.' },
+  },
+};
+/* Блоки курса: у каждой группы свои. У водорослей и мхов настоящих тканей нет — блоки про клетку и органы;
+   начиная с плаунов блоки идут по тканям. Вопрос: [текст, верный ответ, неверный, неверный]. */
+const COVER = 'Покровные ткани', GROUND = 'Основные ткани', COND = 'Проводящие ткани';
+const BLOCKS = {
+  algae: [
+    { id: 'cell', title: 'Клетка водоросли', gives: 'Открывает добавление солей в воду', unlocks: ['feed'], qs: [
+      ['Есть ли у водорослей ткани и органы?', 'Нет: тело-слоевище состоит из сходных клеток', 'Есть корни, стебель и листья', 'Есть только проводящие ткани'],
+      ['Чем спирогира поглощает воду и минеральные соли?', 'Всей поверхностью тела', 'Ризоидами', 'Корневыми волосками'],
+      ['Почему в слишком солёной воде клетки спирогиры сморщиваются?', 'Вода выходит из клетки в более крепкий раствор', 'Соли закупоривают клеточную стенку', 'Клетки начинают делиться']] },
+    { id: 'chloro', title: 'Хлоропласт и фотосинтез', gives: 'Открывает фитолампу и притенение', unlocks: ['lamp', 'shade'], qs: [
+      ['Какой формы хлоропласт у спирогиры?', 'Спиральная лента', 'Чашевидный', 'Звёздчатый'],
+      ['Что за пузырьки появляются на нитях на свету?', 'Кислород, выделенный при фотосинтезе', 'Углекислый газ', 'Пар от нагретой воды'],
+      ['Где у спирогиры откладывается крахмал?', 'Вокруг пиреноидов на хлоропласте', 'В клеточной стенке', 'В слизи вокруг нити']] },
+    { id: 'repro', title: 'Размножение водорослей', gives: 'Открывает вегетативное размножение', unlocks: ['repro'], qs: [
+      ['Нить спирогиры разорвалась на кусочки. Что будет дальше?', 'Каждый кусочек вырастет в новую нить', 'Кусочки погибнут', 'Из кусочков образуются семена'],
+      ['Как называется половой процесс спирогиры, когда сливается содержимое двух клеток?', 'Конъюгация', 'Опыление', 'Почкование'],
+      ['Что образуется после конъюгации и переживает зиму?', 'Зигота с толстой оболочкой', 'Семя', 'Клубень']] },
+  ],
+  moss: [
+    { id: 'rhizoid', title: 'Ризоиды и вода', gives: 'Открывает подкормку', unlocks: ['feed'], qs: [
+      ['Чем кукушкин лён прикрепляется к почве?', 'Ризоидами', 'Корнями', 'Корневищем'],
+      ['Как вода с солями попадает в мох?', 'Через ризоиды и всю поверхность растения', 'Только через корневые волоски', 'По сосудам древесины'],
+      ['Почему мхи обычно невысокие?', 'У них нет настоящих корней и развитых проводящих тканей', 'Им не хватает света', 'Их поедают животные']] },
+    { id: 'mossleaf', title: 'Листочки мха', gives: 'Открывает фитолампу и притенение', unlocks: ['lamp', 'shade'], qs: [
+      ['Почему листочки мха быстро высыхают?', 'Они тонкие и почти не защищены от испарения', 'Они слишком толстые', 'В них нет хлоропластов'],
+      ['Где у мха идёт фотосинтез?', 'В зелёных листочках и стебельке', 'Только в коробочке', 'В ризоидах'],
+      ['Почему кукушкин лён растёт в тени и сырости?', 'На ярком солнце он пересыхает', 'Он боится холода', 'В тени больше удобрений']] },
+    { id: 'repro', title: 'Размножение мхов', gives: 'Открывает оплодотворение', unlocks: ['repro'], qs: [
+      ['Почему мху для оплодотворения нужна вода?', 'Спермии подплывают к яйцеклетке в воде', 'Вода переносит пыльцу', 'Вода растворяет споры'],
+      ['Что вырастает на женском растении мха после оплодотворения?', 'Коробочка со спорами', 'Шишка', 'Плод'],
+      ['Что вырастает из споры мха?', 'Протонема — зелёная нить', 'Сразу взрослое растение', 'Заросток-сердечко']] },
+  ],
+  lycopod: [
+    { id: 'cover', title: COVER, gives: 'Открывает притенение', unlocks: ['shade'], qs: [
+      ['Какая ткань покрывает листочки и стебель плауна?', 'Покровная — кожица', 'Проводящая', 'Образовательная'],
+      ['Через что в кожице идут испарение и газообмен?', 'Через устьица', 'Через ризоиды', 'Через спорангии'],
+      ['Почему плауну вредно прямое солнце?', 'Кожица листочков тонкая и не спасает от перегрева и пересыхания', 'На солнце нет углекислого газа', 'На солнце не образуются споры']] },
+    { id: 'ground', title: GROUND, gives: 'Открывает фитолампу', unlocks: ['lamp'], qs: [
+      ['Какая ткань в листочках плауна образует органические вещества?', 'Основная фотосинтезирующая', 'Механическая', 'Покровная'],
+      ['В каком виде основная ткань запасает лишний сахар?', 'В виде крахмала', 'В виде соли', 'В виде жира в корнях'],
+      ['Что нужно фотосинтезирующей ткани, кроме воды и углекислого газа?', 'Свет', 'Темнота', 'Пыльца']] },
+    { id: 'conduct', title: COND, gives: 'Открывает подкормку', unlocks: ['feed'], qs: [
+      ['Чем плауны отличаются от мхов?', 'У них есть проводящие ткани и настоящие корни', 'У них есть цветки', 'Они размножаются семенами'],
+      ['Как вода с солями попадает от корней к листочкам плауна?', 'По проводящей ткани', 'Через кожицу', 'По ризоидам'],
+      ['Что дало плаунам появление проводящих тканей?', 'Возможность образовать корни и вырасти крупнее', 'Возможность жить в воде', 'Независимость от света']] },
+    { id: 'repro', title: 'Размножение плаунов', gives: 'Открывает рассев спор', unlocks: ['repro'], qs: [
+      ['Где у плауна созревают споры?', 'В спороносных колосках', 'В сорусах на листьях', 'В коробочке на ножке'],
+      ['Что вырастает из споры плауна?', 'Заросток', 'Сразу новый плаун', 'Семя'],
+      ['Что нужно для оплодотворения на заростке плауна?', 'Вода', 'Ветер', 'Насекомые']] },
+  ],
+  fern: [
+    { id: 'cover', title: COVER, gives: 'Открывает притенение', unlocks: ['shade'], qs: [
+      ['Где на вайе папоротника больше всего устьиц?', 'На нижней стороне', 'На верхней стороне', 'На черешке'],
+      ['Что происходит через устьица?', 'Испарение воды и газообмен', 'Всасывание солей', 'Созревание спор'],
+      ['Почему на прямом солнце вайи обгорают?', 'Тонкая кожица не защищает от перегрева и потери воды', 'Им не хватает удобрений', 'На солнце закрываются сорусы']] },
+    { id: 'ground', title: GROUND, gives: 'Открывает фитолампу', unlocks: ['lamp'], qs: [
+      ['В какой ткани вайи идёт фотосинтез?', 'В основной фотосинтезирующей', 'В проводящей', 'В механической'],
+      ['Где папоротник запасает питательные вещества на зиму?', 'В запасающей ткани корневища', 'В спорах', 'В корневых волосках'],
+      ['Вайю два дня держали в темноте и капнули йодом. Что увидим?', 'Синего цвета не будет: крахмал израсходован', 'Вайя станет сине-чёрной', 'Вайя покраснеет']] },
+    { id: 'conduct', title: COND, gives: 'Открывает подкормку', unlocks: ['feed'], qs: [
+      ['Какая ткань несёт воду с солями от корней к вайям?', 'Древесина (ксилема)', 'Луб (флоэма)', 'Кожица'],
+      ['Какая ткань несёт сахара из вай в корневище?', 'Луб (флоэма)', 'Древесина (ксилема)', 'Пробка'],
+      ['Где в вайе проходят проводящие ткани?', 'В жилках', 'В сорусах', 'В устьицах']] },
+    { id: 'repro', title: 'Размножение папоротников', gives: 'Открывает рассев спор', unlocks: ['repro'], qs: [
+      ['Где у папоротника образуются споры?', 'В сорусах на нижней стороне вай', 'В шишках', 'В цветках'],
+      ['Что вырастает из споры папоротника?', 'Заросток', 'Сразу куст с вайями', 'Семя'],
+      ['Без чего не произойдёт оплодотворение на заростке?', 'Без воды', 'Без ветра', 'Без насекомых']] },
+  ],
+  gymno: [
+    { id: 'cover', title: COVER, gives: 'Открывает притенение', unlocks: ['shade'], qs: [
+      ['Почему хвоя испаряет мало воды?', 'Толстая кожица с восковым налётом, устьица погружены', 'В хвое нет устьиц', 'Хвоя не дышит'],
+      ['Какая покровная ткань защищает ствол взрослой сосны?', 'Пробка', 'Кожица', 'Луб'],
+      ['Зачем через пробку на стволе проходят чечевички?', 'Для газообмена', 'Для выделения смолы', 'Для поглощения воды']] },
+    { id: 'ground', title: GROUND, gives: 'Открывает фитолампу', unlocks: ['lamp'], qs: [
+      ['В какой ткани хвоинки образуется крахмал?', 'В основной фотосинтезирующей', 'В смоляных ходах', 'В пробке'],
+      ['Почему сосну называют светолюбивой?', 'Фотосинтез в хвое идёт в полную силу только на ярком свету', 'Она растёт только летом', 'Ей не нужна вода'],
+      ['Зачем сосне смоляные ходы?', 'Смола защищает от вредителей и гнили', 'В них зреет пыльца', 'По ним идёт вода']] },
+    { id: 'conduct', title: COND, gives: 'Открывает подкормку', unlocks: ['feed'], qs: [
+      ['Из каких клеток состоит проводящая воду древесина сосны?', 'Из трахеид', 'Из ситовидных трубок', 'Из клеток пробки'],
+      ['По какой ткани органические вещества идут от хвои к корням?', 'По лубу (флоэме)', 'По древесине', 'По пробке'],
+      ['Откуда у сосны годичные кольца?', 'Камбий каждый год откладывает новый слой древесины', 'Это следы от шишек', 'Это смоляные ходы']] },
+    { id: 'repro', title: 'Размножение голосеменных', gives: 'Открывает опыление ветром', unlocks: ['repro'], qs: [
+      ['Где у сосны образуются семена?', 'На чешуях женских шишек', 'В плодах', 'В коробочках'],
+      ['Как переносится пыльца сосны?', 'Ветром', 'Насекомыми', 'Водой'],
+      ['Почему эти растения называют голосеменными?', 'Семена лежат открыто, их не защищает плод', 'У них нет семян', 'Семена без кожуры']] },
+  ],
+  angio: [
+    { id: 'cover', title: COVER, gives: 'Открывает притенение', unlocks: ['shade'], qs: [
+      ['Какие клетки открывают и закрывают устьице?', 'Замыкающие', 'Ситовидные', 'Корневые волоски'],
+      ['Для чего листу устьица?', 'Для испарения воды и газообмена', 'Для поглощения солей', 'Для запаса крахмала'],
+      ['Почему в сильную жару растение закрывает устьица?', 'Чтобы не потерять слишком много воды', 'Чтобы быстрее расти', 'Чтобы зацвести']] },
+    { id: 'ground', title: GROUND, gives: 'Открывает фитолампу', unlocks: ['lamp'], qs: [
+      ['Как называется ткань листа под верхней кожицей, где больше всего хлоропластов?', 'Столбчатая', 'Губчатая', 'Пробка'],
+      ['Где в листе образуется крахмал?', 'В хлоропластах на свету', 'В жилках ночью', 'В устьицах'],
+      ['Лист после пробы йодом стал сине-чёрным. Что это значит?', 'В листе есть крахмал', 'Лист болен', 'В листе много воды']] },
+    { id: 'conduct', title: COND, gives: 'Открывает подкормку', unlocks: ['feed'], qs: [
+      ['По каким клеткам вода с солями поднимается от корня к листьям?', 'По сосудам древесины', 'По ситовидным трубкам луба', 'По клеткам кожицы'],
+      ['По каким клеткам органические вещества идут от листьев к корням и плодам?', 'По ситовидным трубкам луба', 'По сосудам древесины', 'По клеткам пробки'],
+      ['Почему от избытка удобрений растение вянет даже во влажной почве?', 'Раствор в почве крепче клеточного сока, и вода уходит из корня', 'Удобрения закупоривают сосуды', 'Корни «переедают»']] },
+    { id: 'repro', title: 'Цветок', gives: 'Открывает опыление', unlocks: ['repro'], qs: [
+      ['Где образуется пыльца?', 'В пыльниках тычинок', 'В завязи пестика', 'В лепестках'],
+      ['Что такое опыление?', 'Перенос пыльцы на рыльце пестика', 'Слияние спермия и яйцеклетки', 'Созревание плода'],
+      ['Из какой части цветка развивается плод?', 'Из завязи пестика', 'Из лепестков', 'Из тычинок']] },
+  ],
+};
+const ACT_NAME = { feed: 'Подкормка', lamp: 'Фитолампа', shade: 'Притенение', repro: 'Размножение' };
+const unlockedSet = s => (s.unlocked[s.sp] = s.unlocked[s.sp] || {});
+const has = (s, act) => BLOCKS[s.sp].some(b => b.unlocks.includes(act) && unlockedSet(s)[b.id]);
+const blockFor = (sp, act) => BLOCKS[sp].find(b => b.unlocks.includes(act));
+const SP_ORDER = ['algae', 'moss', 'lycopod', 'fern', 'gymno', 'angio'];
+const TX = {
+  wilt: 'Листья поникли. В почве мало воды, клетки потеряли тургор, и растение закрыло устьица.',
+  rot: 'Почва давно переувлажнена: вода вытеснила воздух, корням нечем дышать. Корни загнивают.',
+  burn: 'Перебор с удобрениями. Раствор в почве крепче клеточного сока, и вода уходит из корня наружу. Корни «сгорают». Помогает обильный полив: лишняя вода вымывает соли.',
+  heat: 'Жара {t} °C: растение испаряет {ml} мл воды в час и так охлаждает {leaves}. Почва сохнет быстрее.',
+  sun: 'Прямое солнце слишком яркое: {leaves} обжигаются. Переставь в полутень или притени.',
+  poor: 'Почва истощилась: не хватает минеральных солей (азота, фосфора, калия). Рост замедлился, {leaves} желтеют.',
+  dead: {
+    wilt: 'Растение засохло: слишком долго не было воды.',
+    rot: 'Корни сгнили: почва всё время была мокрой, и корням не хватало воздуха.',
+    burn: 'Корни «сгорели» от избытка удобрений: вода уходила из них в крепкий солевой раствор.',
+    starve: 'Растение погибло от голода: без света нет фотосинтеза, а без него нет крахмала.',
+    heat: 'Растение перегрелось и не успевало пить столько, сколько испаряло.',
+    sun: 'Растение погибло от солнечных ожогов: ему нужна полутень.' },
+};
+function tx(sp, key, vars = {}) {
+  let t = (SPECIES[sp].tx && SPECIES[sp].tx[key]) || TX[key];
+  vars.leaves = vars.leaves || SPECIES[sp].leaves;
+  return t.replace(/\{(\w+)\}/g, (_, k) => vars[k]);
+}
+function deadText(sp, cause) { const d = SPECIES[sp].tx && SPECIES[sp].tx.dead || {}; return d[cause] || TX.dead[cause] || 'Растение погибло.'; }
+
+function newState(sp = 'angio') {
+  return { sp, hour: 6, biomass: 0.6, moisture: sp === 'algae' ? 90 : 60, minerals: 50, starch: 6, hp: 100, rootHP: 100,
+    turgor: 0.9, chl: 0.85, lightHist: 0.5, soggy: 0, lean: 0, loc: SPECIES[sp].start, lamp: false, shade: false,
+    unlocked: {}, pollinated: false, fruit: 0, lastP: 0,
+    done: false, dead: null, rootHarm: null, cause: null, stageIdx: 0, log: [], cool: {}, iodine: null };
+}
+function daylight(h) { const x = h % 24; return (x > 6 && x < 20) ? Math.sin(Math.PI * (x - 6) / 14) : 0; }
+function env(s) {
+  const L = LOC[s.loc], SP = SPECIES[s.sp], dl = daylight(s.hour);
+  let sun = dl * L.light; if (s.shade) sun *= 0.45;
+  const light = clamp(sun + (s.lamp ? 0.35 : 0), 0, 1);
+  const temp = L.t0 + dl * L.amp * (s.shade ? 0.6 : 1) + (s.lamp ? 1 : 0);
+  const leafArea = Math.min(3, 0.5 + s.biomass * 0.12);
+  const stomata = s.turgor > 0.35 ? 1 : 0.35;
+  const tr = leafArea * (0.3 + 1.4 * light) * (1 + Math.max(0, temp - 20) * 0.1) * stomata * 0.55 * SP.transp;
+  return { dl, light, temp, leafArea, stomata, tr };
+}
+function stageOf(s) {
+  if (s.done) return 6; if (s.pollinated) return 5; if (s.biomass >= 16) return 4;
+  if (s.biomass >= 13) return 3; if (s.biomass >= 7) return 2; if (s.biomass >= 2) return 1; return 0;
+}
+function note(s, key, text, kind = 'info', cool = 24) {
+  if (key && s.cool[key] !== undefined && s.cool[key] > s.hour - cool) return;
+  if (key) s.cool[key] = s.hour;
+  s.log.unshift({ h: s.hour, text, kind });
+  if (s.log.length > 80) s.log.length = 80;
+}
+function step(s) {
+  if (s.dead || s.done) return;
+  const SP = SPECIES[s.sp], e = env(s), { light, temp, leafArea, tr } = e;
+  s.moisture = clamp(s.moisture - tr - 0.2 * temp / 20 * (s.sp === 'algae' ? 1.2 : 1), 0, 100);
+
+  // корни: переувлажнение и избыток солей
+  if (s.moisture > 88) s.soggy += 1; else s.soggy = Math.max(0, s.soggy - 2);
+  let rootDmg = 0;
+  if (SP.rotThr && s.soggy > SP.rotThr) { rootDmg += 2.2; s.rootHarm = 'rot'; }
+  if (s.minerals > 85) { rootDmg += 1.5 + (s.minerals - 85) * 0.25; s.rootHarm = 'burn'; }
+  if (rootDmg) s.rootHP = clamp(s.rootHP - rootDmg * HARM, 0, 100);
+  else if (s.moisture > 15) { s.rootHP = clamp(s.rootHP + 0.35, 0, 100); if (s.rootHP > 92) s.rootHarm = null; }
+
+  // тургор: вода поступает внутрь; крепкий солевой раствор вытягивает её обратно (осмос)
+  let tt = clamp((s.moisture - SP.dryLo) / SP.span, 0, 1) * (0.25 + 0.75 * s.rootHP / 100);
+  if (s.minerals > 85) tt *= 0.5;
+  s.turgor += (tt - s.turgor) * 0.35;
+
+  s.lightHist += (light - s.lightHist) / 48;
+  let ct = clamp(0.3 + s.minerals / 25 * 0.7, 0.3, 1); if (s.lightHist < 0.06) ct *= 0.5;
+  const burnt = light > SP.burnAt;
+  if (burnt) ct *= 0.6;
+  s.chl += (ct - s.chl) * 0.03;
+  s.lean += (LOC[s.loc].lean * (s.lamp ? 0.4 : 1) - s.lean) * 0.02;
+
+  // фотосинтез и дыхание
+  const hot = SP.heatMax - 2;
+  const tf = temp <= hot ? 1 : Math.max(0.15, 1 - (temp - hot) * 0.13);
+  const P = (burnt ? 0.5 : 1) * Math.min(1, light / SP.sat) * SP.pmax * Math.min(1, s.turgor * 1.3) * s.chl * leafArea * tf * e.stomata;
+  s.lastP = P;
+  s.starch += P;
+  s.starch -= (0.04 + s.biomass * 0.01) * (1 + (temp - 20) * 0.03);
+  let starving = false; if (s.starch < 0) { s.starch = 0; starving = true; }
+
+  // рост
+  if (s.starch > 1.5 && s.minerals > 2 && s.turgor > 0.4 && s.biomass < 24) {
+    const g = 0.09 * PACE * Math.min(1, s.starch / 12) * Math.min(1, s.minerals / 30) * (s.rootHP / 100);
+    s.biomass += g; s.starch -= g * 2.5 / PACE; s.minerals = Math.max(0, s.minerals - g * 4 / PACE);
+  }
+  if (s.pollinated && s.fruit < 1 && s.starch > 1 && s.turgor > 0.3) { s.fruit = Math.min(1, s.fruit + PACE / 40); s.starch -= 0.4; }
+
+  // здоровье
+  const harm = [];
+  if (s.turgor < 0.3) harm.push([s.rootHP < 50 && s.rootHarm ? s.rootHarm : 'wilt', SP.wiltDmg]);
+  if (s.rootHP < 35) harm.push([s.rootHarm || 'rot', 0.9]);
+  if (starving) harm.push(['starve', 0.7]);
+  if (temp > SP.heatMax && (s.sp === 'algae' || s.turgor < 0.5)) harm.push(['heat', 1]);
+  if (burnt) harm.push(['sun', 0.8 + 3 * (light - SP.burnAt) / (1 - SP.burnAt)]);
+  if (harm.length) { harm.sort((a, b) => b[1] - a[1]); s.cause = harm[0][0] === 'starve' && s.turgor < 0.3 ? 'wilt' : harm[0][0]; s.hp -= harm.reduce((a, b) => a + b[1], 0) * HARM; }
+  else s.hp = Math.min(100, s.hp + 0.4);
+
+  // наблюдения
+  const locked = (act, name) => has(s, act) ? '' : ` ${name} откроется после блока «${blockFor(s.sp, act).title}».`;
+  if (e.dl > 0 && s.hour % 24 > 7 && s.hour % 24 < 19 && light < 0.12 * SP.sat / 0.75)
+    note(s, 'dark', 'Мало света. Фотосинтез почти не идёт, новый крахмал не образуется, а старый растение тратит на дыхание.' + locked('lamp', 'Фитолампа'), 'warn', 36);
+  if (s.lightHist < 0.15 * SP.sat && s.lightHist >= 0.06) note(s, 'dim', 'Растение тянется к свету и растёт медленно: здесь слишком тускло для активного фотосинтеза.', 'warn', 48);
+  if (s.lightHist < 0.06) note(s, 'pale', `Бледнеют ${SP.leaves}: без света хлорофилл не образуется.`, 'warn', 48);
+  if (starving) note(s, 'starve', 'Запас крахмала кончился. Растению нечем дышать и не из чего расти. Нужен свет.', 'warn', 24);
+  if (burnt) note(s, 'sun', tx(s.sp, 'sun') + locked('shade', 'Притенение'), 'warn', 20);
+  if (s.turgor < 0.35) note(s, 'wilt', tx(s.sp, 'wilt'), 'warn', 12);
+  if (SP.rotThr && s.soggy > SP.rotThr) note(s, 'rot', tx(s.sp, 'rot'), 'warn', 18);
+  if (s.minerals > 85) note(s, 'burn', tx(s.sp, 'burn'), 'warn', 12);
+  if (temp > Math.min(29, SP.heatMax - 1) && (tr > 1.4 || s.sp === 'algae' || s.sp === 'gymno'))
+    note(s, 'heat', tx(s.sp, 'heat', { t: temp.toFixed(0), ml: (tr * 10).toFixed(0) }), 'warn', 30);
+  if (s.minerals < 12 && s.biomass > 2) note(s, 'poor', tx(s.sp, 'poor') + locked('feed', 'Подкормка'), 'warn', 36);
+  if (e.dl === 0 && !s.cool.night) note(s, 'night', 'Наступила ночь. Без света фотосинтеза нет: растение только дышит и расходует крахмал.', 'info', 1e9);
+
+  s.hour += 1;
+  const st = stageOf(s);
+  if (st > s.stageIdx) {
+    s.stageIdx = st;
+    let msg = SP.stages[st][1];
+    if (st === 4) msg += locked('repro', SP.repro.short[0].toUpperCase() + SP.repro.short.slice(1));
+    note(s, 'stage' + st, msg, 'good', 1e9);
+  }
+  if (s.fruit >= 1 && !s.done) { s.done = true; s.stageIdx = 6; note(s, 'stage6', SP.stages[6][1], 'good', 1e9); }
+  if (s.hp <= 0) { s.hp = 0; s.dead = deadText(s.sp, s.cause); note(s, 'dead', s.dead, 'warn', 1e9); }
+}
+/*ENDSIM*/
+
+// ---------- состояние ----------
+// Обычная ссылка: реальное время (1 час = 1 час, день и ночь как за окном). Ссылка с #urok: ускоренный режим для урока.
+const LESSON = location.hash === '#urok';
+const KEY = LESSON ? 'plant-pet-lesson-v2' : 'plant-pet-real-v2';
+const OLD_KEY = LESSON ? 'plant-pet-lesson-v1' : 'plant-pet-real-v1';
+const HOUR = 3600000;
+// Сад: у каждой группы может быть своё растение, все растут одновременно. S — растение, открытое сейчас.
+let G = null, S = null;
+const SPc = () => SPECIES[S.sp];
+function revive(raw, unlocked) {
+  const st = Object.assign(newState(raw.sp), raw);
+  st.unlocked = unlocked;
+  return st;
+}
+function load() {
+  try {
+    let r = localStorage.getItem(KEY);
+    if (r) {
+      const g = JSON.parse(r), unlocked = g.unlocked || {}, plants = {};
+      for (const k in g.plants || {}) if (SPECIES[k]) plants[k] = revive(g.plants[k], unlocked);
+      const active = plants[g.active] ? g.active : Object.keys(plants)[0];
+      return active ? { active, plants, unlocked } : null;
+    }
+    r = localStorage.getItem(OLD_KEY); // растение из прошлой версии игры
+    if (r) {
+      const old = JSON.parse(r); if (!SPECIES[old.sp]) old.sp = 'angio';
+      const unlocked = old.unlocked && !('root' in old.unlocked) && !('repro' in old.unlocked) ? old.unlocked : {};
+      return { active: old.sp, plants: { [old.sp]: revive(old, unlocked) }, unlocked };
+    }
+  } catch (e) {}
+  return null;
+}
+function save() {
+  try {
+    if (!G) { localStorage.removeItem(KEY); localStorage.removeItem(OLD_KEY); return; }
+    const plants = {};
+    for (const k in G.plants) { const { unlocked, ...rest } = G.plants[k]; plants[k] = rest; }
+    localStorage.setItem(KEY, JSON.stringify({ active: G.active, unlocked: G.unlocked, plants }));
+  } catch (e) {}
+}
+function fresh(sp) {
+  if (!G) G = { active: sp, plants: {}, unlocked: {} };
+  const P = newState(sp);
+  P.unlocked = G.unlocked;
+  if (!LESSON) { const now = new Date(); now.setMinutes(0, 0, 0); P.hour = now.getHours(); P.lastTs = now.getTime(); }
+  const SP = SPECIES[sp];
+  note(P, null, `${SP.tx.start} Место: ${LOC[P.loc].name.toLowerCase()}. ${SP.stages[0][1]}`, 'good');
+  P.cool.stage0 = P.hour;
+  G.plants[sp] = P; G.active = sp; S = P;
+}
+function select(sp) { G.active = sp; S = G.plants[sp]; renderBlocks(); render(); renderGarden(); save(); }
+
+// ---------- сцена ----------
+const svg = document.getElementById('scene');
+function hex(c) { return [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)); }
+function mix(a, b, t) { const A = hex(a), B = hex(b); t = clamp(t, 0, 1); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join(''); }
+const f1 = n => n.toFixed(1);
+let rootSegs = null;
+function genRoots() {
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const segs = [];
+  (function br(x, y, a, len, d) {
+    if (d > 5 || len < 5) return;
+    const x2 = x + Math.cos(a) * len, y2 = y + Math.sin(a) * len;
+    segs.push([x, y, x2, y2, d]);
+    br(x2, y2, a + (rnd() - 0.5) * 0.5, len * 0.78, d + 1);
+    if (rnd() < 0.85) br(x2, y2, a + (rnd() < 0.5 ? -1 : 1) * (0.6 + rnd() * 0.6), len * 0.62, d + 1);
+  })(200, 300, Math.PI / 2, 28, 0);
+  return segs;
+}
+function rootColor(s) {
+  return s.rootHP > 85 ? '#f1e6c6' : s.rootHarm === 'burn' ? mix('#f1e6c6', '#6e3e17', 1 - s.rootHP / 85) : mix('#f1e6c6', '#221a12', 1 - s.rootHP / 85);
+}
+function rootTree(s, scale, ox = 200) {
+  rootSegs = rootSegs || genRoots();
+  let o = `<g clip-path="url(#soilClip)" stroke="${rootColor(s)}" stroke-linecap="round" fill="none">`;
+  for (const [x1, y1, x2, y2, d] of rootSegs) {
+    const T = (x, y) => [ox + (x - 200) * scale, 300 + (y - 300) * scale];
+    const [a, b] = T(x1, y1), [c, dd] = T(x2, y2);
+    o += `<path d="M${f1(a)} ${f1(b)} L${f1(c)} ${f1(dd)}" stroke-width="${Math.max(0.8, (3.4 - d * 0.55) * Math.min(1, scale + .3))}"/>`;
+  }
+  return o + '</g>';
+}
+
+function drawBackground(s, e) {
+  const L = LOC[s.loc], dl = e.dl, h = s.hour % 24;
+  const sky = mix('#1b2342', '#a7d3ee', Math.min(1, dl * 1.6));
+  let o = `<defs><clipPath id="soilClip"><path d="M150 302 L250 302 L242 404 L158 404 Z"/></clipPath>
+    <radialGradient id="glow"><stop offset="0" stop-color="#ffe7a0" stop-opacity=".75"/><stop offset="1" stop-color="#ffe7a0" stop-opacity="0"/></radialGradient></defs>`;
+  if (s.loc === 'balcony') {
+    o += `<rect width="400" height="440" fill="${sky}"/>`;
+    if (dl > 0) { const sx = 40 + (h - 6) / 14 * 320, sy = 150 - dl * 110; o += `<circle cx="${f1(sx)}" cy="${f1(sy)}" r="22" fill="#ffd34d"/>`; }
+    else o += `<circle cx="320" cy="70" r="14" fill="#e9ecf5"/><circle cx="326" cy="65" r="13" fill="${sky}"/>`;
+    o += `<rect y="280" width="400" height="160" fill="#8e8576"/>`;
+    for (let x = 8; x < 400; x += 26) o += `<rect x="${x}" y="230" width="5" height="180" fill="#4f5560"/>`;
+    o += `<rect y="224" width="400" height="9" fill="#3f444d"/>`;
+  } else {
+    o += `<rect width="400" height="440" fill="${s.loc === 'corner' ? '#6b665d' : '#d9d1bf'}"/>`;
+    if (s.loc === 'corner') o += `<path d="M0 0 L120 40 L120 440 L0 440 Z" fill="#000" opacity=".22"/>`;
+    if (L.win) {
+      const W = s.loc === 'sill' ? [70, 20, 300, 300] : [16, 50, 96, 150];
+      o += `<rect x="${W[0]}" y="${W[1]}" width="${W[2]}" height="${W[3]}" fill="${sky}"/>`;
+      if (dl > 0 && s.loc === 'sill') { const sx = W[0] + 30 + (h - 6) / 14 * (W[2] - 60), sy = W[1] + 150 - dl * 110; o += `<circle cx="${f1(sx)}" cy="${f1(sy)}" r="20" fill="#ffd34d"/>`; }
+      o += `<rect x="${W[0]}" y="${W[1]}" width="${W[2]}" height="${W[3]}" fill="none" stroke="#f3efe6" stroke-width="7"/>`;
+      o += `<path d="M${W[0] + W[2] / 2} ${W[1]} v${W[3]} M${W[0]} ${W[1] + W[3] * 0.4} h${W[2]}" stroke="#f3efe6" stroke-width="5"/>`;
+      if (s.shade) o += `<rect x="${W[0] - 4}" y="${W[1] - 4}" width="${W[2] + 8}" height="${W[3] + 8}" fill="#efe6cf" opacity=".72"/>` +
+        Array.from({ length: 8 }, (_, i) => `<path d="M${W[0] + (i + .5) * W[2] / 8} ${W[1] - 4} v${W[3] + 8}" stroke="#cbbf9f" stroke-width="2" opacity=".7"/>`).join('');
+    }
+    o += `<rect y="404" width="400" height="36" fill="${s.loc === 'sill' ? '#ece8df' : '#a8957a'}"/>`;
+  }
+  if (s.shade && !L.win) o += `<rect width="400" height="230" fill="#2f4a33" opacity=".35"/>` +
+    Array.from({ length: 20 }, (_, i) => `<path d="M${i * 20} 0 v230" stroke="#2f4a33" stroke-width="1" opacity=".5"/>`).join('');
+  o += `<rect width="400" height="440" fill="#070a14" opacity="${(0.62 * (1 - Math.min(1, e.light * 1.5 + 0.12))).toFixed(2)}"/>`;
+  if (s.lamp) o += `<ellipse cx="200" cy="130" rx="190" ry="160" fill="url(#glow)"/><path d="M168 0 h64 l14 34 h-92 Z" fill="#333a36"/><rect x="164" y="32" width="72" height="5" rx="2" fill="#ffd36b"/>`;
+  return o;
+}
+function drawPot(s) {
+  let o = `<path d="M138 296 L262 296 L252 410 L148 410 Z" fill="#b0603a"/><rect x="132" y="290" width="136" height="14" rx="3" fill="#c26d43"/>`;
+  o += `<path d="M150 302 L250 302 L242 404 L158 404 Z" fill="${mix('#b88d5e', '#3d2818', s.moisture / 100)}"/>`;
+  if (s.moisture > 88) o += `<path d="M152 380 L248 380 L242 404 L158 404 Z" fill="#3b6fa0" opacity=".45"/>`;
+  if (s.minerals > 70) for (let i = 0; i < Math.round((s.minerals - 70) / 2); i++) o += `<rect x="${154 + (i * 37) % 92}" y="${303 + (i * 13) % 6}" width="3" height="2" fill="#f4f1e8"/>`;
+  return o;
+}
+function leafColor(s) {
+  const healthy = mix('#c9b94a', SPc().green, s.chl);
+  return s.hp < 40 ? mix(healthy, '#7d5a2c', 1 - s.hp / 40) : healthy;
+}
+
+// Покрытосеменные: стебель, листья, цветок, плод
+function drawAngio(s, ctx) {
+  const { droop, col, st } = ctx;
+  let o = rootTree(s, Math.min(1, 0.25 + s.biomass / 10));
+  const bm = Math.min(s.biomass, 22), H = 18 + bm * 10.5, lean = s.lean * 34;
+  const B = [200, 300], C = [200 + lean * 0.15, 300 - H * 0.55], T = [200 + lean, 300 - H];
+  const P = t => [(1 - t) ** 2 * B[0] + 2 * (1 - t) * t * C[0] + t * t * T[0], (1 - t) ** 2 * B[1] + 2 * (1 - t) * t * C[1] + t * t * T[1]];
+  const top = droop > 0.55 ? [T[0] + lean * 0.3 + 14 * droop, T[1] + H * 0.12 * droop] : T;
+  o += `<path d="M${B[0]} ${B[1]} Q${f1(C[0])} ${f1(C[1])} ${f1(top[0])} ${f1(top[1])}" stroke="${mix(col, '#5d7a33', .3)}" stroke-width="${f1(2.5 + bm * 0.22)}" fill="none" stroke-linecap="round"/>`;
+  const n = s.biomass < 2 ? 2 : Math.min(16, 2 + Math.floor(s.biomass * 0.75));
+  for (let i = 0; i < n; i++) {
+    const t = s.biomass < 2 ? 1 : 0.12 + (i / n) * 0.82;
+    const [x, y] = P(t), side = i % 2 ? 1 : -1;
+    const Lg = s.biomass < 2 ? 12 + s.biomass * 6 : (16 + 18 * Math.min(1, s.biomass / 12)) * (1 - t * 0.35);
+    const W = Lg * (s.biomass < 2 ? 0.45 : 0.36), ang = side * (-32 + droop * 85);
+    const c = i < 2 && s.minerals < 12 ? mix(col, '#d9c55a', 0.6) : col;
+    const tip = s.rootHarm === 'burn' && s.rootHP < 80 ? `<path d="M${f1(Lg * 0.8)} ${f1(-W * 0.35)} Q${f1(Lg)} 0 ${f1(Lg * 0.8)} ${f1(W * 0.35)} Z" fill="#7a4a20"/>` : '';
+    o += `<g transform="translate(${f1(x)} ${f1(y)}) rotate(${f1(ang)}) scale(${side} 1)"><path d="M0 0 Q${f1(Lg / 2)} ${f1(-W)} ${f1(Lg)} 0 Q${f1(Lg / 2)} ${f1(W)} 0 0 Z" fill="${c}"/>${tip}<path d="M1 0 L${f1(Lg * 0.9)} 0" stroke="rgba(0,0,0,.18)" stroke-width="1"/></g>`;
+  }
+  const flower = (x, y, r) => {
+    if (st === 3) return `<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="${r * 0.45}" ry="${r * 0.7}" fill="#5f9a3c"/><ellipse cx="${f1(x)}" cy="${f1(y - r * 0.4)}" rx="${r * 0.3}" ry="${r * 0.35}" fill="#e88aa8"/>`;
+    if (st === 4 || (st >= 5 && s.fruit < 0.15)) {
+      let f = ''; for (let k = 0; k < 5; k++) { const a = k * 72 * Math.PI / 180, px = x + Math.cos(a) * r * 0.7, py = y + Math.sin(a) * r * 0.7; f += `<ellipse cx="${f1(px)}" cy="${f1(py)}" rx="${r * 0.62}" ry="${r * 0.45}" transform="rotate(${k * 72} ${f1(px)} ${f1(py)})" fill="${droop > .55 ? '#c98ea0' : '#ee86aa'}"/>`; }
+      return f + `<circle cx="${f1(x)}" cy="${f1(y)}" r="${r * 0.38}" fill="#f2c230"/>` + (s.pollinated ? `<circle cx="${f1(x)}" cy="${f1(y)}" r="${r * 0.2}" fill="#d98b1a"/>` : '');
+    }
+    if (st >= 5) { const fr = r * (0.35 + s.fruit * 0.75); return `<circle cx="${f1(x)}" cy="${f1(y + fr * 0.4)}" r="${f1(fr)}" fill="${mix('#6fae45', '#d8422e', s.fruit)}"/><path d="M${f1(x - 4)} ${f1(y - fr * 0.5)} l4 4 l4 -4" stroke="#3e7a2c" stroke-width="2" fill="none"/>`; }
+    return '';
+  };
+  if (st >= 3) {
+    o += flower(top[0], top[1] - 6, 14);
+    if (s.biomass >= 18) { const [x, y] = P(0.8); o += flower(x + 24, y - 12, 10) + flower(x - 24, y - 4, 10); }
+  }
+  return o;
+}
+
+// Голосеменные: сосна с мутовками хвои и шишками
+function drawPine(s, ctx) {
+  const { droop, col, st } = ctx;
+  let o = rootTree(s, Math.min(1.05, 0.3 + s.biomass / 9));
+  const bm = Math.min(s.biomass, 22), H = 16 + bm * 10.5, lean = s.lean * 18;
+  const top = [200 + lean, 300 - H];
+  const needle = mix(col, '#9a7b45', droop * 0.6);
+  o += `<path d="M200 300 Q200 ${f1(300 - H * 0.5)} ${f1(top[0])} ${f1(top[1])}" stroke="${bm < 2 ? '#8a7a4a' : '#7b5434'}" stroke-width="${f1(2 + bm * 0.42)}" fill="none" stroke-linecap="round"/>`;
+  const tuft = (x, y, n, len, spread, base) => {
+    let t = ''; for (let k = 0; k < n; k++) { const a = (base + (k - (n - 1) / 2) * spread) * Math.PI / 180; t += `M${f1(x)} ${f1(y)} l${f1(Math.cos(a) * len)} ${f1(Math.sin(a) * len)} `; }
+    return t;
+  };
+  let nd = '';
+  if (s.biomass < 2) nd += tuft(top[0], top[1], 7, 9 + s.biomass * 5, 24, -90 + droop * 40);
+  else {
+    const tiers = Math.min(7, 1 + Math.floor(bm / 2.6));
+    for (let i = 0; i < tiers; i++) {
+      const f = (i + 1) / (tiers + 1), y = 300 - H * (0.18 + 0.72 * f), x = 200 + lean * f * f;
+      const w = (1 - f * 0.7) * (14 + bm * 3.4);
+      for (const side of [-1, 1]) {
+        const ex = x + side * w, ey = y + w * 0.12 + droop * w * 0.35;
+        o += `<path d="M${f1(x)} ${f1(y)} L${f1(ex)} ${f1(ey)}" stroke="#6d4a2e" stroke-width="${f1(1 + bm * 0.08)}"/>`;
+        for (let j = 1; j <= 6; j++) {
+          const px = x + (ex - x) * j / 6.5, py = y + (ey - y) * j / 6.5;
+          nd += `M${f1(px)} ${f1(py)} l${side * 4} ${f1(-7 + droop * 9)} M${f1(px)} ${f1(py)} l${side * 7} ${f1(1 + droop * 5)} `;
+        }
+        nd += tuft(ex, ey, 5, 7, 28, side > 0 ? -10 + droop * 30 : 190 - droop * 30);
+      }
+    }
+    nd += tuft(top[0], top[1], 7, 9, 22, -90);
+    // шишки
+    if (st >= 3) {
+      const yT = 300 - H * (0.18 + 0.72 * (tiers / (tiers + 1))), wT = (1 - tiers / (tiers + 1) * 0.7) * (14 + bm * 3.4);
+      const xT = 200 + lean;
+      const fem = [[xT + wT * 0.9, yT - 4], [xT - wT * 0.9, yT - 2]];
+      for (const [cx, cy] of fem) {
+        if (st <= 4) o += `<ellipse cx="${f1(cx)}" cy="${f1(cy - 6)}" rx="3" ry="4.5" fill="#b5506a"/>`;
+        else if (st === 5) { const r = 4 + s.fruit * 7; o += `<ellipse cx="${f1(cx)}" cy="${f1(cy + r * 0.6)}" rx="${f1(r * 0.6)}" ry="${f1(r)}" fill="${mix('#6d9a45', '#8a5a2b', s.fruit)}"/>`; }
+        else {
+          o += `<ellipse cx="${f1(cx)}" cy="${f1(cy + 8)}" rx="8" ry="12" fill="#8a5a2b"/>`;
+          for (let k = -2; k <= 2; k++) o += `<path d="M${f1(cx - 9)} ${f1(cy + 8 + k * 4)} q9 3 18 0" stroke="#5c3a1b" fill="none" stroke-width="1.4"/>`;
+          o += `<g fill="#a9824f"><ellipse cx="${f1(cx + 18)}" cy="${f1(cy + 26)}" rx="2" ry="1.4"/><path d="M${f1(cx + 19)} ${f1(cy + 25)} q8 -4 10 2 z"/><ellipse cx="${f1(cx - 20)}" cy="${f1(cy + 40)}" rx="2" ry="1.4"/><path d="M${f1(cx - 19)} ${f1(cy + 39)} q8 -4 10 2 z"/></g>`;
+        }
+      }
+      if (st <= 5) {
+        const ym = 300 - H * (0.18 + 0.72 / (tiers + 1));
+        for (const side of [-1, 1]) for (let k = 0; k < 3; k++) o += `<ellipse cx="${f1(200 + side * (8 + k * 4))}" cy="${f1(ym - 3 + k)}" rx="2.2" ry="3.2" fill="#e6c547"/>`;
+        if (st === 4) for (let k = 0; k < 26; k++) o += `<circle cx="${f1(150 + (k * 47 + s.hour * 13) % 110)}" cy="${f1(ym - 70 + (k * 29) % 90)}" r="1.6" fill="#f0d250" opacity=".85"/>`;
+      }
+    }
+  }
+  return o + `<path d="${nd}" stroke="${needle}" stroke-width="1.6" stroke-linecap="round" fill="none"/>`;
+}
+
+// Папоротник: корневище, вайи с перьями, сорусы, заросток
+function drawFern(s, ctx) {
+  const { droop, col, st } = ctx;
+  const rl = Math.min(1, 0.3 + s.biomass / 10);
+  let o = `<path d="M${f1(200 - 30 * rl)} 312 Q200 306 ${f1(200 + 30 * rl)} 314" stroke="#6b4a2c" stroke-width="${f1(4 + rl * 3)}" fill="none" stroke-linecap="round"/>`;
+  o += rootTree(s, rl * 0.75, 190) + rootTree(s, rl * 0.6, 214);
+  const bm = Math.min(s.biomass, 22), lean = s.lean * 14;
+  if (s.biomass < 2) {
+    const h = 16 + s.biomass * 14;
+    o += `<path d="M200 302 Q198 ${f1(302 - h * 0.6)} 204 ${f1(302 - h)}" stroke="${col}" stroke-width="2.4" fill="none"/>`;
+    o += `<path d="M204 ${f1(302 - h)} a6 6 0 1 1 -6 6 a3 3 0 1 1 3 -3" stroke="${col}" stroke-width="2.4" fill="none"/>`;
+    return o;
+  }
+  const nf = Math.min(11, 2 + Math.floor(bm * 0.45)), Lf = 26 + bm * 8.5;
+  for (let i = 0; i < nf; i++) {
+    const a = (nf === 1 ? 0 : -68 + 136 * i / (nf - 1)) * Math.PI / 180;
+    const len = Lf * (0.72 + 0.28 * Math.cos(a)) * (i === Math.floor(nf / 2) && st < 3 ? 0.6 : 1);
+    const B = [200, 302];
+    const T = [200 + lean + Math.sin(a) * len * (0.85 + droop * 0.2), 302 - Math.cos(a) * len * 0.92 + droop * len * 0.7];
+    const C = [200 + Math.sin(a) * len * 0.25, 302 - len * 0.8 * (1 - droop * 0.35)];
+    const P = t => [(1 - t) ** 2 * B[0] + 2 * (1 - t) * t * C[0] + t * t * T[0], (1 - t) ** 2 * B[1] + 2 * (1 - t) * t * C[1] + t * t * T[1]];
+    const D = t => [2 * (1 - t) * (C[0] - B[0]) + 2 * t * (T[0] - C[0]), 2 * (1 - t) * (C[1] - B[1]) + 2 * t * (T[1] - C[1])];
+    o += `<path d="M${B[0]} ${B[1]} Q${f1(C[0])} ${f1(C[1])} ${f1(T[0])} ${f1(T[1])}" stroke="${mix(col, '#5d6b2a', .3)}" stroke-width="1.8" fill="none"/>`;
+    let pin = '', sori = '';
+    const m = 11;
+    for (let j = 2; j <= m; j++) {
+      const t = j / (m + 1), [x, y] = P(t), [dx, dy] = D(t), dl = Math.hypot(dx, dy) || 1;
+      const ux = dx / dl, uy = dy / dl, nx = -uy, ny = ux, pl = (1 - t) * len * 0.2 + 3;
+      for (const sd of [-1, 1]) {
+        const ex = x + sd * nx * pl + ux * pl * 0.35, ey = y + sd * ny * pl + uy * pl * 0.35;
+        pin += `M${f1(x)} ${f1(y)} L${f1(ex)} ${f1(ey)} `;
+        if (st >= 3 && st <= 4 && j % 2 === 0) sori += `<circle cx="${f1((x + ex) / 2)}" cy="${f1((y + ey) / 2 + 1.5)}" r="1.5" fill="${st === 4 ? '#6b3f1c' : '#a87a3a'}"/>`;
+      }
+    }
+    o += `<path d="${pin}" stroke="${col}" stroke-width="3.2" stroke-linecap="round" fill="none"/>` + sori;
+  }
+  if (st >= 5) {
+    o += `<path d="M232 300 c-6 -8 -14 -2 -8 4 l8 6 l8 -6 c6 -6 -2 -12 -8 -4 z" fill="#6fb24a"/>`;
+    if (s.fruit > 0.3 || st === 6) { const h = 6 + (st === 6 ? 1 : s.fruit) * 22; o += `<path d="M232 302 Q230 ${f1(302 - h * 0.6)} 236 ${f1(302 - h)}" stroke="${col}" stroke-width="1.6" fill="none"/><path d="M236 ${f1(302 - h)} l-6 4 m6 -4 l6 4 m-7 2 l-5 3 m6 -3 l5 3" stroke="${col}" stroke-width="2.2" stroke-linecap="round"/>`; }
+  }
+  return o;
+}
+
+// Мох: дерновинка стебельков, ризоиды, коробочки на ножках
+function drawMoss(s, ctx) {
+  const { droop, st } = ctx;
+  const col = mix(ctx.col, '#8f7e44', droop * 0.85);
+  const bm = Math.min(s.biomass, 18);
+  let o = '';
+  if (s.biomass < 2) {
+    let p = '';
+    for (let k = 0; k < 6; k++) { const x = 160 + k * 15; p += `M${x} 302 q5 -3 10 0 t10 0 M${x + 6} 302 l3 -4 `; }
+    return o + `<path d="${p}" stroke="${col}" stroke-width="1.4" fill="none"/>` + (s.biomass > 1.2 ? `<circle cx="188" cy="298" r="2" fill="${col}"/><circle cx="214" cy="298" r="2" fill="${col}"/>` : '');
+  }
+  const nm = Math.min(30, 4 + Math.floor(bm * 1.5));
+  const rl = Math.min(1, 0.3 + s.biomass / 10);
+  let rh = '', stems = '', leaves = '', extra = '';
+  for (let k = 0; k < nm; k++) {
+    const x = 156 + ((k * 37) % 88) + (k % 3);
+    const h = (8 + bm * 3.4) * (0.7 + ((k * 53) % 10) / 16);
+    const tilt = ((((k * 29) % 11) - 5) * 1.6 + droop * (k % 2 ? 22 : -22)) * Math.PI / 180;
+    const tx_ = x + Math.sin(tilt) * h, ty = 302 - Math.cos(tilt) * h;
+    stems += `M${x} 302 L${f1(tx_)} ${f1(ty)} `;
+    for (let j = 1; j <= 4; j++) {
+      const px = x + (tx_ - x) * j / 4.5, py = 302 + (ty - 302) * j / 4.5, l = 3.5 * (1 - droop * 0.6);
+      leaves += `M${f1(px)} ${f1(py)} l${f1(-l)} ${f1(-l * 0.8)} M${f1(px)} ${f1(py)} l${f1(l)} ${f1(-l * 0.8)} `;
+    }
+    leaves += `M${f1(tx_)} ${f1(ty)} l-3 -3 M${f1(tx_)} ${f1(ty)} l3 -3 M${f1(tx_)} ${f1(ty)} l0 -4 `;
+    rh += `M${x} 303 l${(k % 3) - 1} ${f1(5 + rl * 12)} M${x} 303 l${k % 2 ? 3 : -3} ${f1(4 + rl * 8)} `;
+    if (st >= 3 && st <= 4 && k % 3 === 0) extra += `<circle cx="${f1(tx_)}" cy="${f1(ty - 2)}" r="2.6" fill="#c45a3a"/>`;
+    if (st >= 5 && k % 3 === 1) {
+      const g = st === 6 ? 1 : s.fruit, sl = 6 + g * 42, cx = tx_ + (st === 6 ? 4 : 0), cy = ty - sl;
+      extra += `<path d="M${f1(tx_)} ${f1(ty)} L${f1(cx)} ${f1(cy)}" stroke="#b0603a" stroke-width="1.1"/>`;
+      extra += `<ellipse cx="${f1(cx + (st === 6 ? 2 : 0))}" cy="${f1(cy - 3)}" rx="${f1(1.6 + g * 1.4)}" ry="${f1(2.5 + g * 3)}" fill="${mix('#7fae4a', '#7a5530', g)}" ${st === 6 ? `transform="rotate(35 ${f1(cx)} ${f1(cy)})"` : ''}/>`;
+      if (st === 5 && g > 0.3) extra += `<path d="M${f1(cx - 2.5)} ${f1(cy - 5 - g * 3)} l2.5 -4 l2.5 4 z" fill="#d6c38a"/>`;
+      if (st === 6) for (let q = 0; q < 4; q++) extra += `<circle cx="${f1(cx + 8 + q * 4)}" cy="${f1(cy - 8 + q * 3)}" r="1" fill="#8a6a3a"/>`;
+    }
+  }
+  o += `<g clip-path="url(#soilClip)"><path d="${rh}" stroke="${rootColor(s)}" stroke-width=".7" fill="none"/></g>`;
+  o += `<path d="${stems}" stroke="${mix(col, '#4a5a22', .3)}" stroke-width="1.2" fill="none"/><path d="${leaves}" stroke="${col}" stroke-width="1.6" stroke-linecap="round" fill="none"/>` + extra;
+  return o;
+}
+
+// Плаун: ползучий стебель, вильчато ветвящиеся побеги, колоски
+function drawLycopod(s, ctx) {
+  const { droop, col, st } = ctx;
+  const bm = Math.min(s.biomass, 20), span = 24 + bm * 4.5, x0 = 200 - span / 2, x1 = 200 + span / 2;
+  const rl = Math.min(1, 0.3 + s.biomass / 10);
+  let o = '', roots = '', br = '', lv = '', clubs = '';
+  for (let x = x0 + 6; x < x1; x += 16) roots += `M${f1(x)} 302 q-3 ${f1(8 * rl)} 1 ${f1(10 + rl * 22)} M${f1(x)} 304 q5 ${f1(6 * rl)} 9 ${f1(8 + rl * 10)} `;
+  o += `<g clip-path="url(#soilClip)"><path d="${roots}" stroke="${rootColor(s)}" stroke-width="1.2" fill="none"/></g>`;
+  o += `<path d="M${f1(x0)} 301 Q200 297 ${f1(x1)} 302" stroke="${mix(col, '#5d6b2a', .4)}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+  for (let x = x0; x < x1; x += 4) lv += `M${f1(x)} 300 l2 -3 M${f1(x)} 302 l2 3 `;
+  const nb = s.biomass < 2 ? 1 : Math.min(9, 1 + Math.floor(bm * 0.45));
+  const depthMax = s.biomass > 9 ? 2 : s.biomass > 4 ? 1 : 0;
+  const branch = (x, y, ang, len, d) => {
+    const ex = x + Math.sin(ang) * len, ey = y - Math.cos(ang) * len;
+    br += `M${f1(x)} ${f1(y)} L${f1(ex)} ${f1(ey)} `;
+    for (let t = 0.1; t < 0.98; t += 0.13) {
+      const px = x + (ex - x) * t, py = y + (ey - y) * t;
+      lv += `M${f1(px)} ${f1(py)} l${f1(-2.6 + droop)} ${f1(-2 + droop * 3)} M${f1(px)} ${f1(py)} l${f1(2.6 - droop)} ${f1(-2 + droop * 3)} `;
+    }
+    if (d < depthMax) { branch(ex, ey, ang - 0.38, len * 0.7, d + 1); branch(ex, ey, ang + 0.38, len * 0.7, d + 1); }
+    else if (st >= 3 && st <= 5) {
+      const cx = ex + Math.sin(ang) * 6, cy = ey - Math.cos(ang) * 6;
+      br += `M${f1(ex)} ${f1(ey)} L${f1(cx)} ${f1(cy)} `;
+      clubs += `<ellipse cx="${f1(cx + Math.sin(ang) * 6)}" cy="${f1(cy - Math.cos(ang) * 6)}" rx="2.6" ry="6.5" transform="rotate(${f1(ang * 180 / Math.PI)} ${f1(cx + Math.sin(ang) * 6)} ${f1(cy - Math.cos(ang) * 6)})" fill="${st === 3 ? '#b9c26a' : '#e2c34a'}"/>`;
+      if (st === 4) for (let q = 0; q < 3; q++) clubs += `<circle cx="${f1(cx + 6 + q * 5)}" cy="${f1(cy - 12 - q * 4)}" r="1.2" fill="#f0d250"/>`;
+    }
+  };
+  for (let k = 0; k < nb; k++) {
+    const x = nb === 1 ? 200 : x0 + 8 + (span - 16) * k / (nb - 1);
+    const h = (12 + bm * 4.2) * (0.8 + ((k * 31) % 5) / 12) / (1 + depthMax * 0.55);
+    const ang = ((((k * 17) % 7) - 3) * 4 + s.lean * 12 + droop * (k % 2 ? 40 : -40)) * Math.PI / 180;
+    branch(x, 300, ang, h, 0);
+  }
+  o += `<path d="${br}" stroke="${mix(col, '#5d6b2a', .35)}" stroke-width="1.6" fill="none"/><path d="${lv}" stroke="${col}" stroke-width="1.4" stroke-linecap="round" fill="none"/>` + clubs;
+  if (st >= 5) {
+    o += `<ellipse cx="236" cy="312" rx="7" ry="4" fill="#cdb98a"/>`;
+    if (s.fruit > 0.3 || st === 6) { const h = 4 + (st === 6 ? 1 : s.fruit) * 20; o += `<path d="M236 308 L236 ${f1(300 - h)}" stroke="${col}" stroke-width="1.6"/>`; for (let y = 304; y > 300 - h; y -= 3) o += `<path d="M236 ${y} l-2.5 -2 M236 ${y} l2.5 -2" stroke="${col}" stroke-width="1.2"/>`; }
+  }
+  return o;
+}
+
+// Водоросль: банка с водой, нити спирогиры, пузырьки кислорода
+function drawAlgae(s, ctx) {
+  const { droop, col, st } = ctx;
+  const bm = Math.min(s.biomass, 22);
+  const lvl = 404 - 236 * s.moisture / 100;
+  const water = s.minerals > 85 ? mix('#cfe6ee', '#cbc48a', 0.6) : mix('#cfe6ee', '#9cc98e', Math.min(1, bm / 20) * 0.7);
+  let o = `<defs><clipPath id="waterClip"><rect x="130" y="${f1(lvl)}" width="140" height="${f1(404 - lvl)}"/></clipPath></defs>`;
+  o += `<rect x="124" y="160" width="152" height="250" rx="16" fill="#e6f2f5" opacity=".35" stroke="#eef6f8" stroke-width="3"/>`;
+  o += `<rect x="128" y="${f1(lvl)}" width="144" height="${f1(406 - lvl)}" rx="12" fill="${water}" opacity=".85"/>`;
+  o += `<path d="M128 ${f1(lvl)} h144" stroke="#ffffff" stroke-opacity=".6" stroke-width="1.5"/>`;
+  const fil = (x, y, len, ang, k, scale = 1) => {
+    let p = `M${f1(x)} ${f1(y)} `, q = '';
+    const N = Math.max(3, Math.floor(len / 6));
+    for (let i = 1; i <= N; i++) {
+      const t = i / N, wob = Math.sin(i * 0.9 + k) * 4 * scale;
+      const px = x + Math.sin(ang) * len * t + Math.cos(ang) * wob, py = y - Math.cos(ang) * len * t * (1 - droop * 0.8) + droop * 20 * t;
+      p += `L${f1(px)} ${f1(py)} `;
+    }
+    return p;
+  };
+  let p = '';
+  const nf = Math.min(18, 3 + Math.floor(bm * 0.9));
+  for (let k = 0; k < nf; k++) {
+    const x = 140 + (k * 41) % 120, y = 402 - (k * 17) % 30;
+    const len = (14 + bm * 10) * (0.6 + ((k * 7) % 5) / 10);
+    const ang = ((((k * 23) % 9) - 4) * 9) * Math.PI / 180;
+    p += fil(x, y, len, ang, k);
+  }
+  const fc = mix(col, '#9a8a50', droop * 0.8);
+  o += `<g clip-path="url(#waterClip)"><path d="${p}" stroke="${fc}" stroke-width="3" fill="none" stroke-linejoin="round"/><path d="${p}" stroke="${mix(fc, '#1f4a1a', .5)}" stroke-width="1.4" stroke-dasharray="2 3" fill="none"/></g>`;
+  if (s.lastP > 0.25 && s.moisture > 20) {
+    const nb = Math.min(14, Math.floor(s.lastP * 10));
+    for (let k = 0; k < nb; k++) { const bx = 140 + (k * 53) % 120, by = Math.max(lvl + 70, 395 - (k * 37) % 150); o += `<circle class="bub" style="animation-delay:-${(k * 0.37).toFixed(2)}s" cx="${bx}" cy="${f1(by)}" r="${1.5 + (k % 3) * 0.7}" fill="none" stroke="#ffffff" stroke-opacity=".85"/>`; }
+  }
+  o += `<rect x="118" y="152" width="164" height="12" rx="4" fill="#c9d6da" opacity=".8"/>`;
+  if (st >= 5) {
+    const g = st === 6 ? 1 : s.fruit;
+    o += `<rect x="296" y="312" width="74" height="96" rx="10" fill="#e6f2f5" opacity=".35" stroke="#eef6f8" stroke-width="2"/><rect x="299" y="330" width="68" height="76" rx="8" fill="${mix('#cfe6ee', '#9cc98e', g * 0.6)}" opacity=".85"/>`;
+    let q = ''; const n = 1 + Math.floor(g * 6);
+    for (let k = 0; k < n; k++) q += fil(306 + k * 9, 402, 8 + g * 50, ((k % 3) - 1) * 0.2, k, 0.6);
+    o += `<path d="${q}" stroke="${col}" stroke-width="2.2" fill="none"/>`;
+  }
+  return o;
+}
+
+const DRAW = { angio: drawAngio, gymno: drawPine, fern: drawFern, moss: drawMoss, lycopod: drawLycopod, algae: drawAlgae };
+function drawScene() {
+  const s = S, e = env(s);
+  const ctx = { droop: clamp(1 - s.turgor, 0, 1), col: leafColor(s), st: stageOf(s) };
+  let o = drawBackground(s, e);
+  if (s.sp !== 'algae') o += drawPot(s);
+  o += DRAW[s.sp](s, ctx);
+  svg.innerHTML = o;
+  svg.setAttribute('aria-label', `${SPc().name}: ${SPc().stages[ctx.st][0].toLowerCase()}`);
+}
+
+// ---------- интерфейс ----------
+const $ = id => document.getElementById(id);
+const nf = new Intl.NumberFormat('ru-RU');
+const lux = v => nf.format(Math.round(v * 60000 / 100) * 100);
+function setGauge(id, val, text, min, max, okA, okB, alert) {
+  const g = $(id);
+  g.querySelector('.v span').textContent = text;
+  const pct = v => clamp((v - min) / (max - min), 0, 1) * 100;
+  const ok = g.querySelector('.ok');
+  if (ok) { ok.style.left = pct(okA) + '%'; ok.style.width = (pct(okB) - pct(okA)) + '%'; }
+  g.querySelector('.mark').style.left = pct(val) + '%';
+  g.classList.toggle('alert', !!alert);
+}
+function bar(id, v, warnAt = 40) { const b = $(id); b.style.width = clamp(v, 0, 100) + '%'; b.style.background = v < warnAt ? 'var(--danger)' : v < 65 ? 'var(--sun)' : 'var(--leaf)'; }
+const fmtTime = (h, live) => `День ${Math.floor(h / 24) + 1} · ${String(h % 24).padStart(2, '0')}:${live ? String(new Date().getMinutes()).padStart(2, '0') : '00'}`;
+const LOCK_SVG = '<svg class="lockico" viewBox="0 0 12 12" aria-hidden="true"><rect x="2" y="5" width="8" height="6" rx="1" fill="currentColor"/><path d="M4 5V3.5a2 2 0 0 1 4 0V5" stroke="currentColor" stroke-width="1.3" fill="none"/></svg>';
+function setLocked(btn, locked, disabled) {
+  btn.disabled = locked || disabled;
+  const ico = btn.querySelector('.lockico');
+  if (locked && !ico) btn.insertAdjacentHTML('beforeend', LOCK_SVG);
+  if (!locked && ico) ico.remove();
+}
+
+function render() {
+  if (!S) return;
+  const s = S, SP = SPc(), e = env(s), st = stageOf(s);
+  $('clock').textContent = fmtTime(s.hour, !LESSON);
+  $('who').innerHTML = `${SP.group}: <b>${SP.name}</b>`;
+  const pill = $('stagePill'); pill.textContent = s.dead ? 'Погибло' : SP.stages[st][0]; pill.classList.toggle('bad', !!s.dead);
+  $('vHp').textContent = Math.round(s.hp); bar('bHp', s.hp);
+  $('rootLabel').textContent = SP.rootWord;
+  $('vRoot').textContent = Math.round(s.rootHP); bar('bRoot', s.rootHP);
+  $('vTurg').textContent = Math.round(s.turgor * 100); bar('bTurg', s.turgor * 100, 35);
+
+  const lo = Math.min(0.17, SP.sat * 0.4), hi = Math.min(1, SP.burnAt);
+  setGauge('gLight', e.light, lux(e.light), 0, 1, lo, hi, (e.dl > 0 && e.light < lo * 0.7) || e.light > SP.burnAt);
+  $('gLight').querySelector('.hint').textContent = hi < 1 ? `норма ${lux(lo)}–${lux(hi)} лк, прямое солнце вредно` : `норма для роста: от ${lux(lo)} лк`;
+  setGauge('gTemp', e.temp, e.temp.toFixed(1).replace('.', ','), 10, 40, 16, SP.heatMax - 2, e.temp > SP.heatMax - 1);
+  $('gTemp').querySelector('.hint').textContent = `норма 16–${SP.heatMax - 2} °C`;
+  $('gWet').querySelector('.k').textContent = SP.wetWord;
+  setGauge('gWet', s.moisture, Math.round(s.moisture), 0, 100, SP.wetOk[0], SP.wetOk[1], s.moisture < SP.wetOk[0] - 10 || (SP.rotThr && s.moisture > 88));
+  $('gWet').querySelector('.hint').textContent = `норма ${SP.wetOk[0]}–${SP.wetOk[1]} %`;
+  $('gEc').querySelector('.k').textContent = s.sp === 'algae' ? 'Соли в воде (EC)' : 'Соли в почве (EC)';
+  const ec = s.minerals / 100 * 3.5;
+  setGauge('gEc', ec, ec.toFixed(2).replace('.', ','), 0, 3.5, 0.6, 2.6, s.minerals > 85 || s.minerals < 12);
+  $('gTr').querySelector('.k').textContent = SP.trWord;
+  setGauge('gTr', e.tr * 10, (e.tr * 10).toFixed(1).replace('.', ','), 0, 30, 0, 0, false);
+
+  const over = !!(s.dead || s.done);
+  $('aWater').querySelector('.lbl').textContent = SP.water; $('aWater').disabled = over;
+  $('aFeed').querySelector('.lbl').textContent = SP.feed;
+  $('aRepro').querySelector('.lbl').textContent = SP.repro.label;
+  $('aIodine').disabled = over;
+  setLocked($('aFeed'), !has(s, 'feed'), over);
+  setLocked($('aLamp'), !has(s, 'lamp'), over); $('aLamp').setAttribute('aria-pressed', s.lamp);
+  setLocked($('aShade'), !has(s, 'shade'), over); $('aShade').setAttribute('aria-pressed', s.shade);
+  setLocked($('aRepro'), !has(s, 'repro'), over || st !== 4);
+  const notes = [], names = { feed: SP.feed.toLowerCase(), lamp: 'фитолампа', shade: 'притенение', repro: SP.repro.short };
+  for (const act of ['feed', 'lamp', 'shade', 'repro']) if (!has(s, act)) notes.push(`${names[act]} — после блока «${blockFor(s.sp, act).title}»`);
+  if (has(s, 'repro') && st < 4) notes.push(`${SP.repro.short} — когда растение будет готово (стадия «${SP.stages[4][0]}»)`);
+  $('lockNote').textContent = notes.length ? 'Пока закрыто: ' + notes.join('; ') + '.' : '';
+  $('locLabel').textContent = `Куда поставить ${SP.pot}`;
+  document.querySelectorAll('#locs .btn').forEach(b => { b.setAttribute('aria-pressed', b.dataset.loc === s.loc); b.disabled = over; });
+
+  $('log').innerHTML = s.log.slice(0, 40).map(l => `<li class="${l.kind}"><time>${fmtTime(l.h)}</time><span>${l.text}</span></li>`).join('');
+  $('banner').hidden = !over;
+  if (s.dead) { $('bTitle').textContent = 'Растение погибло'; $('bText').textContent = s.dead + ' Попробуй ещё раз и следи за приборами.'; }
+  else if (s.done) { $('bTitle').textContent = 'Цикл завершён!'; $('bText').textContent = `${SP.stages[6][1]} На это ушло ${Math.floor(s.hour / 24) + 1} дн.`; }
+  if (s.iodine) { $('iodine').hidden = false; $('iodLeaf').setAttribute('fill', s.iodine.color); $('iodText').textContent = s.iodine.text; }
+  else $('iodine').hidden = true;
+  drawScene();
+}
+
+// места
+$('locs').innerHTML = Object.entries(LOC).map(([k, v]) =>
+  `<button class="btn" id="loc-${k}" data-loc="${k}" aria-pressed="false">${v.name}<small>${v.light >= 1 ? 'много солнца' : v.light >= .7 ? 'светло' : v.light >= .25 ? 'полутень' : 'темно'}</small></button>`).join('');
+$('locs').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-loc]'); if (!b || S.loc === b.dataset.loc) return;
+  S.loc = b.dataset.loc; note(S, null, `${SPc().pot === 'банку' ? 'Банку' : 'Горшок'} переставили: ${LOC[S.loc].name.toLowerCase()}.`, 'act');
+  if (S.loc === 'balcony') note(S, 'bal', 'На балконе много света, но днём жарко. Следи за водой.', 'info', 72);
+  render(); save();
+});
+
+$('aWater').onclick = () => {
+  S.moisture += 30; let extra = '';
+  if (S.moisture > 100) {
+    const over = S.moisture - 100; S.moisture = 100;
+    const where = S.sp === 'algae' ? 'перелилась через край' : 'вытекла через дренажное отверстие';
+    if (S.minerals > 25) { S.minerals = Math.max(25, S.minerals - over * 0.6); extra = ` Лишняя вода ${where} и унесла часть солей.`; }
+    else extra = ` Лишняя вода ${where}.`;
+  }
+  note(S, null, (S.sp === 'algae' ? 'Долили воды.' : S.sp === 'moss' ? 'Полили и опрыскали мох.' : 'Полили растение.') + extra, 'act'); render(); save();
+};
+$('aFeed').onclick = () => { S.minerals += 25; note(S, null, S.sp === 'algae' ? 'Добавили в воду минеральные соли.' : 'Внесли минеральное удобрение: в почве стало больше солей азота, фосфора и калия.', 'act'); render(); save(); };
+$('aLamp').onclick = () => { S.lamp = !S.lamp; note(S, null, S.lamp ? 'Включили фитолампу.' : 'Выключили фитолампу.', 'act'); render(); save(); };
+$('aShade').onclick = () => { S.shade = !S.shade; note(S, null, S.shade ? 'Притенили растение: прямого солнца стало меньше.' : 'Убрали притенение.', 'act'); render(); save(); };
+$('aRepro').onclick = () => { S.pollinated = true; note(S, null, SPc().repro.done, 'act'); render(); save(); };
+$('aIodine').onclick = () => {
+  const st = S.starch, light = env(S).light, smp = SPc().sample;
+  let color, text;
+  if (st > 9) { color = '#1f2552'; text = `Образец (${smp}) окрасился в сине-чёрный цвет: крахмала много. На свету идёт фотосинтез, сахар запасается в виде крахмала.`; }
+  else if (st > 3) { color = '#4b5486'; text = `Образец (${smp}) посинел пятнами: крахмала немного. Света или воды не хватает для полного фотосинтеза.`; }
+  else { color = '#cf9d36'; text = `Образец (${smp}) остался жёлто-бурым, цвета йода: крахмала нет. ` + (light < 0.1 ? 'Сейчас темно, и растение израсходовало запас на дыхание.' : 'Растение тратит весь сахар, нового почти не образуется.'); }
+  S.iodine = { color, text };
+  note(S, null, 'Проба йодом. ' + text, 'act'); render(); save();
+};
+
+let speed = 1, acc = 0;
+document.querySelectorAll('.speed button').forEach(b => b.onclick = () => {
+  speed = +b.dataset.speed; document.querySelectorAll('.speed button').forEach(x => x.setAttribute('aria-pressed', x === b));
+});
+
+// блоки курса выбранной группы; варианты ответов перемешиваются одинаково при каждом показе
+function shuffled(q) {
+  let h = 0; for (const c of q[0]) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const opts = q.slice(1).map((t, i) => ({ t, ok: i === 0 }));
+  for (let i = opts.length - 1; i > 0; i--) { h = (h * 1103515245 + 12345) >>> 0; const j = h % (i + 1); [opts[i], opts[j]] = [opts[j], opts[i]]; }
+  return opts;
+}
+const blockList = () => BLOCKS[S.sp];
+const isOpen = id => !!unlockedSet(S)[id];
+function renderBlocks() {
+  $('hBlocks').textContent = `Блоки курса · ${SPc().group}`;
+  $('blocks').innerHTML = blockList().map(b => {
+    const open = isOpen(b.id);
+    return `<div class="block ${open ? 'open' : ''}" id="blk-${b.id}">
+      <div class="block-head"><div><h3>${b.title}</h3><p>${b.gives}</p></div>
+      ${open ? '<span class="badge">Пройден</span>' : `<button class="btn" data-quiz="${b.id}" id="qbtn-${b.id}">Пройти проверку</button>`}</div>
+      <form class="quiz" id="quiz-${b.id}" hidden>
+        ${b.qs.map((q, i) => `<fieldset id="fs-${b.id}-${i}"><legend>${i + 1}. ${q[0]}</legend>
+          ${shuffled(q).map((a, j) => `<label><input type="radio" name="${b.id}-${i}" id="${b.id}-${S.sp}-${i}-${j}" value="${a.ok ? 1 : 0}"><span>${a.t}</span></label>`).join('')}</fieldset>`).join('')}
+        <div class="row"><button class="btn primary" type="submit"><span class="dot"></span>Проверить</button></div>
+        <p class="msg" aria-live="polite"></p>
+      </form></div>`;
+  }).join('');
+}
+$('blocks').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-quiz]'); if (!b) return;
+  const f = $('quiz-' + b.dataset.quiz); f.hidden = !f.hidden;
+});
+$('blocks').addEventListener('submit', ev => {
+  ev.preventDefault();
+  const f = ev.target, id = f.id.slice(5), blk = blockList().find(x => x.id === id);
+  let ok = 0;
+  blk.qs.forEach((q, i) => {
+    const v = f.querySelector(`input[name="${id}-${i}"]:checked`);
+    const right = !!v && v.value === '1'; if (right) ok++;
+    $(`fs-${id}-${i}`).classList.toggle('wrong', !right);
+  });
+  if (ok === blk.qs.length) {
+    unlockedSet(S)[id] = true;
+    note(S, null, `Блок «${blk.title}» пройден. ${blk.gives}.`, 'good');
+    renderBlocks(); render(); save();
+  } else f.querySelector('.msg').textContent = `Верно ${ok} из ${blk.qs.length}. Вопросы с ошибкой выделены красным, попробуй ещё раз.`;
+});
+$('teacher').onclick = () => {
+  SP_ORDER.forEach(k => { G.unlocked[k] = {}; BLOCKS[k].forEach(b => G.unlocked[k][b.id] = true); });
+  note(S, null, 'Учитель открыл все блоки.', 'act'); renderBlocks(); render(); save();
+};
+
+// ---------- сад: вкладки растений ----------
+function plantStatus(P) {
+  if (P.dead) return ['bad', 'погибло'];
+  if (P.done) return ['done', 'цикл завершён'];
+  const st = SPECIES[P.sp].stages[stageOf(P)][0].toLowerCase();
+  return [P.hp < 40 || P.turgor < 0.35 ? 'warn' : 'ok', st];
+}
+function renderGarden() {
+  if (!G) { $('garden').hidden = true; return; }
+  $('garden').hidden = false;
+  $('gardenTabs').innerHTML = SP_ORDER.filter(k => G.plants[k]).map(k => {
+    const [cls, txt] = plantStatus(G.plants[k]);
+    return `<button class="tab" id="tab-${k}" data-sp="${k}" role="tab" aria-selected="${k === G.active}"><i class="st ${cls}"></i><span><b>${SPECIES[k].group}</b><small>${txt}</small></span></button>`;
+  }).join('');
+  $('addPlant').hidden = Object.keys(G.plants).length >= SP_ORDER.length;
+}
+$('gardenTabs').addEventListener('click', ev => { const b = ev.target.closest('[data-sp]'); if (b && b.dataset.sp !== G.active) select(b.dataset.sp); });
+$('addPlant').onclick = () => openSettings(false, true);
+
+// ---------- настройки ----------
+$('species').innerHTML = SP_ORDER.map((k, i) => {
+  const v = SPECIES[k];
+  return `<label class="sp-card"><input type="radio" name="sp" id="sp-${k}" value="${k}">
+    <span class="n">${String(i + 1).padStart(2, '0')}</span><span class="g">${v.group}</span><span class="e">${v.name}</span><span class="t">${v.trait}</span><span class="have" id="have-${k}"></span></label>`;
+}).join('');
+const chosen = () => (document.querySelector('#species input:checked') || {}).value;
+function syncChoice() {
+  const sp = chosen(), P = G && G.plants[sp];
+  $('plant').querySelector('.lbl').textContent = P ? 'Открыть это растение' : 'Посадить';
+  $('replant').hidden = !P;
+  disarm();
+}
+$('species').addEventListener('change', syncChoice);
+function openSettings(first, pickNew) {
+  $('settings').hidden = false;
+  $('openSettings').setAttribute('aria-expanded', 'true');
+  $('closeSettings').hidden = !!first;
+  $('dangerZone').hidden = !!first;
+  $('hSet').textContent = first ? 'Выбери растение' : 'Настройки';
+  SP_ORDER.forEach(k => { const P = G && G.plants[k]; $('have-' + k).textContent = P ? 'Уже растёт: ' + plantStatus(P)[1] : ''; });
+  let cur = S ? S.sp : 'angio';
+  if (pickNew && G) cur = SP_ORDER.find(k => !G.plants[k]) || cur;
+  $(`sp-${cur}`).checked = true;
+  syncChoice();
+  if (!first) $('settings').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function closeSettings() { $('settings').hidden = true; $('openSettings').setAttribute('aria-expanded', 'false'); disarm(); }
+$('openSettings').onclick = () => $('settings').hidden ? openSettings(!G) : (G && closeSettings());
+$('closeSettings').onclick = closeSettings;
+
+// подтверждение в два нажатия, без системных диалогов
+const armed = {};
+function arm(btn, key, text, plain) {
+  if (armed[key]) { clearTimeout(armed[key]); armed[key] = null; btn.textContent = plain; btn.classList.remove('armed'); return true; }
+  btn.textContent = text; btn.classList.add('armed');
+  armed[key] = setTimeout(() => { armed[key] = null; btn.textContent = plain; btn.classList.remove('armed'); }, 4000);
+  return false;
+}
+function disarm() {
+  for (const k in armed) if (armed[k]) clearTimeout(armed[k]), armed[k] = null;
+  $('reset').textContent = 'Сбросить весь прогресс'; $('reset').classList.remove('armed');
+  $('replant').textContent = 'Посадить заново'; $('replant').classList.remove('armed');
+}
+$('plant').onclick = () => {
+  const sp = chosen(); if (!sp) return;
+  if (G && G.plants[sp]) { closeSettings(); showGame(true); select(sp); return; }
+  plant(sp);
+};
+$('replant').onclick = () => {
+  const sp = chosen(), P = G && G.plants[sp]; if (!P) return;
+  if (!P.dead && !P.done && !arm($('replant'), 'replant', 'Это растение пропадёт. Нажми ещё раз', 'Посадить заново')) return;
+  plant(sp);
+};
+function plant(sp) {
+  fresh(sp);
+  closeSettings(); showGame(true); renderBlocks(); render(); renderGarden(); save();
+}
+$('reset').onclick = () => {
+  if (!arm($('reset'), 'reset', 'Точно? Нажми ещё раз — всё удалится', 'Сбросить весь прогресс')) return;
+  G = null; S = null; save(); showGame(false); renderGarden(); openSettings(true);
+};
+$('bRestart').onclick = () => plant(S.sp);
+$('bChoose').onclick = () => openSettings(false, true);
+function showGame(on) { $('game').hidden = !on; $('journal').hidden = !on; $('openSettings').hidden = !on; }
+
+// ---------- время ----------
+// Реальное время: при каждом открытии все растения «доживают» часы, что прошли с прошлого визита.
+function catchUpPlant(P, greet) {
+  if (!P.lastTs) { const d = new Date(); d.setMinutes(0, 0, 0); P.lastTs = d.getTime(); }
+  let n = Math.floor((Date.now() - P.lastTs) / HOUR);
+  if (n <= 0) return false;
+  P.lastTs += n * HOUR;
+  n = Math.min(n, 24 * 60);
+  const SP = SPECIES[P.sp], before = { m: P.moisture, st: stageOf(P), hp: P.hp };
+  for (let i = 0; i < n; i++) { if (P.dead || P.done) P.hour += 1; else step(P); }
+  if (greet && n >= 2) {
+    const d = Math.floor(n / 24), h = n % 24;
+    const span = ((d ? d + ' дн. ' : '') + (h ? h + ' ч' : '')).trim();
+    let t = `Пока тебя не было (${span}): ${SP.wetWord.toLowerCase()} ${Math.round(before.m)} → ${Math.round(P.moisture)} %`;
+    if (stageOf(P) > before.st) t += `, новая стадия — «${SP.stages[stageOf(P)][0]}»`;
+    if (P.hp < before.hp - 5) t += `, здоровье упало до ${Math.round(P.hp)}`;
+    note(P, null, t + '.', P.hp < before.hp - 5 ? 'warn' : 'info');
+  }
+  return true;
+}
+function catchUp(greet) {
+  if (!G) return;
+  let changed = false;
+  for (const k in G.plants) changed = catchUpPlant(G.plants[k], greet) || changed;
+  render(); renderGarden();
+  if (changed) save();
+}
+function start(data) {
+  G = (data && data.G) || load();
+  S = G ? G.plants[G.active] : null;
+  window.claude?.hot?.snapshot?.(() => ({ G }));
+  if (!LESSON) {
+    document.querySelector('.speed').hidden = true;
+    $('teacher').hidden = true;
+    $('modeNote').textContent = 'Растения живут в настоящем времени: день и ночь как за окном. Заходи проведать их каждый день. Прогресс сохраняется в этом браузере.';
+  }
+  if (!G) { showGame(false); openSettings(true); }
+  else { showGame(true); renderBlocks(); }
+  renderGarden();
+  if (!LESSON) {
+    catchUp(true);
+    setInterval(() => catchUp(false), 30000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) catchUp(true); });
+    return;
+  }
+  render();
+  setInterval(() => {
+    if (!G || !speed) return;
+    acc += speed * 0.25;
+    let changed = false;
+    while (acc >= 1) { acc -= 1; for (const k in G.plants) { const P = G.plants[k]; if (!P.dead && !P.done) { step(P); changed = true; } } }
+    if (changed) { render(); renderGarden(); if (S.hour % 3 === 0) save(); }
+  }, 250);
+}
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+</script>
