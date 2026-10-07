@@ -1,3 +1,8 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Растение-питомец</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -134,6 +139,8 @@ h2 { font: 500 13px/1.2 var(--f-display); text-transform: uppercase; letter-spac
 .tab .st.warn { background: var(--sun); }
 .tab .st.bad { background: var(--danger); }
 .tab .st.done { background: var(--water); }
+.modes { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 10px; }
+.modes legend { padding: 0; }
 .danger-zone { border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
 .danger-zone p { margin: 0; font-size: 13px; color: var(--muted); max-width: 60ch; }
 
@@ -172,6 +179,8 @@ footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-co
 .link { background: none; border: 0; padding: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font: inherit; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } #scene .bub { animation: none; } }
 </style>
+</head>
+<body>
 
 <div class="wrap">
   <header>
@@ -199,6 +208,11 @@ footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-co
       <button class="btn danger" id="replant" hidden>Посадить заново</button>
       <span class="locked-note">Растения разных групп растут одновременно. Переключаться между ними можно вкладками над растением.</span>
     </div>
+    <fieldset class="modes" id="modeSet">
+      <legend class="row-label">Как идёт время</legend>
+      <label class="sp-card"><input type="radio" name="mode" id="mode-lessons" value="lessons" checked><span class="g">По занятиям</span><span class="t">Между занятиями растение ждёт. В конце урока ученик ухаживает за ним и нажимает «Прожить сутки».</span></label>
+      <label class="sp-card"><input type="radio" name="mode" id="mode-real" value="real"><span class="g">В реальном времени</span><span class="t">Растение живёт круглые сутки, как настоящее. Заходить к нему нужно каждый день.</span></label>
+    </fieldset>
     <div class="danger-zone" id="dangerZone">
       <p>Сброс удаляет растение, дневник и все пройденные блоки курса. Отменить его нельзя.</p>
       <button class="btn danger" id="reset">Сбросить весь прогресс</button>
@@ -218,6 +232,10 @@ footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-co
           <span class="clock" id="clock">День 1 · 06:00</span>
           <span class="who" id="who"></span>
           <span class="pill" id="stagePill">Проросток</span>
+          <div class="row" id="dayBtns" hidden>
+            <button class="btn" id="live6">+6 часов</button>
+            <button class="btn primary" id="live24"><span class="dot"></span>Прожить сутки</button>
+          </div>
           <div class="speed" role="group" aria-label="Скорость времени">
             <button id="sp0" data-speed="0" aria-pressed="false">II</button>
             <button id="sp1" data-speed="1" aria-pressed="true">×1</button>
@@ -690,6 +708,8 @@ const OLD_KEY = LESSON ? 'plant-pet-lesson-v1' : 'plant-pet-real-v1';
 const HOUR = 3600000;
 // Сад: у каждой группы может быть своё растение, все растут одновременно. S — растение, открытое сейчас.
 let G = null, S = null;
+// Режим времени: 'lessons' — время стоит, пока ученик не нажмёт «Прожить сутки»; 'real' — живёт по настоящим часам.
+let MODE = 'lessons';
 const SPc = () => SPECIES[S.sp];
 function revive(raw, unlocked) {
   const st = Object.assign(newState(raw.sp), raw);
@@ -703,13 +723,14 @@ function load() {
       const g = JSON.parse(r), unlocked = g.unlocked || {}, plants = {};
       for (const k in g.plants || {}) if (SPECIES[k]) plants[k] = revive(g.plants[k], unlocked);
       const active = plants[g.active] ? g.active : Object.keys(plants)[0];
-      return active ? { active, plants, unlocked } : null;
+      if (active) MODE = g.mode || 'lessons';
+      return active ? { active, plants, unlocked, mode: MODE } : null;
     }
     r = localStorage.getItem(OLD_KEY); // растение из прошлой версии игры
     if (r) {
       const old = JSON.parse(r); if (!SPECIES[old.sp]) old.sp = 'angio';
       const unlocked = old.unlocked && !('root' in old.unlocked) && !('repro' in old.unlocked) ? old.unlocked : {};
-      return { active: old.sp, plants: { [old.sp]: revive(old, unlocked) }, unlocked };
+      return { active: old.sp, plants: { [old.sp]: revive(old, unlocked) }, unlocked, mode: MODE };
     }
   } catch (e) {}
   return null;
@@ -719,14 +740,14 @@ function save() {
     if (!G) { localStorage.removeItem(KEY); localStorage.removeItem(OLD_KEY); return; }
     const plants = {};
     for (const k in G.plants) { const { unlocked, ...rest } = G.plants[k]; plants[k] = rest; }
-    localStorage.setItem(KEY, JSON.stringify({ active: G.active, unlocked: G.unlocked, plants }));
+    localStorage.setItem(KEY, JSON.stringify({ active: G.active, unlocked: G.unlocked, mode: MODE, plants }));
   } catch (e) {}
 }
 function fresh(sp) {
-  if (!G) G = { active: sp, plants: {}, unlocked: {} };
+  if (!G) G = { active: sp, plants: {}, unlocked: {}, mode: MODE };
   const P = newState(sp);
   P.unlocked = G.unlocked;
-  if (!LESSON) { const now = new Date(); now.setMinutes(0, 0, 0); P.hour = now.getHours(); P.lastTs = now.getTime(); }
+  if (!LESSON && MODE === 'real') { const now = new Date(); now.setMinutes(0, 0, 0); P.hour = now.getHours(); P.lastTs = now.getTime(); }
   const SP = SPECIES[sp];
   note(P, null, `${SP.tx.start} Место: ${LOC[P.loc].name.toLowerCase()}. ${SP.stages[0][1]}`, 'good');
   P.cool.stage0 = P.hour;
@@ -1105,7 +1126,7 @@ function setLocked(btn, locked, disabled) {
 function render() {
   if (!S) return;
   const s = S, SP = SPc(), e = env(s), st = stageOf(s);
-  $('clock').textContent = fmtTime(s.hour, !LESSON);
+  $('clock').textContent = fmtTime(s.hour, !LESSON && MODE === 'real');
   $('who').innerHTML = `${SP.group}: <b>${SP.name}</b>`;
   const pill = $('stagePill'); pill.textContent = s.dead ? 'Погибло' : SP.stages[st][0]; pill.classList.toggle('bad', !!s.dead);
   $('vHp').textContent = Math.round(s.hp); bar('bHp', s.hp);
@@ -1132,6 +1153,7 @@ function render() {
   $('aFeed').querySelector('.lbl').textContent = SP.feed;
   $('aRepro').querySelector('.lbl').textContent = SP.repro.label;
   $('aIodine').disabled = over;
+  if (!living) $('live6').disabled = $('live24').disabled = over;
   setLocked($('aFeed'), !has(s, 'feed'), over);
   setLocked($('aLamp'), !has(s, 'lamp'), over); $('aLamp').setAttribute('aria-pressed', s.lamp);
   setLocked($('aShade'), !has(s, 'shade'), over); $('aShade').setAttribute('aria-pressed', s.shade);
@@ -1325,6 +1347,16 @@ $('bChoose').onclick = () => openSettings(false, true);
 function showGame(on) { $('game').hidden = !on; $('journal').hidden = !on; $('openSettings').hidden = !on; }
 
 // ---------- время ----------
+function summary(P, before, label) {
+  const SP = SPECIES[P.sp];
+  let t = `${label}: ${SP.wetWord.toLowerCase()} ${Math.round(before.m)} → ${Math.round(P.moisture)} %`;
+  if (stageOf(P) > before.st) t += `, новая стадия — «${SP.stages[stageOf(P)][0]}»`;
+  if (P.hp < before.hp - 5) t += `, здоровье упало до ${Math.round(P.hp)}`;
+  else if (P.hp > before.hp + 5) t += `, здоровье выросло до ${Math.round(P.hp)}`;
+  note(P, null, t + '.', P.hp < before.hp - 5 ? 'warn' : 'info');
+}
+const snap = P => ({ m: P.moisture, st: stageOf(P), hp: P.hp });
+
 // Реальное время: при каждом открытии все растения «доживают» часы, что прошли с прошлого визита.
 function catchUpPlant(P, greet) {
   if (!P.lastTs) { const d = new Date(); d.setMinutes(0, 0, 0); P.lastTs = d.getTime(); }
@@ -1332,39 +1364,86 @@ function catchUpPlant(P, greet) {
   if (n <= 0) return false;
   P.lastTs += n * HOUR;
   n = Math.min(n, 24 * 60);
-  const SP = SPECIES[P.sp], before = { m: P.moisture, st: stageOf(P), hp: P.hp };
+  const before = snap(P);
   for (let i = 0; i < n; i++) { if (P.dead || P.done) P.hour += 1; else step(P); }
   if (greet && n >= 2) {
     const d = Math.floor(n / 24), h = n % 24;
-    const span = ((d ? d + ' дн. ' : '') + (h ? h + ' ч' : '')).trim();
-    let t = `Пока тебя не было (${span}): ${SP.wetWord.toLowerCase()} ${Math.round(before.m)} → ${Math.round(P.moisture)} %`;
-    if (stageOf(P) > before.st) t += `, новая стадия — «${SP.stages[stageOf(P)][0]}»`;
-    if (P.hp < before.hp - 5) t += `, здоровье упало до ${Math.round(P.hp)}`;
-    note(P, null, t + '.', P.hp < before.hp - 5 ? 'warn' : 'info');
+    summary(P, before, `Пока тебя не было (${((d ? d + ' дн. ' : '') + (h ? h + ' ч' : '')).trim()})`);
   }
   return true;
 }
 function catchUp(greet) {
-  if (!G) return;
+  if (!G || LESSON || MODE !== 'real') return;
   let changed = false;
   for (const k in G.plants) changed = catchUpPlant(G.plants[k], greet) || changed;
   render(); renderGarden();
   if (changed) save();
 }
+
+// По занятиям: время идёт только по кнопке; сутки прокручиваются за пару секунд, чтобы было видно день и ночь.
+let living = false;
+function live(n) {
+  if (living || !S || S.dead || S.done) return;
+  living = true; setLiving(true);
+  const P = S, before = snap(P);
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let i = 0;
+  const finish = () => {
+    living = false; setLiving(false);
+    summary(P, before, n === 24 ? 'За сутки' : `За ${n} ч`);
+    render(); renderGarden(); save();
+  };
+  if (reduce) { while (i < n && !P.dead && !P.done) { step(P); i++; } finish(); return; }
+  const t = setInterval(() => {
+    if (i >= n || P.dead || P.done) { clearInterval(t); finish(); return; }
+    step(P); i++; if (P === S) render();
+  }, 90);
+}
+function setLiving(on) { $('live6').disabled = $('live24').disabled = on; $('live24').lastChild.textContent = on ? 'Идёт время…' : 'Прожить сутки'; }
+$('live6').onclick = () => live(6);
+$('live24').onclick = () => live(24);
+
+function applyMode() {
+  document.querySelector('.speed').hidden = !LESSON;
+  $('teacher').hidden = !LESSON;
+  $('dayBtns').hidden = LESSON || MODE !== 'lessons';
+  $('modeSet').hidden = LESSON;
+  $(`mode-${MODE}`).checked = true;
+  $('modeNote').textContent = LESSON ? 'Режим урока: 1 секунда = 1 час жизни растения.'
+    : MODE === 'real' ? 'Растения живут в настоящем времени: день и ночь как за окном. Заходи проведать их каждый день. Прогресс сохраняется в этом браузере.'
+    : 'Растения живут по занятиям: между уроками время стоит. Поухаживай за растением и нажми «Прожить сутки». Прогресс сохраняется в этом браузере.';
+}
+$('modeSet').addEventListener('change', ev => {
+  const m = ev.target.value; if (m === MODE) return;
+  MODE = m;
+  if (G) {
+    G.mode = m;
+    const now = new Date(); now.setMinutes(0, 0, 0);
+    for (const k in G.plants) {
+      const P = G.plants[k];
+      if (m === 'real') {
+        // подводим часы растения к настоящему времени суток
+        let guard = 0; while (P.hour % 24 !== now.getHours() && guard++ < 24) { if (P.dead || P.done) P.hour += 1; else step(P); }
+        P.lastTs = now.getTime();
+        note(P, null, 'Теперь растение живёт в реальном времени: заходи к нему каждый день.', 'info');
+      } else note(P, null, 'Теперь время идёт по занятиям: между уроками растение ждёт тебя.', 'info');
+    }
+  }
+  applyMode(); render(); renderGarden(); save();
+});
+
 function start(data) {
   G = (data && data.G) || load();
+  if (G && G.mode) MODE = G.mode;
   S = G ? G.plants[G.active] : null;
   window.claude?.hot?.snapshot?.(() => ({ G }));
-  if (!LESSON) {
-    document.querySelector('.speed').hidden = true;
-    $('teacher').hidden = true;
-    $('modeNote').textContent = 'Растения живут в настоящем времени: день и ночь как за окном. Заходи проведать их каждый день. Прогресс сохраняется в этом браузере.';
-  }
+  applyMode();
   if (!G) { showGame(false); openSettings(true); }
   else { showGame(true); renderBlocks(); }
   renderGarden();
   if (!LESSON) {
     catchUp(true);
+    render();
     setInterval(() => catchUp(false), 30000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) catchUp(true); });
     return;
@@ -1380,3 +1459,5 @@ function start(data) {
 }
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 </script>
+</body>
+</html>
