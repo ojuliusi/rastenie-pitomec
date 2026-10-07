@@ -65,6 +65,15 @@ h2 { font: 500 13px/1.2 var(--f-display); text-transform: uppercase; letter-spac
 .pill.bad { background: var(--danger-soft); color: var(--danger); }
 #scene { display: block; width: 100%; height: auto; max-width: 100%; aspect-ratio: 400 / 440; }
 #scene .bub { animation: rise 3.2s linear infinite; }
+#scene .spark { animation: twinkle 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes twinkle { 0%, 100% { opacity: 0; transform: scale(.4); } 50% { opacity: .95; transform: scale(1); } }
+.lvl { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 3px 10px 3px 4px; border-radius: 99px; border: 1px solid var(--line); }
+.lvl b { font: 600 12px var(--f-mono); background: var(--sun); color: #fff; border-radius: 99px; padding: 2px 8px; }
+.lvl .xpbar { width: 52px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.lvl .xpbar i { display: block; height: 100%; background: var(--sun); transition: width .4s; }
+.lvl.up { animation: pop .9s ease-out; }
+@keyframes pop { 0% { transform: scale(1); } 30% { transform: scale(1.25); box-shadow: 0 0 0 6px color-mix(in srgb, var(--sun) 35%, transparent); } 100% { transform: scale(1); } }
+.xpnote { margin: 0; padding: 0 14px 14px; font-size: 13px; color: var(--muted); }
 @keyframes rise { from { transform: translateY(0); opacity: .9; } to { transform: translateY(-60px); opacity: 0; } }
 .speed { display: flex; gap: 4px; }
 .speed button { font: 500 12px var(--f-mono); padding: 5px 9px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; }
@@ -177,7 +186,7 @@ h2 { font: 500 13px/1.2 var(--f-display); text-transform: uppercase; letter-spac
 
 footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; color: var(--muted); font-size: 13px; }
 .link { background: none; border: 0; padding: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font: inherit; }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } #scene .bub { animation: none; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } #scene .bub, #scene .spark, .lvl.up { animation: none; } }
 </style>
 </head>
 <body>
@@ -232,6 +241,7 @@ footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-co
           <span class="clock" id="clock">День 1 · 06:00</span>
           <span class="who" id="who"></span>
           <span class="pill" id="stagePill">Проросток</span>
+          <span class="lvl" id="lvl" title="Уровень растения"><b id="lvlNum">Ур. 1</b><span id="lvlName">Новичок</span><span class="xpbar"><i id="xpFill"></i></span></span>
           <div class="row" id="dayBtns" hidden>
             <button class="btn" id="live6">+6 часов</button>
             <button class="btn primary" id="live24"><span class="dot"></span>Прожить сутки</button>
@@ -248,6 +258,7 @@ footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-co
           <div class="vital"><label><span id="rootLabel">Корни</span> <b id="vRoot">100</b></label><div class="bar"><i id="bRoot"></i></div></div>
           <div class="vital"><label>Тургор <b id="vTurg">90</b></label><div class="bar"><i id="bTurg"></i></div></div>
         </div>
+        <p class="xpnote" id="xpNote"></p>
         <div id="banner" hidden>
           <h3 id="bTitle"></h3>
           <p id="bText"></p>
@@ -593,11 +604,21 @@ function tx(sp, key, vars = {}) {
 }
 function deadText(sp, cause) { const d = SPECIES[sp].tx && SPECIES[sp].tx.dead || {}; return d[cause] || TX.dead[cause] || 'Растение погибло.'; }
 
+// Уровни: опыт за здоровые часы, новые стадии, пройденные блоки и завершённый цикл. Уровень переходит к следующему поколению.
+const LEVELS = [0, 40, 100, 180, 280, 400, 550, 730, 950, 1200];
+const LEVEL_NAMES = ['Новичок', 'Росток', 'Крепыш', 'Зелёный друг', 'Любимец', 'Красавец', 'Гордость класса', 'Шедевр', 'Легенда оранжереи', 'Король сада'];
+const REWARDS = [null, null, 'растение станет пышнее', 'расписной горшок', 'ещё больше зелени', 'керамический горшок с подставкой', 'растение крупнее и ярче', 'золотой ободок на горшке', 'растение начнёт сиять', 'золотой горшок', 'самое пышное растение в саду'];
+const levelOf = xp => { let l = 1; while (l < LEVELS.length && xp >= LEVELS[l]) l++; return l; };
+function addXP(s, n) {
+  const before = levelOf(s.xp); s.xp += n;
+  const after = levelOf(s.xp);
+  if (after > before) { s.lvlUp = after; note(s, null, `Новый уровень ${after} — «${LEVEL_NAMES[after - 1]}»!` + (REWARDS[after] ? ` Награда: ${REWARDS[after]}.` : ''), 'good'); }
+}
 function newState(sp = 'angio') {
   return { sp, hour: 6, biomass: 0.6, moisture: sp === 'algae' ? 90 : 60, minerals: 50, starch: 6, hp: 100, rootHP: 100,
     turgor: 0.9, chl: 0.85, lightHist: 0.5, soggy: 0, lean: 0, loc: SPECIES[sp].start, lamp: false, shade: false,
     unlocked: {}, pollinated: false, fruit: 0, lastP: 0,
-    done: false, dead: null, rootHarm: null, cause: null, stageIdx: 0, log: [], cool: {}, iodine: null };
+    done: false, dead: null, rootHarm: null, cause: null, stageIdx: 0, log: [], cool: {}, iodine: null, xp: 0, gen: 1, lvlUp: 0 };
 }
 function daylight(h) { const x = h % 24; return (x > 6 && x < 20) ? Math.sin(Math.PI * (x - 6) / 14) : 0; }
 function env(s) {
@@ -694,9 +715,15 @@ function step(s) {
     let msg = SP.stages[st][1];
     if (st === 4) msg += locked('repro', SP.repro.short[0].toUpperCase() + SP.repro.short.slice(1));
     note(s, 'stage' + st, msg, 'good', 1e9);
+    addXP(s, 20);
   }
-  if (s.fruit >= 1 && !s.done) { s.done = true; s.stageIdx = 6; note(s, 'stage6', SP.stages[6][1], 'good', 1e9); }
-  if (s.hp <= 0) { s.hp = 0; s.dead = deadText(s.sp, s.cause); note(s, 'dead', s.dead, 'warn', 1e9); }
+  if (s.fruit >= 1 && !s.done) { s.done = true; s.stageIdx = 6; note(s, 'stage6', SP.stages[6][1], 'good', 1e9); addXP(s, 100); }
+  if (s.hp <= 0) {
+    s.hp = 0; s.dead = deadText(s.sp, s.cause); note(s, 'dead', s.dead, 'warn', 1e9);
+    const start = LEVELS[levelOf(s.xp) - 1];
+    if (s.xp > start) { note(s, null, `Опыт текущего уровня потерян: ${s.xp - start}. Уровень ${levelOf(s.xp)} сохранился.`, 'warn'); s.xp = start; }
+  }
+  else if (!s.done && s.hp >= 70 && s.turgor >= 0.5) addXP(s, 1);
 }
 /*ENDSIM*/
 
@@ -751,6 +778,11 @@ function fresh(sp) {
   const SP = SPECIES[sp];
   note(P, null, `${SP.tx.start} Место: ${LOC[P.loc].name.toLowerCase()}. ${SP.stages[0][1]}`, 'good');
   P.cool.stage0 = P.hour;
+  const prev = G.plants[sp];
+  if (prev && prev.xp) {
+    P.xp = prev.xp; P.gen = (prev.gen || 1) + 1;
+    note(P, null, `Поколение ${P.gen}. Уровень ${levelOf(P.xp)} — «${LEVEL_NAMES[levelOf(P.xp) - 1]}» — сохранился.`, 'good');
+  }
   G.plants[sp] = P; G.active = sp; S = P;
 }
 function select(sp) { G.active = sp; S = G.plants[sp]; renderBlocks(); render(); renderGarden(); save(); }
@@ -819,8 +851,16 @@ function drawBackground(s, e) {
   if (s.lamp) o += `<ellipse cx="200" cy="130" rx="190" ry="160" fill="url(#glow)"/><path d="M168 0 h64 l14 34 h-92 Z" fill="#333a36"/><rect x="164" y="32" width="72" height="5" rx="2" fill="#ffd36b"/>`;
   return o;
 }
-function drawPot(s) {
-  let o = `<path d="M138 296 L262 296 L252 410 L148 410 Z" fill="#b0603a"/><rect x="132" y="290" width="136" height="14" rx="3" fill="#c26d43"/>`;
+const potTier = lvl => lvl >= 9 ? 4 : lvl >= 7 ? 3 : lvl >= 5 ? 2 : lvl >= 3 ? 1 : 0;
+function drawPot(s, lvl = 1) {
+  const t = potTier(lvl);
+  const body = ['#b0603a', '#b0603a', '#3d7f8e', '#2e5f7a', '#c9962a'][t], rim = ['#c26d43', '#c26d43', '#4f98a8', '#d4a93a', '#ecc75a'][t];
+  let o = '';
+  if (t >= 2) o += `<ellipse cx="200" cy="411" rx="${t >= 4 ? 78 : 70}" ry="6" fill="${t >= 3 ? '#b8892a' : '#2f6f7c'}"/>`;
+  o += `<path d="M138 296 L262 296 L252 410 L148 410 Z" fill="${body}"/><rect x="132" y="290" width="136" height="14" rx="3" fill="${rim}"/>`;
+  if (t === 1) for (let x = 140; x <= 260; x += 12) o += `<circle cx="${x}" cy="297" r="2.2" fill="#f3e6c8"/>`;
+  if (t >= 2) o += `<path d="M134 297 ${Array.from({ length: 11 }, (_, i) => `q6 ${i % 2 ? 4 : -4} 12 0`).join(' ')}" stroke="${t >= 3 ? '#7a4f12' : '#e9f4f2'}" stroke-width="1.6" fill="none"/>`;
+  if (t >= 4) for (let x = 142; x <= 258; x += 16) o += `<path d="M${x} 292 l4 5 l-4 5 l-4 -5 z" fill="#fff4c2"/>`;
   o += `<path d="M150 302 L250 302 L242 404 L158 404 Z" fill="${mix('#b88d5e', '#3d2818', s.moisture / 100)}"/>`;
   if (s.moisture > 88) o += `<path d="M152 380 L248 380 L242 404 L158 404 Z" fill="#3b6fa0" opacity=".45"/>`;
   if (s.minerals > 70) for (let i = 0; i < Math.round((s.minerals - 70) / 2); i++) o += `<rect x="${154 + (i * 37) % 92}" y="${303 + (i * 13) % 6}" width="3" height="2" fill="#f4f1e8"/>`;
@@ -833,18 +873,18 @@ function leafColor(s) {
 
 // Покрытосеменные: стебель, листья, цветок, плод
 function drawAngio(s, ctx) {
-  const { droop, col, st } = ctx;
+  const { droop, col, st, lush } = ctx;
   let o = rootTree(s, Math.min(1, 0.25 + s.biomass / 10));
   const bm = Math.min(s.biomass, 22), H = 18 + bm * 10.5, lean = s.lean * 34;
   const B = [200, 300], C = [200 + lean * 0.15, 300 - H * 0.55], T = [200 + lean, 300 - H];
   const P = t => [(1 - t) ** 2 * B[0] + 2 * (1 - t) * t * C[0] + t * t * T[0], (1 - t) ** 2 * B[1] + 2 * (1 - t) * t * C[1] + t * t * T[1]];
   const top = droop > 0.55 ? [T[0] + lean * 0.3 + 14 * droop, T[1] + H * 0.12 * droop] : T;
   o += `<path d="M${B[0]} ${B[1]} Q${f1(C[0])} ${f1(C[1])} ${f1(top[0])} ${f1(top[1])}" stroke="${mix(col, '#5d7a33', .3)}" stroke-width="${f1(2.5 + bm * 0.22)}" fill="none" stroke-linecap="round"/>`;
-  const n = s.biomass < 2 ? 2 : Math.min(16, 2 + Math.floor(s.biomass * 0.75));
+  const n = s.biomass < 2 ? 2 : Math.min(16 + Math.round(lush * 6), 2 + Math.floor(s.biomass * (0.75 + lush * 0.3)));
   for (let i = 0; i < n; i++) {
     const t = s.biomass < 2 ? 1 : 0.12 + (i / n) * 0.82;
     const [x, y] = P(t), side = i % 2 ? 1 : -1;
-    const Lg = s.biomass < 2 ? 12 + s.biomass * 6 : (16 + 18 * Math.min(1, s.biomass / 12)) * (1 - t * 0.35);
+    const Lg = s.biomass < 2 ? 12 + s.biomass * 6 : (16 + 18 * Math.min(1, s.biomass / 12)) * (1 - t * 0.35) * (1 + 0.35 * lush);
     const W = Lg * (s.biomass < 2 ? 0.45 : 0.36), ang = side * (-32 + droop * 85);
     const c = i < 2 && s.minerals < 12 ? mix(col, '#d9c55a', 0.6) : col;
     const tip = s.rootHarm === 'burn' && s.rootHP < 80 ? `<path d="M${f1(Lg * 0.8)} ${f1(-W * 0.35)} Q${f1(Lg)} 0 ${f1(Lg * 0.8)} ${f1(W * 0.35)} Z" fill="#7a4a20"/>` : '';
@@ -853,22 +893,24 @@ function drawAngio(s, ctx) {
   const flower = (x, y, r) => {
     if (st === 3) return `<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="${r * 0.45}" ry="${r * 0.7}" fill="#5f9a3c"/><ellipse cx="${f1(x)}" cy="${f1(y - r * 0.4)}" rx="${r * 0.3}" ry="${r * 0.35}" fill="#e88aa8"/>`;
     if (st === 4 || (st >= 5 && s.fruit < 0.15)) {
-      let f = ''; for (let k = 0; k < 5; k++) { const a = k * 72 * Math.PI / 180, px = x + Math.cos(a) * r * 0.7, py = y + Math.sin(a) * r * 0.7; f += `<ellipse cx="${f1(px)}" cy="${f1(py)}" rx="${r * 0.62}" ry="${r * 0.45}" transform="rotate(${k * 72} ${f1(px)} ${f1(py)})" fill="${droop > .55 ? '#c98ea0' : '#ee86aa'}"/>`; }
+      let f = ''; for (let k = 0; k < 5; k++) { const a = k * 72 * Math.PI / 180, px = x + Math.cos(a) * r * 0.7, py = y + Math.sin(a) * r * 0.7; f += `<ellipse cx="${f1(px)}" cy="${f1(py)}" rx="${r * 0.62}" ry="${r * 0.45}" transform="rotate(${k * 72} ${f1(px)} ${f1(py)})" fill="${droop > .55 ? '#c98ea0' : lush > 0.55 ? '#e0508c' : '#ee86aa'}"/>`; }
       return f + `<circle cx="${f1(x)}" cy="${f1(y)}" r="${r * 0.38}" fill="#f2c230"/>` + (s.pollinated ? `<circle cx="${f1(x)}" cy="${f1(y)}" r="${r * 0.2}" fill="#d98b1a"/>` : '');
     }
     if (st >= 5) { const fr = r * (0.35 + s.fruit * 0.75); return `<circle cx="${f1(x)}" cy="${f1(y + fr * 0.4)}" r="${f1(fr)}" fill="${mix('#6fae45', '#d8422e', s.fruit)}"/><path d="M${f1(x - 4)} ${f1(y - fr * 0.5)} l4 4 l4 -4" stroke="#3e7a2c" stroke-width="2" fill="none"/>`; }
     return '';
   };
   if (st >= 3) {
-    o += flower(top[0], top[1] - 6, 14);
-    if (s.biomass >= 18) { const [x, y] = P(0.8); o += flower(x + 24, y - 12, 10) + flower(x - 24, y - 4, 10); }
+    const fr = 1 + 0.35 * lush;
+    o += flower(top[0], top[1] - 6, 14 * fr);
+    if (s.biomass >= 18 - lush * 3) { const [x, y] = P(0.8); o += flower(x + 24, y - 12, 10 * fr) + flower(x - 24, y - 4, 10 * fr); }
+    if (lush >= 0.5 && s.biomass >= 16) { const [x, y] = P(0.64); o += flower(x + 30, y - 6, 9 * fr) + flower(x - 30, y + 2, 9 * fr); }
   }
   return o;
 }
 
 // Голосеменные: сосна с мутовками хвои и шишками
 function drawPine(s, ctx) {
-  const { droop, col, st } = ctx;
+  const { droop, col, st, lush } = ctx;
   let o = rootTree(s, Math.min(1.05, 0.3 + s.biomass / 9));
   const bm = Math.min(s.biomass, 22), H = 16 + bm * 10.5, lean = s.lean * 18;
   const top = [200 + lean, 300 - H];
@@ -884,7 +926,7 @@ function drawPine(s, ctx) {
     const tiers = Math.min(7, 1 + Math.floor(bm / 2.6));
     for (let i = 0; i < tiers; i++) {
       const f = (i + 1) / (tiers + 1), y = 300 - H * (0.18 + 0.72 * f), x = 200 + lean * f * f;
-      const w = (1 - f * 0.7) * (14 + bm * 3.4);
+      const w = (1 - f * 0.7) * (14 + bm * 3.4) * (1 + 0.3 * lush);
       for (const side of [-1, 1]) {
         const ex = x + side * w, ey = y + w * 0.12 + droop * w * 0.35;
         o += `<path d="M${f1(x)} ${f1(y)} L${f1(ex)} ${f1(ey)}" stroke="#6d4a2e" stroke-width="${f1(1 + bm * 0.08)}"/>`;
@@ -898,7 +940,7 @@ function drawPine(s, ctx) {
     nd += tuft(top[0], top[1], 7, 9, 22, -90);
     // шишки
     if (st >= 3) {
-      const yT = 300 - H * (0.18 + 0.72 * (tiers / (tiers + 1))), wT = (1 - tiers / (tiers + 1) * 0.7) * (14 + bm * 3.4);
+      const yT = 300 - H * (0.18 + 0.72 * (tiers / (tiers + 1))), wT = (1 - tiers / (tiers + 1) * 0.7) * (14 + bm * 3.4) * (1 + 0.3 * lush);
       const xT = 200 + lean;
       const fem = [[xT + wT * 0.9, yT - 4], [xT - wT * 0.9, yT - 2]];
       for (const [cx, cy] of fem) {
@@ -922,7 +964,7 @@ function drawPine(s, ctx) {
 
 // Папоротник: корневище, вайи с перьями, сорусы, заросток
 function drawFern(s, ctx) {
-  const { droop, col, st } = ctx;
+  const { droop, col, st, lush } = ctx;
   const rl = Math.min(1, 0.3 + s.biomass / 10);
   let o = `<path d="M${f1(200 - 30 * rl)} 312 Q200 306 ${f1(200 + 30 * rl)} 314" stroke="#6b4a2c" stroke-width="${f1(4 + rl * 3)}" fill="none" stroke-linecap="round"/>`;
   o += rootTree(s, rl * 0.75, 190) + rootTree(s, rl * 0.6, 214);
@@ -933,7 +975,7 @@ function drawFern(s, ctx) {
     o += `<path d="M204 ${f1(302 - h)} a6 6 0 1 1 -6 6 a3 3 0 1 1 3 -3" stroke="${col}" stroke-width="2.4" fill="none"/>`;
     return o;
   }
-  const nf = Math.min(11, 2 + Math.floor(bm * 0.45)), Lf = 26 + bm * 8.5;
+  const nf = Math.min(11 + Math.round(lush * 4), 2 + Math.floor(bm * (0.45 + lush * 0.2))), Lf = (26 + bm * 8.5) * (1 + 0.2 * lush);
   for (let i = 0; i < nf; i++) {
     const a = (nf === 1 ? 0 : -68 + 136 * i / (nf - 1)) * Math.PI / 180;
     const len = Lf * (0.72 + 0.28 * Math.cos(a)) * (i === Math.floor(nf / 2) && st < 3 ? 0.6 : 1);
@@ -965,7 +1007,7 @@ function drawFern(s, ctx) {
 
 // Мох: дерновинка стебельков, ризоиды, коробочки на ножках
 function drawMoss(s, ctx) {
-  const { droop, st } = ctx;
+  const { droop, st, lush } = ctx;
   const col = mix(ctx.col, '#8f7e44', droop * 0.85);
   const bm = Math.min(s.biomass, 18);
   let o = '';
@@ -974,12 +1016,12 @@ function drawMoss(s, ctx) {
     for (let k = 0; k < 6; k++) { const x = 160 + k * 15; p += `M${x} 302 q5 -3 10 0 t10 0 M${x + 6} 302 l3 -4 `; }
     return o + `<path d="${p}" stroke="${col}" stroke-width="1.4" fill="none"/>` + (s.biomass > 1.2 ? `<circle cx="188" cy="298" r="2" fill="${col}"/><circle cx="214" cy="298" r="2" fill="${col}"/>` : '');
   }
-  const nm = Math.min(30, 4 + Math.floor(bm * 1.5));
+  const nm = Math.min(30 + Math.round(lush * 16), 4 + Math.floor(bm * (1.5 + lush)));
   const rl = Math.min(1, 0.3 + s.biomass / 10);
   let rh = '', stems = '', leaves = '', extra = '';
   for (let k = 0; k < nm; k++) {
     const x = 156 + ((k * 37) % 88) + (k % 3);
-    const h = (8 + bm * 3.4) * (0.7 + ((k * 53) % 10) / 16);
+    const h = (8 + bm * 3.4) * (1 + 0.3 * lush) * (0.7 + ((k * 53) % 10) / 16);
     const tilt = ((((k * 29) % 11) - 5) * 1.6 + droop * (k % 2 ? 22 : -22)) * Math.PI / 180;
     const tx_ = x + Math.sin(tilt) * h, ty = 302 - Math.cos(tilt) * h;
     stems += `M${x} 302 L${f1(tx_)} ${f1(ty)} `;
@@ -1005,15 +1047,15 @@ function drawMoss(s, ctx) {
 
 // Плаун: ползучий стебель, вильчато ветвящиеся побеги, колоски
 function drawLycopod(s, ctx) {
-  const { droop, col, st } = ctx;
-  const bm = Math.min(s.biomass, 20), span = 24 + bm * 4.5, x0 = 200 - span / 2, x1 = 200 + span / 2;
+  const { droop, col, st, lush } = ctx;
+  const bm = Math.min(s.biomass, 20), span = Math.min(140, (24 + bm * 4.5) * (1 + 0.3 * lush)), x0 = 200 - span / 2, x1 = 200 + span / 2;
   const rl = Math.min(1, 0.3 + s.biomass / 10);
   let o = '', roots = '', br = '', lv = '', clubs = '';
   for (let x = x0 + 6; x < x1; x += 16) roots += `M${f1(x)} 302 q-3 ${f1(8 * rl)} 1 ${f1(10 + rl * 22)} M${f1(x)} 304 q5 ${f1(6 * rl)} 9 ${f1(8 + rl * 10)} `;
   o += `<g clip-path="url(#soilClip)"><path d="${roots}" stroke="${rootColor(s)}" stroke-width="1.2" fill="none"/></g>`;
   o += `<path d="M${f1(x0)} 301 Q200 297 ${f1(x1)} 302" stroke="${mix(col, '#5d6b2a', .4)}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
   for (let x = x0; x < x1; x += 4) lv += `M${f1(x)} 300 l2 -3 M${f1(x)} 302 l2 3 `;
-  const nb = s.biomass < 2 ? 1 : Math.min(9, 1 + Math.floor(bm * 0.45));
+  const nb = s.biomass < 2 ? 1 : Math.min(9 + Math.round(lush * 3), 1 + Math.floor(bm * (0.45 + lush * 0.15)));
   const depthMax = s.biomass > 9 ? 2 : s.biomass > 4 ? 1 : 0;
   const branch = (x, y, ang, len, d) => {
     const ex = x + Math.sin(ang) * len, ey = y - Math.cos(ang) * len;
@@ -1046,7 +1088,7 @@ function drawLycopod(s, ctx) {
 
 // Водоросль: банка с водой, нити спирогиры, пузырьки кислорода
 function drawAlgae(s, ctx) {
-  const { droop, col, st } = ctx;
+  const { droop, col, st, lush } = ctx;
   const bm = Math.min(s.biomass, 22);
   const lvl = 404 - 236 * s.moisture / 100;
   const water = s.minerals > 85 ? mix('#cfe6ee', '#cbc48a', 0.6) : mix('#cfe6ee', '#9cc98e', Math.min(1, bm / 20) * 0.7);
@@ -1065,10 +1107,10 @@ function drawAlgae(s, ctx) {
     return p;
   };
   let p = '';
-  const nf = Math.min(18, 3 + Math.floor(bm * 0.9));
+  const nf = Math.min(18 + Math.round(lush * 8), 3 + Math.floor(bm * (0.9 + lush * 0.4)));
   for (let k = 0; k < nf; k++) {
     const x = 140 + (k * 41) % 120, y = 402 - (k * 17) % 30;
-    const len = (14 + bm * 10) * (0.6 + ((k * 7) % 5) / 10);
+    const len = (14 + bm * 10) * (1 + 0.2 * lush) * (0.6 + ((k * 7) % 5) / 10);
     const ang = ((((k * 23) % 9) - 4) * 9) * Math.PI / 180;
     p += fil(x, y, len, ang, k);
   }
@@ -1078,7 +1120,9 @@ function drawAlgae(s, ctx) {
     const nb = Math.min(14, Math.floor(s.lastP * 10));
     for (let k = 0; k < nb; k++) { const bx = 140 + (k * 53) % 120, by = Math.max(lvl + 70, 395 - (k * 37) % 150); o += `<circle class="bub" style="animation-delay:-${(k * 0.37).toFixed(2)}s" cx="${bx}" cy="${f1(by)}" r="${1.5 + (k % 3) * 0.7}" fill="none" stroke="#ffffff" stroke-opacity=".85"/>`; }
   }
-  o += `<rect x="118" y="152" width="164" height="12" rx="4" fill="#c9d6da" opacity=".8"/>`;
+  const jt = potTier(levelOf(s.xp));
+  o += `<rect x="118" y="152" width="164" height="12" rx="4" fill="${['#c9d6da', '#c9d6da', '#7fb3c2', '#d4a93a', '#e8c25a'][jt]}" opacity=".9"/>`;
+  if (jt >= 1) o += `<path d="M126 176 h148" stroke="${jt >= 3 ? '#d4a93a' : '#e07a8a'}" stroke-width="4" opacity=".85"/>`;
   if (st >= 5) {
     const g = st === 6 ? 1 : s.fruit;
     o += `<rect x="296" y="312" width="74" height="96" rx="10" fill="#e6f2f5" opacity=".35" stroke="#eef6f8" stroke-width="2"/><rect x="299" y="330" width="68" height="76" rx="8" fill="${mix('#cfe6ee', '#9cc98e', g * 0.6)}" opacity=".85"/>`;
@@ -1089,13 +1133,24 @@ function drawAlgae(s, ctx) {
   return o;
 }
 
+function sparkles(lvl, st) {
+  let o = '';
+  const n = lvl >= 10 ? 9 : 6;
+  for (let k = 0; k < n; k++) {
+    const x = 120 + (k * 67) % 160, y = 90 + (k * 53) % 190, r = 3 + (k % 3);
+    o += `<path class="spark" style="animation-delay:-${(k * 0.45).toFixed(2)}s" d="M${x} ${y - r * 1.6} L${x + r * 0.4} ${y - r * 0.4} L${x + r * 1.6} ${y} L${x + r * 0.4} ${y + r * 0.4} L${x} ${y + r * 1.6} L${x - r * 0.4} ${y + r * 0.4} L${x - r * 1.6} ${y} L${x - r * 0.4} ${y - r * 0.4} Z" fill="#fff3b0"/>`;
+  }
+  return o;
+}
 const DRAW = { angio: drawAngio, gymno: drawPine, fern: drawFern, moss: drawMoss, lycopod: drawLycopod, algae: drawAlgae };
 function drawScene() {
   const s = S, e = env(s);
-  const ctx = { droop: clamp(1 - s.turgor, 0, 1), col: leafColor(s), st: stageOf(s) };
+  const lvl = levelOf(s.xp);
+  const ctx = { droop: clamp(1 - s.turgor, 0, 1), col: leafColor(s), st: stageOf(s), lush: (lvl - 1) / 9, lvl };
   let o = drawBackground(s, e);
-  if (s.sp !== 'algae') o += drawPot(s);
+  if (s.sp !== 'algae') o += drawPot(s, lvl);
   o += DRAW[s.sp](s, ctx);
+  if (lvl >= 8 && !s.dead) o += sparkles(lvl, ctx.st);
   svg.innerHTML = o;
   svg.setAttribute('aria-label', `${SPc().name}: ${SPc().stages[ctx.st][0].toLowerCase()}`);
 }
@@ -1129,6 +1184,12 @@ function render() {
   $('clock').textContent = fmtTime(s.hour, !LESSON && MODE === 'real');
   $('who').innerHTML = `${SP.group}: <b>${SP.name}</b>`;
   const pill = $('stagePill'); pill.textContent = s.dead ? 'Погибло' : SP.stages[st][0]; pill.classList.toggle('bad', !!s.dead);
+  const lvl = levelOf(s.xp), loX = LEVELS[lvl - 1], hiX = LEVELS[lvl];
+  $('lvlNum').textContent = 'Ур. ' + lvl; $('lvlName').textContent = LEVEL_NAMES[lvl - 1];
+  $('xpFill').style.width = (hiX ? (s.xp - loX) / (hiX - loX) * 100 : 100) + '%';
+  $('xpNote').textContent = hiX ? `Опыт ${s.xp}. До уровня ${lvl + 1}: ${hiX - s.xp}. Награда: ${REWARDS[lvl + 1]}. Опыт дают здоровые часы, новые стадии, пройденные блоки и проба йодом.`
+    : `Опыт ${s.xp}. Максимальный уровень!` + (s.gen > 1 ? ` Поколение ${s.gen}.` : '');
+  if (s.lvlUp) { s.lvlUp = 0; const el = $('lvl'); el.classList.remove('up'); void el.offsetWidth; el.classList.add('up'); }
   $('vHp').textContent = Math.round(s.hp); bar('bHp', s.hp);
   $('rootLabel').textContent = SP.rootWord;
   $('vRoot').textContent = Math.round(s.rootHP); bar('bRoot', s.rootHP);
@@ -1205,6 +1266,7 @@ $('aIodine').onclick = () => {
   else if (st > 3) { color = '#4b5486'; text = `Образец (${smp}) посинел пятнами: крахмала немного. Света или воды не хватает для полного фотосинтеза.`; }
   else { color = '#cf9d36'; text = `Образец (${smp}) остался жёлто-бурым, цвета йода: крахмала нет. ` + (light < 0.1 ? 'Сейчас темно, и растение израсходовало запас на дыхание.' : 'Растение тратит весь сахар, нового почти не образуется.'); }
   S.iodine = { color, text };
+  if (S.cool.iodXP === undefined || S.hour - S.cool.iodXP >= 12) { S.cool.iodXP = S.hour; addXP(S, 5); }
   note(S, null, 'Проба йодом. ' + text, 'act'); render(); save();
 };
 
@@ -1252,6 +1314,7 @@ $('blocks').addEventListener('submit', ev => {
   });
   if (ok === blk.qs.length) {
     unlockedSet(S)[id] = true;
+    addXP(S, 30);
     note(S, null, `Блок «${blk.title}» пройден. ${blk.gives}.`, 'good');
     renderBlocks(); render(); save();
   } else f.querySelector('.msg').textContent = `Верно ${ok} из ${blk.qs.length}. Вопросы с ошибкой выделены красным, попробуй ещё раз.`;
@@ -1273,7 +1336,7 @@ function renderGarden() {
   $('garden').hidden = false;
   $('gardenTabs').innerHTML = SP_ORDER.filter(k => G.plants[k]).map(k => {
     const [cls, txt] = plantStatus(G.plants[k]);
-    return `<button class="tab" id="tab-${k}" data-sp="${k}" role="tab" aria-selected="${k === G.active}"><i class="st ${cls}"></i><span><b>${SPECIES[k].group}</b><small>${txt}</small></span></button>`;
+    return `<button class="tab" id="tab-${k}" data-sp="${k}" role="tab" aria-selected="${k === G.active}"><i class="st ${cls}"></i><span><b>${SPECIES[k].group}</b><small>ур. ${levelOf(G.plants[k].xp)} · ${txt}</small></span></button>`;
   }).join('');
   $('addPlant').hidden = Object.keys(G.plants).length >= SP_ORDER.length;
 }
