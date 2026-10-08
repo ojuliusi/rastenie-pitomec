@@ -395,6 +395,17 @@ header #openSettings { flex: none; }
 
 
 
+/* ===== Разбор ошибок в проверке ===== */
+.review { border: 2.5px solid var(--danger); background: var(--danger-soft); border-radius: 16px; padding: 10px 12px; display: grid; gap: 8px; }
+.quiz .newq { background: var(--sun) !important; color: var(--ink) !important; }
+.review > b { font: 800 14px var(--f-body); color: var(--danger); }
+.review .rv { display: grid; gap: 2px; padding-top: 6px; border-top: 1.5px dashed color-mix(in srgb, var(--danger) 40%, transparent); }
+.review .rv:first-of-type { border-top: 0; padding-top: 0; }
+.review p { margin: 0; font-size: 13.5px; line-height: 1.35; }
+.review .rv-q { font-weight: 700; }
+.review .rv-no { color: var(--danger); }
+.review .rv-no s { text-decoration-thickness: 2px; }
+.review .rv-ok { color: var(--leaf); font-weight: 700; }
 /* ===== Подсказка у заблокированной кнопки ===== */
 .btn[aria-disabled="true"] { background: var(--line) !important; color: var(--lock); box-shadow: 0 2px 0 var(--outline); opacity: .85; cursor: help; }
 .btn[data-tip] { position: relative; }
@@ -3567,10 +3578,11 @@ $('blocks').addEventListener('submit', ev => {
   ev.preventDefault();
   const f = ev.target, id = f.id.slice(5), blk = blockList().find(x => x.id === id);
   let ok = 0;
-  const set = quizSet(blk), N = set.length, good = [];
+  const set = quizSet(blk), N = set.length, good = [], review = [];
   set.forEach((qi, i) => {
     const v = f.querySelector(`input[name="${id}-${i}"]:checked`);
     const right = !!v && v.value === '1'; if (right) { ok++; good.push(i); }
+    else { const q = qOf(blk, qi); review.push({ q: q[0], picked: v ? v.closest('label').textContent.trim() : null, right: q[1] }); } // для разбора ошибок
   });
   if (ok === N) {
     delete S.quiz[id];
@@ -3618,9 +3630,12 @@ $('blocks').addEventListener('submit', ev => {
     renderBlocks();
     const nf = $('quiz-' + id); nf.hidden = false;
     good.forEach(i => { const r = nf.querySelector(`input[name="${id}-${i}"][value="1"]`); if (r) r.checked = true; $(`fs-${id}-${i}`).classList.add('right'); });
-    fresh.forEach(i => { const fs = $(`fs-${id}-${i}`); fs.classList.add('wrong'); fs.querySelector('legend').insertAdjacentHTML('beforeend', ' <span class="newq">новый вопрос</span>'); });
+    fresh.forEach(i => { const fs = $(`fs-${id}-${i}`); fs.classList.add('fresh'); fs.querySelector('legend').insertAdjacentHTML('beforeend', ' <span class="newq">новый вопрос</span>'); });
     nf.querySelector('.msg').textContent = `Верно ${ok} из ${N}.${hurt} Вместо вопросов с ошибкой появились новые.${sickText}`;
-    $(`fs-${id}-${fresh[0]}`).scrollIntoView({ block: 'center', behavior: 'smooth' });
+    // разбор ошибок: что ответил ученик и какой ответ верный
+    nf.insertAdjacentHTML('afterbegin', `<div class="review"><b>Разбор ошибок</b>${review.map(r => `<div class="rv"><p class="rv-q">${esc(r.q)}</p>
+      <p class="rv-no">${r.picked ? `✗ Твой ответ: <s>${esc(r.picked)}</s>` : '✗ Ответ не выбран'}</p><p class="rv-ok">✓ Правильно: ${esc(r.right)}</p></div>`).join('')}</div>`);
+    nf.querySelector('.review').scrollIntoView({ block: 'start', behavior: 'smooth' });
     render(); renderGarden(); save();
   }
 });
