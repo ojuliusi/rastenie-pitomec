@@ -8,6 +8,13 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
 <style>
+/* финальные тесты ученика: раскрывающиеся блоки с вопросами и развёрнутыми ответами */
+.finals { grid-column: 1 / -1; display: grid; gap: 8px; margin-top: 4px; }
+.finals details { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; background: var(--panel); }
+.finals summary { cursor: pointer; }
+.finals ol { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 10px; }
+.finals .fq { margin: 0; font-weight: 600; }
+.finals .fa { margin: 2px 0 0; white-space: pre-wrap; line-height: 1.45; }
 /* Layout: шапка со сводкой по классу, ниже карточка на каждого ученика */
 :root {
   --bg: #eef1e7; --panel: #f9fbf5; --ink: #1d281b; --muted: #5e6a57; --line: #d3dbc8;
@@ -136,6 +143,7 @@ function draw() {
     [plants.filter(p => p.status === 'погибло').length, 'погибли'],
     [plants.filter(p => p.status === 'цикл завершён').length, 'циклов завершено'],
     [plants.reduce((a, p) => a + (p.blocks || 0), 0), 'блоков пройдено'],
+    [data.reduce((a, s) => a + (s.finals || []).length, 0), 'финальных тестов'],
   ];
   $('stats').innerHTML = stats.map(([n, t]) => `<div class="stat"><b>${n}</b><span>${t}</span></div>`).join('');
   $('students').innerHTML = list.length ? list.map(s => `
@@ -152,6 +160,9 @@ function draw() {
           <div class="k">Блоки курса: ${p.blocks} из ${p.blocksTotal}</div>
           <div><span class="tag ${tag}">${esc(p.status)}${p.disease ? ': ' + esc(p.disease) : ''}</span></div>
         </div>`; }).join('') || '<span class="muted">Растений пока нет</span>'}</div>
+      ${(s.finals || []).length ? `<div class="finals">${s.finals.slice().reverse().map(f => `<details>
+        <summary><b>Финальный тест:</b> ${esc(f.plant)} <span class="muted">· ${esc(f.group)}${f.gen > 1 ? ` · поколение ${f.gen}` : ''} · ${new Date(f.at).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</span></summary>
+        <ol>${(f.answers || []).map(x => `<li><p class="fq">${esc(x.q)}</p><p class="fa">${esc(x.a)}</p></li>`).join('')}</ol></details>`).join('')}</div>` : ''}
     </article>`).join('') : '<p class="muted">Пока никто не прислал прогресс. Данные появляются, когда ученик открывает игру с указанным именем.</p>';
 }
 $('login').addEventListener('submit', e => { e.preventDefault(); key = $('key').value.trim(); loadData(); });

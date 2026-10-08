@@ -413,6 +413,14 @@ header #openSettings { flex: none; }
   font: 700 12.5px/1.35 var(--f-body); text-align: center; pointer-events: none; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
 .float-tip::after { content: ''; position: absolute; left: var(--ax, 50%); top: 100%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: var(--ink); border-bottom: 0; }
 .float-tip.below::after { top: auto; bottom: 100%; border: 6px solid transparent; border-bottom-color: var(--ink); border-top: 0; }
+/* ===== Финальный тест ===== */
+.final-form { display: grid; gap: 14px; }
+.final-form .fq { display: grid; gap: 6px; }
+.final-form .fq b { font: 700 14.5px/1.4 var(--f-body); }
+.final-form textarea { width: 100%; box-sizing: border-box; font: 500 14px/1.45 var(--f-body); color: var(--ink); background: color-mix(in srgb, var(--bg) 40%, var(--panel)); border: 2.5px solid var(--line); border-radius: 14px; padding: 10px 12px; resize: vertical; }
+.final-form textarea:focus { outline: none; border-color: var(--leaf); }
+.final-form textarea[readonly] { opacity: .85; }
+.final-form .msg { margin: 0; font-weight: 700; }
 /* ===== Раскраски горшка ===== */
 .row-label-flex { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .row-label-flex .btn { text-transform: none; letter-spacing: 0; font-size: 13px; padding: 5px 12px; }
@@ -576,6 +584,7 @@ header #openSettings { flex: none; }
             <button class="btn primary" id="bRestart"><span class="dot"></span>Посадить снова</button>
             <button class="btn" id="bChoose">Выбрать другое растение</button>
             <button class="btn" id="bCut" hidden>Разрезать плод</button>
+            <button class="btn primary" id="bFinal" hidden><span class="dot"></span>Финальный тест</button>
           </div>
         </div>
       </section>
@@ -670,6 +679,14 @@ header #openSettings { flex: none; }
         <button class="btn" id="tourBack">Назад</button>
         <button class="btn primary" id="tourNext"><span class="dot"></span>Дальше</button>
       </div>
+    </div>
+  </div>
+
+  <div class="modal" id="finalModal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="finalTitle">
+      <div class="head"><h2 id="finalTitle">Финальный тест</h2><button class="btn" id="finalClose">Закрыть</button></div>
+      <p id="finalIntro" style="margin:0"></p>
+      <form class="final-form" id="finalForm"></form>
     </div>
   </div>
 
@@ -1881,7 +1898,7 @@ function load() {
       for (const k in g.plants || {}) if (SPECIES[k]) plants[k] = revive(g.plants[k], unlocked);
       const active = plants[g.active] ? g.active : Object.keys(plants)[0];
       if (active) MODE = g.mode || 'lessons';
-      return active ? { active, plants, unlocked, mode: MODE, season: g.season || 'auto', student: g.student || null, decor: g.decor || {}, decorHide: g.decorHide || {}, potSkin: g.potSkin || 'auto', stats: g.stats || {}, skinSeen: g.skinSeen || {} } : null;
+      return active ? { active, plants, unlocked, mode: MODE, season: g.season || 'auto', student: g.student || null, decor: g.decor || {}, decorHide: g.decorHide || {}, potSkin: g.potSkin || 'auto', stats: g.stats || {}, skinSeen: g.skinSeen || {}, finals: g.finals || [] } : null;
     }
     r = localStorage.getItem(OLD_KEY); // растение из прошлой версии игры
     if (r) {
@@ -1897,7 +1914,7 @@ function save() {
     if (!G) { localStorage.removeItem(KEY); localStorage.removeItem(OLD_KEY); return; }
     const plants = {};
     for (const k in G.plants) { const { unlocked, ...rest } = G.plants[k]; plants[k] = rest; }
-    localStorage.setItem(KEY, JSON.stringify({ active: G.active, unlocked: G.unlocked, mode: MODE, season: G.season, student: G.student, decor: G.decor || {}, decorHide: G.decorHide || {}, potSkin: G.potSkin || 'auto', stats: G.stats || {}, skinSeen: G.skinSeen || {}, plants }));
+    localStorage.setItem(KEY, JSON.stringify({ active: G.active, unlocked: G.unlocked, mode: MODE, season: G.season, student: G.student, decor: G.decor || {}, decorHide: G.decorHide || {}, potSkin: G.potSkin || 'auto', stats: G.stats || {}, skinSeen: G.skinSeen || {}, finals: G.finals || [], plants }));
     pushProgress(false);
   } catch (e) {}
 }
@@ -1936,7 +1953,7 @@ function pushProgress(force) {
       status: P.dead ? 'погибло' : P.done ? 'цикл завершён' : P.disease ? 'болеет' : 'растёт', disease: P.disease ? DISEASES[P.disease.id].name : '',
       blocks: BLOCKS[k].filter(b => (G.unlocked[k] || {})[b.id]).length, blocksTotal: BLOCKS[k].length };
   });
-  const body = JSON.stringify({ id: G.student.id, name: G.student.name || 'Без имени', mode: MODE, season: SEASONS[SEASON].name, updated: Date.now(), plants });
+  const body = JSON.stringify({ id: G.student.id, name: G.student.name || 'Без имени', mode: MODE, season: SEASONS[SEASON].name, updated: Date.now(), plants, finals: (G.finals || []).slice(-5) }); // ячейка таблицы вмещает до 50 000 символов
   try { fetch(SYNC_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body, keepalive: true }).catch(() => {}); } catch (e) {}
 }
 function select(sp) { G.active = sp; S = G.plants[sp]; renderBlocks(); render(); renderGarden(); save(); }
@@ -2684,7 +2701,9 @@ function render() {
   $('log').innerHTML = s.log.slice(0, 40).map(l => `<li class="${l.kind}"><time>${fmtTime(l.h)}</time><span>${l.text}</span></li>`).join('');
   $('banner').hidden = !over;
   if (s.dead) { $('bTitle').textContent = 'Растение погибло'; $('bText').textContent = s.dead + ' Попробуй ещё раз и следи за приборами.'; }
-  else if (s.done) { $('bTitle').textContent = 'Цикл завершён!'; $('bText').textContent = `${SP.stages[6][1]} На это ушло ${Math.floor(s.hour / 24) + 1} дн.`; }
+  else if (s.done) { $('bTitle').textContent = 'Цикл завершён!'; $('bText').textContent = `${SP.stages[6][1]} На это ушло ${Math.floor(s.hour / 24) + 1} дн.` + (finalSent(s) ? ' Финальный тест отправлен учителю.' : ' Теперь пройди финальный тест — ответы получит учитель.'); }
+  $('bFinal').hidden = !s.done;
+  $('bFinal').lastChild.textContent = finalSent(s) ? 'Мои ответы' : 'Финальный тест';
   const fc = s.fact && FACTS[s.fact.id], pq = !fc && s.popups && s.popups[0];
   $('fact').hidden = !fc && !pq;
   $('fact').classList.remove('good', 'warn');
@@ -4061,6 +4080,67 @@ function checkSkins() {
     if (S) popup(S, 'Новая раскраска', `Открыта раскраска горшка «${K.name}»`, 'Выбери её кнопкой «Раскраски горшка» во вкладке «Уход и приборы».', 'good');
   }
 }
+// ---------- Финальный тест ----------
+const finalSent = s => (G.finals || []).some(f => f.sp === s.sp && f.gen === (s.gen || 1));
+// Когда цикл замкнулся, ученик отвечает развёрнуто на 5 вопросов своей группы. Ответы уходят учителю вместе с прогрессом.
+const FINAL_REFLECT = 'Какая ошибка в уходе у тебя была (или могла быть) и как ты её исправил(а)? Объясни с точки зрения биологии.';
+const FINAL_QS = {
+  algae: ['Опиши, как устроена спирогира: из чего состоит её тело и где идёт фотосинтез.',
+    'Почему спирогире нужен свет? Что происходит с крахмалом в её клетках днём и ночью?',
+    'Как размножается спирогира? Опиши вегетативное размножение и конъюгацию.',
+    'Чем водоросли отличаются от высших растений? Приведи не меньше двух признаков.', FINAL_REFLECT],
+  moss: ['Опиши жизненный цикл кукушкина льна — от споры до новой споры. Где здесь гаметофит, а где спорофит?',
+    'Почему мхам для оплодотворения нужна вода? Как это было видно в игре?',
+    'Чем ризоиды отличаются от корней и почему мхи остаются невысокими?',
+    'Какую роль мхи (например, сфагнум) играют в природе и для человека?', FINAL_REFLECT],
+  lycopod: ['Какие ткани есть у плауна? Назови их и опиши, какую работу выполняет каждая.',
+    'Чем плауны отличаются от мхов? Почему появление проводящих тканей так важно для жизни на суше?',
+    'Опиши размножение плауна: спороносный колосок, спора, заросток, новое растение.',
+    'Почему плаун булавовидный охраняют и почему его нельзя рвать?', FINAL_REFLECT],
+  fern: ['Опиши жизненный цикл папоротника: сорус, спора, заросток, новое растение. Где проходит оплодотворение и что для него нужно?',
+    'Как устроена вайя? Какие ткани в ней есть и как они связаны с фотосинтезом и испарением?',
+    'Чем папоротники сложнее мхов? Приведи не меньше двух признаков.',
+    'Почему легенда о цветке папоротника — сказка? Объясни с точки зрения биологии.', FINAL_REFLECT],
+  gymno: ['Опиши, как размножается сосна: мужские и женские шишки, опыление, семя. Сколько времени созревают семена?',
+    'Почему сосну относят к голосеменным? Чем семя надёжнее споры?',
+    'Как хвоя и кора сосны приспособлены к зиме и засухе? Назови покровные ткани.',
+    'Как по годичным кольцам узнать возраст дерева? Какая ткань их образует и почему кольца бывают разной ширины?', FINAL_REFLECT],
+  angio: [s => `Опиши путь своего растения (${cropOf(s).name.toLowerCase()}) от семени до семени: какие были стадии и что происходило на каждой.`,
+    s => `Расскажи о строении цветка: ${cropOf(s).name.toLowerCase()}. Как из цветка получился плод и какой это тип плода?`,
+    'Как связаны свет, фотосинтез и крахмал? Какой опыт это доказывает и как его поставить?',
+    'Как вода с минеральными веществами попадает от корней к листьям, а сахара — к плодам? Назови ткани.', FINAL_REFLECT],
+};
+const finalQs = s => FINAL_QS[s.sp].map(q => typeof q === 'function' ? q(s) : q);
+const FINAL_MIN = 25; // слишком короткий ответ не принимаем
+function openFinal() {
+  const qs = finalQs(S), sent = (G.finals || []).filter(f => f.sp === S.sp && f.gen === (S.gen || 1)).pop();
+  const draft = S.finalDraft || [];
+  $('finalIntro').textContent = sent
+    ? `Ответы отправлены ${new Date(sent.at).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}. Учитель увидит их на своей странице.`
+    : 'Ты вырастил(а) растение от начала до конца. Ответь развёрнуто, своими словами: используй то, что видел(а) в игре и узнал(а) в блоках курса. Ответы получит учитель.';
+  $('finalForm').innerHTML = qs.map((q, i) => `<label class="fq"><b>${i + 1}. ${esc(q)}</b>
+    <textarea name="a${i}" rows="4" maxlength="1500" ${sent ? 'readonly' : ''} placeholder="Твой ответ…">${esc(sent ? sent.answers[i].a : draft[i] || '')}</textarea></label>`).join('')
+    + (sent ? '' : `<div class="row"><button class="btn primary" type="submit"><span class="dot"></span>Отправить учителю</button></div>`) + `<p class="msg" id="finalMsg" aria-live="polite"></p>`;
+  $('finalModal').hidden = false;
+  const t = $('finalForm').querySelector('textarea'); if (t && !sent) t.focus();
+}
+$('finalForm').addEventListener('input', ev => { if (ev.target.tagName === 'TEXTAREA') { S.finalDraft = [...$('finalForm').querySelectorAll('textarea')].map(t => t.value); save(); } });
+$('finalForm').addEventListener('submit', ev => {
+  ev.preventDefault();
+  const qs = finalQs(S), ans = [...$('finalForm').querySelectorAll('textarea')].map(t => t.value.trim());
+  const short = ans.map((a, i) => a.length < FINAL_MIN ? i + 1 : 0).filter(Boolean);
+  if (short.length) { $('finalMsg').textContent = `Ответь подробнее на ${short.length > 1 ? 'вопросы' : 'вопрос'} ${short.join(', ')}: хотя бы пару предложений.`; return; }
+  G.finals = G.finals || [];
+  G.finals.push({ sp: S.sp, group: SPECIES[S.sp].group, plant: S.sp === 'angio' ? cropOf(S).name : SPECIES[S.sp].name, gen: S.gen || 1, day: Math.floor(S.hour / 24) + 1, at: Date.now(), answers: qs.map((q, i) => ({ q, a: ans[i] })) });
+  S.finalDraft = null; addXP(S, 30);
+  note(S, null, 'Финальный тест отправлен учителю. +30 опыта!', 'good');
+  save(); pushProgress(true); render(); openFinal();
+  $('finalMsg').textContent = SYNC_URL && !LESSON ? 'Готово! Ответы отправлены учителю.' : 'Ответы сохранены. Учитель увидит их, когда подключит сбор прогресса.';
+});
+$('bFinal').onclick = openFinal;
+$('finalClose').onclick = () => { $('finalModal').hidden = true; };
+$('finalModal').addEventListener('click', ev => { if (ev.target === $('finalModal')) $('finalModal').hidden = true; });
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !$('finalModal').hidden) $('finalModal').hidden = true; });
 // ---------- Опыты ----------
 // Каждый опыт: что делаем → гипотеза ученика → результат по настоящему состоянию растения → объяснение.
 // За первый проведённый опыт каждого вида — украшение для сада и интересный факт.
