@@ -1947,11 +1947,91 @@ $('cures').addEventListener('click', ev => {
 
 $('factOk').onclick = () => { if (S.fact) S.fact = null; else if (S.popups) S.popups.shift(); render(); save(); };
 
+// ---------- строение цветка: у каждой культуры своё ----------
+const PED = `<path d="M120 272 V196" stroke="#5f9a3c" stroke-width="7"/>`;
+const sepals = (y, c = '#6aa84f') => `<path d="M100 ${y} Q74 ${y - 16} 70 ${y - 46} Q92 ${y - 28} 108 ${y - 8} Z" fill="${c}"/><path d="M140 ${y} Q166 ${y - 16} 170 ${y - 46} Q148 ${y - 28} 132 ${y - 8} Z" fill="${c}"/>`;
+const petalsLR = (c, y = 168, h = 112) => `<path d="M104 ${y} Q46 ${y - h * 0.4} 52 ${y - h} Q94 ${y - h * 0.65} 112 ${y - 14} Z" fill="${c}" stroke="rgba(0,0,0,.18)"/><path d="M136 ${y} Q194 ${y - h * 0.4} 188 ${y - h} Q146 ${y - h * 0.65} 128 ${y - 14} Z" fill="${c}" stroke="rgba(0,0,0,.18)"/>`;
+const stamensLR = (n, y0, top, spread = 26) => { let o = ''; for (let i = 0; i < n; i++) for (const sd of [-1, 1]) { const x = 120 + sd * (14 + i * spread / Math.max(1, n)), tx = x + sd * 6; o += `<path d="M${120 + sd * 10} ${y0} Q${x} ${y0 - 30} ${tx} ${top + i * 6}" stroke="#d8c88a" stroke-width="2" fill="none"/><ellipse cx="${tx}" cy="${top + i * 6 - 4}" rx="4" ry="6.5" fill="#e8b830"/>`; } return o; };
+const ovary = (y, rx = 15, ry = 16, n = 2) => `<ellipse cx="120" cy="${y}" rx="${rx}" ry="${ry}" fill="#9cc35a" stroke="#5f9a3c"/>` + Array.from({ length: n }, (_, i) => `<ellipse cx="${120 + (i - (n - 1) / 2) * 8}" cy="${y}" rx="2.8" ry="3.8" fill="#f4f1e4"/>`).join('');
+const FLOWERS = {
+  // томат: лепестки сросшиеся, пыльники срослись конусом вокруг столбика
+  tomato: () => PED + sepals(196) + petalsLR('#f2c230', 172, 96) + ovary(176, 14, 13, 3)
+    + `<path d="M120 163 V96" stroke="#9cc35a" stroke-width="4"/><path d="M106 160 L120 100 L134 160 Z" fill="#e0a21a" opacity=".9"/><circle cx="120" cy="94" r="4" fill="#7fb24a"/>`
+    + lab(170, 80, 18, 'Лепесток (венчик|сросшийся у основания)') + lab(128, 130, 58, 'Пыльники срослись|конусом вокруг столбика') + lab(120, 94, 100, 'Рыльце') + lab(132, 176, 140, 'Верхняя завязь|с семязачатками') + lab(166, 168, 182, 'Чашелистик') + lab(124, 230, 222, 'Цветоножка'),
+  // вишня: чашевидное цветоложе, много тычинок по краю, один пестик на дне
+  cherry: () => PED + `<path d="M84 128 Q88 196 120 198 Q152 196 156 128 L148 128 Q144 186 120 188 Q96 186 92 128 Z" fill="#9cc35a"/>` + sepals(140)
+    + `<path d="M88 130 Q40 104 46 50 Q86 80 96 124 Z" fill="#fbfbf6" stroke="rgba(0,0,0,.2)"/><path d="M152 130 Q200 104 194 50 Q154 80 144 124 Z" fill="#fbfbf6" stroke="rgba(0,0,0,.2)"/>`
+    + Array.from({ length: 5 }, (_, i) => [-1, 1].map(sd => `<path d="M${120 + sd * 30} 130 Q${120 + sd * (34 + i * 3)} ${110 - i * 4} ${120 + sd * (26 + i * 5)} ${92 - i * 5}" stroke="#d8c88a" stroke-width="1.6" fill="none"/><ellipse cx="${120 + sd * (26 + i * 5)}" cy="${88 - i * 5}" rx="3" ry="4.5" fill="#e8b830"/>`).join('')).join('')
+    + ovary(176, 12, 13, 1) + `<path d="M120 163 V100" stroke="#9cc35a" stroke-width="3.5"/><ellipse cx="120" cy="97" rx="6" ry="3.5" fill="#7fb24a"/>`
+    + lab(182, 66, 18, 'Лепесток') + lab(150, 70, 52, 'Тычинок много,|сидят по краю чаши') + lab(122, 97, 92, 'Рыльце') + lab(122, 130, 124, 'Столбик') + lab(132, 176, 158, 'Завязь на дне чаши|(верхняя)') + lab(150, 160, 196, 'Чашевидное|цветоложе') + lab(124, 236, 236, 'Цветоножка'),
+  // яблоня: завязь нижняя, срастается с цветоложем; пять столбиков
+  apple: () => PED + `<ellipse cx="120" cy="190" rx="26" ry="24" fill="#9cc35a" stroke="#5f9a3c"/>` + Array.from({ length: 5 }, (_, i) => `<ellipse cx="${104 + i * 8}" cy="190" rx="2.6" ry="4" fill="#f4f1e4"/>`).join('') + sepals(168)
+    + petalsLR('#f6d3da', 166, 104) + stamensLR(4, 160, 92, 34)
+    + [-8, 0, 8].map(dx => `<path d="M${120 + dx} 168 Q${120 + dx * 1.6} 130 ${120 + dx * 2} 100" stroke="#9cc35a" stroke-width="3"/><circle cx="${120 + dx * 2}" cy="98" r="3.5" fill="#7fb24a"/>`).join('')
+    + lab(176, 76, 18, 'Лепесток') + lab(150, 96, 54, 'Тычинки (их много)') + lab(136, 98, 92, 'Пять столбиков|с рыльцами') + lab(140, 190, 140, 'Нижняя завязь —|срослась с цветоложем') + lab(166, 154, 186, 'Чашелистик') + lab(124, 236, 228, 'Цветоножка'),
+  // огурец: женский цветок, под ним нижняя завязь-«огурчик»
+  cucumber: () => `<path d="M120 272 V250" stroke="#5f9a3c" stroke-width="6"/><ellipse cx="120" cy="214" rx="15" ry="38" fill="#7fb24a" stroke="#4f8a2e"/>` + [0, 1, 2, 3, 4].map(i => `<circle cx="${114 + (i % 2) * 12}" cy="${190 + i * 11}" r="1.6" fill="#e6f2c8"/>`).join('')
+    + sepals(178) + petalsLR('#f2c230', 174, 104) + `<path d="M120 172 V128" stroke="#c9d67a" stroke-width="7"/>` + [-1, 0, 1].map(d => `<ellipse cx="${120 + d * 10}" cy="122" rx="7" ry="6" fill="#d9e07a"/>`).join('')
+    + lab(176, 80, 22, 'Лепесток') + lab(130, 122, 70, 'Трёхлопастное рыльце') + lab(124, 150, 112, 'Столбик') + lab(136, 214, 160, 'Нижняя завязь — будущий|огурчик под цветком') + lab(166, 160, 206, 'Чашелистик') + lab(120, 262, 248, 'Тычинок нет:|цветок женский'),
+  // подсолнечник: соцветие корзинка
+  sunflower: () => { let o = `<path d="M120 272 V214" stroke="#5f9a3c" stroke-width="9"/><path d="M40 160 Q120 236 200 160 Q120 200 40 160 Z" fill="#6aa84f"/><path d="M46 156 Q120 214 194 156 Z" fill="#f1e2b8" stroke="#c9b37a"/>`;
+    for (let i = 0; i < 14; i++) { const x = 58 + i * 9.2; o += `<path d="M${x} 156 v-16" stroke="#7a4e22" stroke-width="5" stroke-linecap="round"/><circle cx="${x}" cy="138" r="2.5" fill="#e8b830"/>`; }
+    o += `<path d="M46 156 Q20 140 8 118 Q34 128 52 150 Z" fill="#f2b51e"/><path d="M194 156 Q220 140 232 118 Q206 128 188 150 Z" fill="#f2b51e"/>`;
+    return o + lab(30, 132, 22, 'Язычковые цветки —|бесплодные, приманка') + lab(96, 140, 74, 'Трубчатые цветки —|каждый даст семянку') + lab(150, 168, 124, 'Общее цветоложе|корзинки') + lab(170, 188, 176, 'Обёртка из|зелёных листочков') + lab(124, 250, 232, 'Стебель'); },
+  // пшеница: цветок без лепестков, опыляется ветром
+  wheat: () => `<path d="M120 272 V214" stroke="#9cb060" stroke-width="5"/><path d="M98 214 Q78 150 112 76 Q120 150 120 214 Z" fill="#9cc35a" stroke="#6f8f3a"/><path d="M112 76 L104 20" stroke="#b9c46a" stroke-width="2"/>
+    <path d="M142 214 Q156 160 130 104 Q126 160 122 214 Z" fill="#b6d47a" stroke="#6f8f3a"/>` + ovary(186, 9, 11, 1)
+    + `<path d="M116 176 Q96 140 92 120" stroke="#f0f0e0" stroke-width="2" fill="none"/><path d="M124 176 Q146 140 150 122" stroke="#f0f0e0" stroke-width="2" fill="none"/>` + [[92, 116], [150, 118]].map(([x, y]) => Array.from({ length: 6 }, (_, i) => `<path d="M${x} ${y + i * 4} l${x < 120 ? -8 : 8} -3" stroke="#f4f4ea" stroke-width="1.4"/>`).join('')).join('')
+    + [[70, 240], [178, 236], [190, 200]].map(([x, y]) => `<path d="M120 ${200} Q${(120 + x) / 2} ${y - 60} ${x} ${y - 14}" stroke="#e6e2c8" stroke-width="1.2" fill="none"/><ellipse cx="${x}" cy="${y - 6}" rx="3.5" ry="9" fill="#e8c84a"/>`).join('')
+    + lab(102, 120, 18, 'Нижняя цветковая чешуя|с остью') + lab(138, 160, 70, 'Верхняя цветковая чешуя') + lab(150, 122, 112, 'Перистые рыльца ловят|пыльцу из воздуха') + lab(178, 228, 160, 'Тычинки на длинных|нитях свисают наружу') + lab(126, 186, 210, 'Завязь') + lab(120, 260, 252, 'Лепестков нет'),
+  // земляника: выпуклое цветоложе с множеством пестиков, подчашие
+  strawberry: () => { let o = PED + sepals(198, '#4f8a2e') + sepals(188) + petalsLR('#fbfbf6', 172, 104) + `<path d="M96 176 Q96 120 120 116 Q144 120 144 176 Z" fill="#e6efcc" stroke="#9cc35a"/>`;
+    for (let i = 0; i < 18; i++) { const t = i / 17, a = Math.PI * (0.1 + t * 0.8), x = 120 - Math.cos(a) * 22, y = 172 - Math.sin(a) * 52; o += `<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="3" ry="4" fill="#9cc35a"/><path d="M${f1(x)} ${f1(y - 4)} l${f1(-Math.cos(a) * 5)} -5" stroke="#9cc35a"/>`; }
+    return o + stamensLR(3, 176, 112, 40) + lab(176, 76, 18, 'Лепесток') + lab(158, 114, 56, 'Тычинки (много)') + lab(130, 120, 96, 'Много пестиков|на одном цветоложе') + lab(140, 160, 140, 'Выпуклое цветоложе —|станет «ягодой»') + lab(164, 176, 182, 'Чашелистики|и подчашие') + lab(124, 236, 232, 'Цветоножка'); },
+  // малина: коническое цветоложе с множеством пестиков
+  raspberry: () => { let o = PED + sepals(196) + petalsLR('#fbfbf6', 176, 96) + `<path d="M104 180 Q112 110 120 100 Q128 110 136 180 Z" fill="#f4ead8" stroke="#d6c8a8"/>`;
+    for (let i = 0; i < 16; i++) { const t = i / 15, y = 172 - t * 66, w = 14 - t * 9; for (const sd of [-1, 1]) if (i % 2 === (sd > 0 ? 0 : 1)) o += `<ellipse cx="${f1(120 + sd * w)}" cy="${f1(y)}" rx="3.4" ry="4" fill="#9cc35a"/><path d="M${f1(120 + sd * w)} ${f1(y - 4)} l${sd * 5} -6" stroke="#9cc35a"/>`; }
+    return o + stamensLR(3, 180, 116, 44) + lab(176, 84, 18, 'Лепесток') + lab(160, 118, 56, 'Тычинки (много)') + lab(134, 130, 96, 'Много пестиков —|каждый даст костянку') + lab(126, 160, 140, 'Коническое|цветоложе') + lab(166, 172, 186, 'Чашелистик') + lab(124, 236, 230, 'Цветоножка'); },
+  // горох: мотыльковый цветок
+  pea: () => `<path d="M60 250 Q90 230 108 200" stroke="#5f9a3c" stroke-width="6" fill="none"/><path d="M98 204 Q110 186 132 190 Q124 210 104 214 Z" fill="#6aa84f"/>
+    <path d="M120 194 Q60 150 84 60 Q150 40 176 100 Q170 160 132 192 Z" fill="#f4f0fb" stroke="rgba(0,0,0,.18)"/>
+    <path d="M128 192 Q120 150 170 134 Q196 160 160 190 Z" fill="#ebe4f6" stroke="rgba(0,0,0,.2)"/>
+    <path d="M126 196 Q150 200 196 176 Q200 200 168 214 Q140 220 126 206 Z" fill="#ddd2f0" stroke="rgba(0,0,0,.22)"/>
+    <path d="M132 202 Q160 204 190 184" stroke="#d8c88a" stroke-width="3" fill="none"/><path d="M134 204 Q162 210 188 192" stroke="#9cc35a" stroke-width="2.5" fill="none"/><ellipse cx="190" cy="183" rx="3" ry="4" fill="#e8b830"/>`
+    + lab(110, 90, 22, 'Парус —|верхний большой лепесток') + lab(176, 146, 70, 'Вёсла — два|боковых лепестка') + lab(184, 200, 116, 'Лодочка — два|сросшихся лепестка') + lab(160, 202, 160, 'В лодочке 10 тычинок|(9 сросшихся + 1) и пестик') + lab(114, 204, 210, 'Чашечка'),
+  // капуста: четыре лепестка крестом, шесть тычинок
+  cabbage: () => PED + sepals(196) + petalsLR('#f2d630', 174, 100) + ovary(170, 9, 16, 2) + `<path d="M120 154 V112" stroke="#9cc35a" stroke-width="3"/><ellipse cx="120" cy="108" rx="6" ry="4" fill="#7fb24a"/>`
+    + stamensLR(2, 178, 104, 20) + [-1, 1].map(sd => `<path d="M${120 + sd * 8} 180 Q${120 + sd * 30} 160 ${120 + sd * 34} 140" stroke="#d8c88a" stroke-width="2" fill="none"/><ellipse cx="${120 + sd * 34}" cy="136" rx="4" ry="6" fill="#e8b830"/>`).join('')
+    + lab(176, 82, 18, 'Четыре лепестка крестом|(видны два)') + lab(134, 104, 62, 'Четыре длинные тычинки') + lab(154, 136, 104, 'Две короткие тычинки') + lab(126, 108, 142, 'Рыльце') + lab(128, 170, 180, 'Завязь — станет|стручком') + lab(124, 236, 230, 'Цветоножка'),
+  // мак: два опадающих чашелистика, рыльце-диск без столбика
+  poppy: () => { let o = PED + petalsLR('#e0332a', 182, 116) + `<ellipse cx="120" cy="150" rx="22" ry="28" fill="#a7b884" stroke="#6f8a50"/><ellipse cx="120" cy="120" rx="26" ry="6" fill="#6f7a4a"/>`;
+    for (let i = 0; i < 8; i++) o += `<path d="M120 120 L${f1(120 + Math.cos(i * 0.785) * 24)} ${f1(120 + Math.sin(i * 0.785) * 5)}" stroke="#3c3c2a" stroke-width="1.4"/>`;
+    for (let i = 0; i < 8; i++) for (const sd of [-1, 1]) o += `<path d="M${120 + sd * 18} 176 Q${120 + sd * (28 + i * 2)} 150 ${120 + sd * (30 + i * 3)} ${132 - i * 3}" stroke="#2a2a2a" stroke-width="1.2" fill="none"/><ellipse cx="${120 + sd * (30 + i * 3)}" cy="${129 - i * 3}" rx="1.8" ry="3" fill="#3c3c5a"/>`;
+    return o + lab(176, 84, 18, 'Лепесток (их четыре)') + lab(150, 120, 56, 'Тычинок очень много') + lab(132, 120, 96, 'Рыльце — плоский|диск, столбика нет') + lab(136, 152, 144, 'Завязь — станет|коробочкой') + lab(124, 236, 210, 'Чашелистики опадают,|когда цветок раскрывается'); },
+};
+const FLOWER_INFO = {
+  tomato: { formula: '*Ч(5)Л(5)Т5П1', q: 'Как у томата расположены пыльники?', right: 'Срастаются в конус вокруг столбика', wrong: ['Свисают на длинных нитях', 'Сидят на лепестках'] },
+  cherry: { formula: '*Ч5Л5Т∞П1', q: 'Из какой части цветка вишни разовьётся плод-костянка?', right: 'Из завязи пестика', wrong: ['Из чашевидного цветоложа', 'Из тычинок'] },
+  apple: { formula: '*Ч5Л5Т∞П(5)', q: 'Почему мякоть яблока — не только завязь?', right: 'Завязь нижняя и срастается с цветоложем, оно тоже разрастается', wrong: ['Мякоть образуют лепестки', 'Мякоть образуют тычинки'] },
+  cucumber: { formula: '♀ *Ч(5)Л(5)П(3)', q: 'Где у женского цветка огурца находится завязь?', right: 'Под цветком — она нижняя', wrong: ['Над лепестками', 'Внутри тычинок'] },
+  sunflower: { formula: 'трубчатый цветок: *Ч0Л(5)Т(5)П1', q: 'Что такое «цветок» подсолнечника?', right: 'Соцветие корзинка из множества мелких цветков', wrong: ['Один очень большой цветок', 'Плод с семечками'] },
+  wheat: { formula: 'О(2)+2Т3П1', q: 'Почему у цветка пшеницы нет ярких лепестков?', right: 'Его опыляет ветер, насекомых привлекать не нужно', wrong: ['Лепестки уже опали', 'Его опыляет вода'] },
+  strawberry: { formula: '*Ч5+5Л5Т∞П∞', q: 'Что станет сочной «ягодой» земляники?', right: 'Разросшееся выпуклое цветоложе', wrong: ['Завязь одного пестика', 'Лепестки'] },
+  raspberry: { formula: '*Ч5Л5Т∞П∞', q: 'Из чего получится сборный плод малины?', right: 'Из множества пестиков на одном цветоложе', wrong: ['Из одного пестика', 'Из тычинок'] },
+  pea: { formula: '↑Ч(5)Л1+2+(2)Т(9)+1П1', q: 'Как называют верхний большой лепесток цветка гороха?', right: 'Парус', wrong: ['Лодочка', 'Весло'] },
+  cabbage: { formula: '*Ч4Л4Т4+2П1', q: 'Почему семейство капусты называют крестоцветными?', right: 'Четыре лепестка расположены крестом', wrong: ['У них крестообразные листья', 'Плод похож на крест'] },
+  poppy: { formula: '*Ч2Л4Т∞П1', q: 'Как выглядит рыльце мака?', right: 'Плоский диск-звёздочка прямо на завязи', wrong: ['Длинная тонкая нить', 'Пушистая кисточка'] },
+};
+
 // ---------- разрезы: цветок, плод, шишка ----------
 let cutKind = null;
 function cutQuestion(kind) {
-  if (kind === 'flower') return { q: 'Из какой части цветка разовьётся плод?', right: 'Из завязи пестика', opts: ['Из пыльника', 'Из завязи пестика', 'Из лепестка', 'Из чашелистика'], xp: 10,
-    text: () => 'Верно! После оплодотворения завязь разрастается в плод, а семязачатки превращаются в семена. ' + cropOf(S).note, hint: 'Посмотри на подпись, где сказано про семязачатки.' };
+  if (kind === 'flower') {
+    const key = CROPS[S.crop] ? S.crop : 'tomato', F = FLOWER_INFO[key];
+    const opts = [F.right, ...F.wrong]; let h = 0; for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    opts.sort((a, b) => ((a.length * 7 + h) % 5) - ((b.length * 7 + h) % 5));
+    return { q: F.q, right: F.right, opts, xp: 10, text: () => `Верно! ${cropOf(S).note} Формула цветка: ${F.formula}.`, hint: 'Внимательно прочитай подписи на схеме.' };
+  }
   if (kind === 'cone') return { q: 'Почему шишка сосны — не плод?', right: 'У голосеменных нет цветков и завязи, семена лежат открыто', opts: ['Шишка слишком твёрдая', 'У голосеменных нет цветков и завязи, семена лежат открыто', 'В шишке нет семян'], xp: 15,
     text: () => 'Шишка сосны — не плод: у голосеменных нет цветков и завязи. Семена лежат открыто на семенных чешуях, по два на каждой. Шишка созревает около полутора-двух лет, а в сухую погоду чешуи раскрываются, и семена с крылышками улетают.', hint: 'Подумай, из какой части цветка образуется плод — и есть ли она у сосны.' };
   const F = FRUITS[cropOf(S).type], types = Object.keys(FRUITS);
@@ -1965,7 +2045,7 @@ function openCut(kind) {
   cutKind = kind;
   const crop = S.sp === 'angio' ? cropOf(S) : null;
   $('cutTitle').textContent = kind === 'flower' ? `Цветок в разрезе: ${crop.name.toLowerCase()}` : kind === 'cone' ? 'Шишка сосны в разрезе' : `Плод в разрезе: ${crop.name.toLowerCase()}`;
-  $('cutPic').innerHTML = kind === 'flower' ? FLOWER(crop.type === 'caryopsis' ? null : crop.petal) : kind === 'cone' ? CONE() : CUT[crop.type]();
+  $('cutPic').innerHTML = kind === 'flower' ? (FLOWERS[S.crop] || FLOWERS.tomato)() : kind === 'cone' ? CONE() : CUT[crop.type]();
   const Q = cutQuestion(kind), done = S.cool['cut_' + kind];
   $('cutQ').textContent = Q.q;
   $('cutOpts').innerHTML = Q.opts.map((o, i) => `<button class="btn" id="cutopt-${i}" data-ans="${o === Q.right ? 1 : 0}">${o}</button>`).join('');
@@ -2129,6 +2209,28 @@ function proceduralPlant(T) {
   const g = new T.Group(), col = new T.Color(leafColor(S)), st = stageOf(S), k = Math.min(1, 0.25 + S.biomass / 16);
   const mat = new T.MeshStandardMaterial({ color: col, roughness: 0.7 });
   if (S.sp === 'angio') return angio3D(T, col, st, k);
+  if (S.sp === 'gymno') { // запасная сосенка: ствол и мутовки ветвей с пучками хвои
+    const H = 0.5 + k * 1.1, bark = new T.MeshStandardMaterial({ color: '#7b5434' }), nm = new T.MeshStandardMaterial({ color: col });
+    const tr = new T.Mesh(new T.CylinderGeometry(0.015, 0.035, H, 8), bark); tr.position.y = H / 2; g.add(tr);
+    const tiers = 2 + Math.round(k * 4);
+    for (let i = 0; i < tiers; i++) { const y = H * (0.3 + 0.65 * i / tiers), len = (0.35 - i * 0.04) * (0.6 + k * 0.6);
+      for (let b = 0; b < 5; b++) { const a = b / 5 * Math.PI * 2 + i, br = new T.Group(); br.position.y = y; br.rotation.y = a; br.rotation.z = -0.25;
+        const st2 = new T.Mesh(new T.CylinderGeometry(0.006, 0.01, len, 5), bark); st2.rotation.z = -Math.PI / 2; st2.position.x = len / 2; br.add(st2);
+        for (let q = 0; q < 6; q++) { const nd = new T.Mesh(new T.ConeGeometry(0.03, 0.09, 6), nm); nd.position.x = len * (0.3 + q * 0.12); nd.rotation.z = -1; br.add(nd); }
+        g.add(br); } }
+    const top = new T.Mesh(new T.ConeGeometry(0.05, 0.14, 8), nm); top.position.y = H + 0.05; g.add(top);
+    return g;
+  }
+  if (S.sp === 'fern') { // запасной папоротник: вайи с перьями
+    const pin = new T.MeshStandardMaterial({ color: col, side: T.DoubleSide }), nf = 4 + Math.round(k * 7);
+    for (let i = 0; i < nf; i++) { const a = i / nf * Math.PI * 2, L = 0.35 + k * 0.5, fr = new T.Group(); fr.rotation.y = a;
+      const pts = [new T.Vector3(0, 0, 0), new T.Vector3(L * 0.3, L * 0.6, 0), new T.Vector3(L * 0.8, L * 0.55, 0), new T.Vector3(L, L * 0.3, 0)], cur = new T.CatmullRomCurve3(pts);
+      fr.add(new T.Mesh(new T.TubeGeometry(cur, 20, 0.006, 5), pin));
+      for (let j = 2; j < 16; j++) { const t = j / 16, p = cur.getPoint(t), w = (1 - t) * 0.12 + 0.02;
+        for (const sd of [-1, 1]) { const m = new T.Mesh(new T.PlaneGeometry(w, 0.02), pin); m.position.copy(p).add(new T.Vector3(0, 0, sd * w / 2)); m.rotation.x = -Math.PI / 2 + sd * 0.3; fr.add(m); } }
+      g.add(fr); }
+    return g;
+  }
   if (S.sp === 'moss') { // кукушкин лён: стебельки с жёсткими листочками, позже — коробочки на ножках
     const n = 14 + Math.round(k * 40), leafG = new T.ConeGeometry(0.006, 0.04, 3), dry = clamp(1 - S.turgor, 0, 1);
     const mm = new T.MeshStandardMaterial({ color: col.clone().lerp(new T.Color('#8f7e44'), dry * 0.8), roughness: 0.8 });
@@ -2209,15 +2311,16 @@ async function open3D() {
   if (v3.root) scene.remove(v3.root);
   const root = new T.Group(); v3.root = root; scene.add(root);
   const lvl = levelOf(S.xp), pot = makePot(T, lvl, S.sp === 'algae'); root.add(pot);
-  let plant;
+  let plant = null, usedModel = false;
   try {
-    plant = MODEL_FILES[S.sp] ? await loadModel(MODEL_FILES[S.sp]) : proceduralPlant(T);
-  } catch (e) { $('v3dMsg').textContent = 'Не удалось загрузить модель растения.'; return; }
+    if (MODEL_FILES[S.sp]) { plant = await loadModel(MODEL_FILES[S.sp]); usedModel = true; }
+  } catch (e) { plant = null; } // файла модели нет (например, в версии на claude.ai) — рисуем растение сами
+  if (!plant) plant = proceduralPlant(T);
   // размер по стадии роста и уровню; цвет — по здоровью
   const grow = Math.min(1, 0.2 + S.biomass / 16) * (1 + 0.15 * (lvl - 1) / 9);
-  const target = { gymno: 1.9, fern: 1.3, angio: 1.2, moss: 0.75, lycopod: 1, algae: 1 }[S.sp] * (MODEL_FILES[S.sp] ? grow : 1);
+  const target = { gymno: 1.9, fern: 1.3, angio: 1.2, moss: 0.75, lycopod: 1, algae: 1 }[S.sp] * (usedModel ? grow : 1);
   const bb = new T.Box3().setFromObject(plant), size = bb.getSize(new T.Vector3());
-  if (MODEL_FILES[S.sp]) {
+  if (usedModel) {
     const k = target / Math.max(size.x, size.y, size.z); plant.scale.setScalar(k);
     const bb2 = new T.Box3().setFromObject(plant); plant.position.y -= bb2.min.y;
   }
@@ -2229,13 +2332,13 @@ async function open3D() {
     o.material = m0.map ? new T.MeshLambertMaterial({ map: m0.map, color: 0xffffff, alphaTest: 0.45, transparent: false, side: T.DoubleSide }) : m0.clone();
     if (o.material.color) o.material.color.lerp(new T.Color('#8a6a3a'), sick);
   });
-  if (S.turgor < 0.35 && MODEL_FILES[S.sp]) plant.scale.y *= 0.8;
+  if (S.turgor < 0.35 && usedModel) plant.scale.y *= 0.8;
   plant.position.y += pot.userData.top; root.add(plant);
   const all = new T.Box3().setFromObject(root), c = all.getCenter(new T.Vector3()), r = all.getSize(new T.Vector3()).length();
   const controls = v3.controls; controls.target.copy(c); camera.position.set(c.x + r * 0.55, c.y + r * 0.3, c.z + r * 0.85); controls.update();
   if ($('v3dModal').hidden) return; // окно закрыли, пока шла загрузка
   $('v3dMsg').hidden = true;
-  $('v3dNote').textContent = 'Крути растение мышкой или пальцем, колёсиком или щипком приближай.' + (MODEL_FILES[S.sp] ? ' Модель: Poly Haven (CC0).' : '');
+  $('v3dNote').textContent = 'Крути растение мышкой или пальцем, колёсиком или щипком приближай.' + (usedModel ? ' Модель: Poly Haven (CC0).' : '');
   v3.start();
 }
 const close3D = () => { $('v3dModal').hidden = true; if (v3) v3.running = false; };
