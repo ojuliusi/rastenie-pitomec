@@ -348,7 +348,7 @@ header #openSettings { flex: none; }
 .stage .xpnote { flex: none; margin: 0; padding: 0 12px 8px; font-size: 12.5px; }
 .stage .view-note { display: none; }
 .panel { display: flex; flex-direction: column; min-height: 0; padding: 0; overflow: hidden; }
-.ptabs { flex: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 8px; border-bottom: 3px dashed var(--line); }
+.ptabs { flex: none; display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 6px; padding: 8px; border-bottom: 3px dashed var(--line); }
 .ptabs button { position: relative; font: 800 14px var(--f-body); color: var(--ink); background: color-mix(in srgb, var(--bg) 55%, transparent); border: 2.5px solid transparent; border-radius: 14px; padding: 8px 4px; cursor: pointer; }
 .ptabs button[aria-selected="true"] { background: var(--wood); border-color: var(--outline); box-shadow: 0 3px 0 var(--outline); }
 .ptabs button i { position: absolute; top: 4px; right: 6px; width: 9px; height: 9px; border-radius: 50%; background: var(--danger); border: 2px solid var(--panel); display: none; }
@@ -356,7 +356,15 @@ header #openSettings { flex: none; }
 .ptabs button:focus-visible { outline: 3px solid var(--leaf); outline-offset: 2px; }
 .panes { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 12px 14px 16px; overscroll-behavior: contain; }
 .pane > h2 { margin-top: 0; }
-.pane[data-pane="care"] > h2, .pane[data-pane="gauges"] > h2, .pane[data-pane="log"] > h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.pane[data-pane="care"] > h2, .pane[data-pane="log"] > h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.pane-gauges { margin-bottom: 12px; }
+.pane-gauges .gauges { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+@media (max-width: 1100px) and (min-width: 861px), (max-width: 420px) { .pane-gauges .gauges { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.pane-gauges .gauge { padding: 6px 8px; border-radius: 14px; }
+.pane-gauges .gauge .v small { font-size: 10.5px; margin-left: 2px; }
+.pane-gauges .gauge .k { font-size: 11.5px; }
+.pane-gauges .gauge .v { font-size: 16px; white-space: nowrap; }
+.pane-gauges .gauge .hint { font-size: 10.5px; line-height: 1.25; }
 .journal { margin: 0; }
 .log { max-height: none; }
 @media (max-width: 860px) {
@@ -510,12 +518,21 @@ header #openSettings { flex: none; }
 
     <div class="card panel" id="panel">
       <div class="ptabs" role="tablist" aria-label="Разделы">
-        <button role="tab" id="pt-care" data-pane="care" aria-selected="true">Уход<i></i></button>
-        <button role="tab" id="pt-gauges" data-pane="gauges" aria-selected="false">Приборы<i></i></button>
+        <button role="tab" id="pt-care" data-pane="care" aria-selected="true">Уход и приборы<i></i></button>
         <button role="tab" id="pt-blocks" data-pane="blocks" aria-selected="false">Блоки<i></i></button>
         <button role="tab" id="pt-log" data-pane="log" aria-selected="false">Дневник<i></i></button>
       </div>
       <div class="panes">
+      <section class="pane pane-gauges" data-pane="care" aria-labelledby="hInstr">
+        <h2 id="hInstr">Приборы</h2>
+        <div class="gauges">
+          <div class="gauge" id="gLight"><div class="k">Освещённость</div><div class="v"><span>0</span><small>лк</small></div><div class="scale"><div class="ok"></div><div class="mark"></div></div><div class="hint"></div></div>
+          <div class="gauge" id="gTemp"><div class="k">Температура</div><div class="v"><span>0</span><small>°C</small></div><div class="scale"><div class="ok"></div><div class="mark"></div></div><div class="hint"></div></div>
+          <div class="gauge" id="gWet"><div class="k">Влажность почвы</div><div class="v"><span>0</span><small>%</small></div><div class="scale"><div class="ok"></div><div class="mark"></div></div><div class="hint"></div></div>
+          <div class="gauge" id="gEc"><div class="k">Соли (EC)</div><div class="v"><span>0</span><small>мСм/см</small></div><div class="scale"><div class="ok"></div><div class="mark"></div></div><div class="hint">норма 0,6–2,6</div></div>
+          <div class="gauge" id="gTr"><div class="k">Испарение</div><div class="v"><span>0</span><small>мл/ч</small></div><div class="scale"><div class="mark"></div></div><div class="hint">от света, жары и листьев</div></div>
+        </div>
+      </section>
       <section class="pane" data-pane="care" aria-labelledby="hAct">
         <h2 id="hAct">Уход</h2>
         <div class="actions">
@@ -524,6 +541,7 @@ header #openSettings { flex: none; }
             <div class="row">
               <button class="btn primary" id="aWater"><span class="dot"></span><span class="lbl">Полить</span></button>
               <button class="btn" id="aFeed"><span class="dot" style="background:var(--soil)"></span><span class="lbl">Подкормить</span></button>
+              <button class="btn" id="aRepot" hidden><span class="dot" style="background:#b0603a"></span><span class="lbl">Пересадить в горшок побольше</span></button>
               <button class="btn" id="aIodine"><span class="dot" style="background:#3a3f86"></span>Проба йодом на крахмал</button>
             </div>
           </div>
@@ -560,16 +578,6 @@ header #openSettings { flex: none; }
       <section class="pane" data-pane="blocks" aria-labelledby="hBlocks" hidden>
         <h2 id="hBlocks">Блоки курса</h2>
         <div class="blocks" id="blocks"></div>
-      </section>
-      <section class="pane" data-pane="gauges" aria-labelledby="hInstr" hidden>
-        <h2 id="hInstr">Приборы</h2>
-        <div class="gauges">
-          <div class="gauge" id="gLight"><div class="k">Освещённость</div><div class="v"><span>0</span><small>лк</small></div><div class="scale"><div class="ok"></div><div class="mark"></div></div><div class="hint"></div></div>
-          <div class="gauge" id="gTemp"><div class="k">Температура воздуха</div><div class="v"><span>0</span><small>°C</small></div><div class="scale"><div class="ok"></div><div class="mark"></div></div><div class="hint"></div></div>
-          <div class="gauge" id="gWet"><div class="k">Влажность почвы</div><div class="v"><span>0</span><small>%</small></div><div class="scale"><div class="ok"></div><div class="mark"></div></div><div class="hint"></div></div>
-          <div class="gauge" id="gEc"><div class="k">Соли в почве (EC)</div><div class="v"><span>0</span><small>мСм/см</small></div><div class="scale"><div class="ok"></div><div class="mark"></div></div><div class="hint">норма 0,6–2,6</div></div>
-          <div class="gauge" id="gTr"><div class="k">Испарение</div><div class="v"><span>0</span><small>мл/ч</small></div><div class="scale"><div class="mark"></div></div><div class="hint">зависит от света, жары и площади листьев</div></div>
-        </div>
       </section>
       <section class="pane journal" data-pane="log" id="journal" hidden aria-labelledby="hLog">
         <h2 id="hLog">Дневник наблюдений</h2>
@@ -1328,6 +1336,23 @@ function quizInfect(s) {
   note(s, null, 'Ошибка в проверке ослабила растение, и на него напала болезнь! ' + D.symptom + ' Осмотри растение и выбери лечение.', 'warn');
   return id;
 }
+// Горшок: корни растут вместе с растением. Когда им тесно, растение перестаёт расти и его нужно пересадить.
+// У водоросли банка, у мха ризоиды и мелкая дернинка — им пересадка не нужна.
+const POTS = [null, { name: 'маленький', cap: 9 }, { name: 'средний', cap: 17 }, { name: 'большой', cap: 99 }];
+const needsPot = s => s.sp !== 'algae' && s.sp !== 'moss';
+const potCap = s => needsPot(s) ? POTS[s.pot || 1].cap : 99;
+const rootbound = s => needsPot(s) && s.biomass >= potCap(s) - 0.05;
+const potSoon = s => needsPot(s) && (s.pot || 1) < 3 && s.biomass >= potCap(s) - 1.5;
+function repot(s) {
+  if (!needsPot(s) || (s.pot || 1) >= 3) return false;
+  if (!potSoon(s)) { note(s, null, 'Пересаживать пока рано: корням хватает места. Лишняя пересадка — стресс для растения.', 'info'); return false; }
+  s.pot = (s.pot || 1) + 1; s.bound = 0;
+  s.minerals = 50; // свежая земля: в ней в меру питательных солей, а лишние соли уходят вместе со старой землёй
+  s.turgor *= 0.75; s.rootHP = Math.max(40, s.rootHP - 6); // небольшой стресс: часть корневых волосков обрывается
+  note(s, null, `Растение пересадили в ${POTS[s.pot].name} горшок со свежей землёй. Корни расправились, теперь растению есть куда расти. Пару дней оно может слегка подвянуть: при пересадке обрываются тонкие корневые волоски.`, 'good');
+  addXP(s, 15);
+  return true;
+}
 // Очередь всплывающих плашек (помимо фактов о болезнях)
 function popup(s, k, title, text, tone) {
   s.popups = s.popups || [];
@@ -1337,7 +1362,7 @@ function popup(s, k, title, text, tone) {
 function newState(sp = 'angio') {
   return { sp, hour: 6, biomass: 0.6, moisture: sp === 'algae' ? 90 : 60, minerals: 50, starch: 6, hp: 100, rootHP: 100,
     turgor: 0.9, chl: 0.85, lightHist: 0.5, soggy: 0, lean: 0, loc: SPECIES[sp].start, lamp: false, shade: false,
-    unlocked: {}, pollinated: false, fruit: 0, lastP: 0,
+    unlocked: {}, pollinated: false, fruit: 0, lastP: 0, pot: 1, bound: 0,
     done: false, dead: null, rootHarm: null, cause: null, stageIdx: 0, log: [], cool: {}, iodine: null, xp: 0, gen: 1, lvlUp: 0, disease: null };
 }
 // Времена года: длина дня, сила солнца, погода на балконе, отопление в квартире
@@ -1387,6 +1412,11 @@ function step(s) {
   if (rootDmg) s.rootHP = clamp(s.rootHP - rootDmg * HARM, 0, 100);
   else if (s.moisture > 15) { s.rootHP = clamp(s.rootHP + 0.35, 0, 100); if (s.rootHP > 92) s.rootHarm = null; }
 
+  // тесный горшок: корни заняли место земли, вода быстро кончается, а через пару суток корни начинают страдать
+  if (rootbound(s)) {
+    s.bound = (s.bound || 0) + 1; s.moisture = Math.max(0, s.moisture - 0.6);
+    if (s.bound > 48 && s.rootHP > 45) s.rootHP -= 0.3 * HARM;
+  } else s.bound = 0;
   // тургор: вода поступает внутрь; крепкий солевой раствор вытягивает её обратно (осмос)
   let tt = clamp((s.moisture - SP.dryLo) / SP.span, 0, 1) * (0.25 + 0.75 * s.rootHP / 100);
   if (s.minerals > 85) tt *= 0.5;
@@ -1417,9 +1447,10 @@ function step(s) {
 
   // рост
   const gate = growthGate(s);
-  if (s.starch > 1.5 && s.minerals > 2 && s.turgor > 0.4 && s.biomass < 24 && !(gate && s.biomass >= gate.cap)) {
+  const pc = potCap(s);
+  if (s.starch > 1.5 && s.minerals > 2 && s.turgor > 0.4 && s.biomass < Math.min(24, pc) && !(gate && s.biomass >= gate.cap)) {
     const g = 0.09 * PACE * warm * Math.min(1, s.starch / 12) * Math.min(1, s.minerals / 30) * (s.rootHP / 100);
-    s.biomass = gate ? Math.min(gate.cap, s.biomass + g) : s.biomass + g; s.starch -= g * 2.5 / PACE; s.minerals = Math.max(0, s.minerals - g * 4 / PACE);
+    s.biomass = Math.min(pc, gate ? Math.min(gate.cap, s.biomass + g) : s.biomass + g); s.starch -= g * 2.5 / PACE; s.minerals = Math.max(0, s.minerals - g * 4 / PACE);
   }
   if (s.pollinated && s.fruit < 1 && s.starch > 1 && s.turgor > 0.3) { s.fruit = Math.min(1, s.fruit + PACE / 40); s.starch -= 0.4; }
 
@@ -1447,6 +1478,12 @@ function step(s) {
     if (D.hurts === 'root') s.rootHP = clamp(s.rootHP - d.sev * 1.2, 0, 100);
   }
 
+  if (potSoon(s) && !rootbound(s)) note(s, 'potsoon' + s.pot, 'Из дренажного отверстия показались кончики корней: скоро растению станет тесно в горшке.', 'info', 1e9);
+  if (rootbound(s) && !s.cool['potPop' + s.pot]) {
+    s.cool['potPop' + s.pot] = s.hour;
+    note(s, null, 'Корням тесно: они оплели весь земляной ком и лезут из дренажного отверстия. Растение перестало расти, а земля пересыхает очень быстро. Пора пересадить его в горшок побольше.', 'warn');
+    popup(s, 'Нужна пересадка', 'Корням тесно в горшке', 'Корни оплели весь ком земли и лезут из дренажного отверстия. Растение перестало расти, а земля сохнет очень быстро. Пересади его в горшок побольше — кнопка во вкладке «Уход и приборы».', 'warn');
+  }
   if (gate && s.biomass >= gate.cap)
     note(s, 'gate' + gate.stage, `Растение готово к стадии «${SP.stages[gate.stage][0]}», но дальше расти не будет, пока не пройден ещё один блок курса (пройдено ${gate.passed} из ${gate.total}).`, 'warn', 24);
   if (gate && s.biomass >= gate.cap && !s.cool['gatePop' + gate.stage]) {
@@ -1527,6 +1564,7 @@ const SPc = () => SPECIES[S.sp];
 function revive(raw, unlocked) {
   const st = Object.assign(newState(raw.sp), raw);
   st.unlocked = unlocked;
+  if (raw.pot === undefined) st.pot = st.biomass < POTS[1].cap - 2 ? 1 : st.biomass < POTS[2].cap - 2 ? 2 : 3;
   return st;
 }
 function load() {
@@ -1694,7 +1732,8 @@ function drawAngio(s, ctx) {
   const B = [200, 300], C = [200 + lean * 0.15, 300 - H * 0.55], T = [200 + lean, 300 - H];
   const P = t => [(1 - t) ** 2 * B[0] + 2 * (1 - t) * t * C[0] + t * t * T[0], (1 - t) ** 2 * B[1] + 2 * (1 - t) * t * C[1] + t * t * T[1]];
   const top = droop > 0.55 ? [T[0] + lean * 0.3 + 14 * droop, T[1] + H * 0.12 * droop] : T;
-  o += `<path d="M${B[0]} ${B[1]} Q${f1(C[0])} ${f1(C[1])} ${f1(top[0])} ${f1(top[1])}" stroke="${mix(col, '#5d7a33', .3)}" stroke-width="${f1(2.5 + bm * 0.22)}" fill="none" stroke-linecap="round"/>`;
+  const SD = STEM3D[s.crop] || STEM3D.tomato, woody = SD.kind === 'tree' || SD.kind === 'cane';
+  o += `<path d="M${B[0]} ${B[1]} Q${f1(C[0])} ${f1(C[1])} ${f1(top[0])} ${f1(top[1])}" stroke="${woody ? SD.col : mix(col, SD.col, .5)}" stroke-width="${f1((2.5 + bm * 0.22) * clamp(SD.r / 0.02, 0.45, 2))}" fill="none" stroke-linecap="round"/>`;
   const crop = cropOf(s);
   const n = s.biomass < 2 ? 2 : Math.min(16 + Math.round(lush * 6), 2 + Math.floor(s.biomass * (0.75 + lush * 0.3)));
   for (let i = 0; i < n; i++) {
@@ -2177,7 +2216,15 @@ function drawScene() {
   const lvl = levelOf(s.xp);
   const ctx = { droop: clamp(1 - s.turgor, 0, 1), col: leafColor(s), st: stageOf(s), lush: (lvl - 1) / 9, lvl };
   let o = drawBackground(s, e);
-  if (s.sp !== 'algae') o += drawPot(s, lvl);
+  if (s.sp !== 'algae') {
+    const k = [1, 1, 1.12, 1.24][s.pot || 1];
+    o += `<g transform="translate(200 410) scale(${k}) translate(-200 -410)">${drawPot(s, lvl)}</g>`;
+    if (potSoon(s)) { // кончики корней из дренажного отверстия, а у тесного горшка — корни, оплетающие ком
+      const n = rootbound(s) ? 6 : 2;
+      for (let i = 0; i < n; i++) o += `<path d="M${194 + i * 3} 409 q${(i % 2 ? 6 : -6)} 6 ${(i % 2 ? 2 : -3) + i} ${8 + i * 2}" stroke="${rootColor(s)}" stroke-width="1.6" fill="none" stroke-linecap="round"/>`;
+      if (rootbound(s)) o += `<path d="M154 392 Q200 404 246 392 M156 372 Q200 384 244 372" stroke="${rootColor(s)}" stroke-width="1.4" fill="none" opacity=".9"/>`;
+    }
+  }
   const plant = DRAW[s.sp](s, ctx);
   o += plant;
   if (s.disease && !s.dead) o += diseaseLayer(s, plant);
@@ -2232,13 +2279,13 @@ function render() {
 
   const lo = Math.min(0.17, SP.sat * 0.4), hi = Math.min(1, SP.burnAt);
   setGauge('gLight', e.light, lux(e.light), 0, 1, lo, hi, (e.dl > 0 && e.light < lo * 0.7) || e.light > SP.burnAt);
-  $('gLight').querySelector('.hint').textContent = hi < 1 ? `норма ${lux(lo)}–${lux(hi)} лк, прямое солнце вредно` : `норма для роста: от ${lux(lo)} лк`;
+  $('gLight').querySelector('.hint').textContent = hi < 1 ? `норма ${lux(lo)}–${lux(hi)} лк, без прямого солнца` : `норма: от ${lux(lo)} лк`;
   setGauge('gTemp', e.temp, e.temp.toFixed(1).replace('.', ','), 10, 40, 16, SP.heatMax - 2, e.temp > SP.heatMax - 1);
   $('gTemp').querySelector('.hint').textContent = `норма 16–${SP.heatMax - 2} °C`;
   $('gWet').querySelector('.k').textContent = SP.wetWord;
   setGauge('gWet', s.moisture, Math.round(s.moisture), 0, 100, SP.wetOk[0], SP.wetOk[1], s.moisture < SP.wetOk[0] - 10 || (SP.rotThr && s.moisture > 88));
   $('gWet').querySelector('.hint').textContent = `норма ${SP.wetOk[0]}–${SP.wetOk[1]} %`;
-  $('gEc').querySelector('.k').textContent = s.sp === 'algae' ? 'Соли в воде (EC)' : 'Соли в почве (EC)';
+  $('gEc').querySelector('.k').textContent = s.sp === 'algae' ? 'Соли в воде' : 'Соли в почве';
   const ec = s.minerals / 100 * 3.5;
   setGauge('gEc', ec, ec.toFixed(2).replace('.', ','), 0, 3.5, 0.6, 2.6, s.minerals > 85 || s.minerals < 12);
   $('gTr').querySelector('.k').textContent = SP.trWord;
@@ -2249,6 +2296,9 @@ function render() {
   $('aFeed').querySelector('.lbl').textContent = SP.feed;
   $('aRepro').querySelector('.lbl').textContent = SP.repro.label;
   $('aIodine').disabled = over;
+  $('aRepot').hidden = !potSoon(s) || over;
+  $('aRepot').classList.toggle('primary', rootbound(s));
+  $('aRepot').querySelector('.lbl').textContent = `Пересадить в горшок побольше (сейчас ${POTS[s.pot || 1].name})`;
   if (!living) $('live6').disabled = $('live24').disabled = over;
   $('aFlower').hidden = !(s.sp === 'angio' && (st === 4 || (st === 5 && s.fruit < 0.15)) && !s.dead);
   $('bCut').hidden = !(s.done && (s.sp === 'angio' || s.sp === 'gymno'));
@@ -2330,6 +2380,7 @@ $('aWater').onclick = () => {
   }
   note(S, null, (S.sp === 'algae' ? 'Долили воды.' : S.sp === 'moss' ? 'Полили и опрыскали мох.' : 'Полили растение.') + extra, 'act'); render(); save();
 };
+$('aRepot').onclick = () => { if (repot(S)) { render(); renderGarden(); save(); } };
 $('aFeed').onclick = () => { S.minerals += 25; note(S, null, S.sp === 'algae' ? 'Добавили в воду минеральные соли.' : 'Внесли минеральное удобрение: в почве стало больше солей азота, фосфора и калия.', 'act'); render(); save(); };
 $('aLamp').onclick = () => { S.lamp = !S.lamp; note(S, null, S.lamp ? 'Включили фитолампу.' : 'Выключили фитолампу.', 'act'); render(); save(); };
 $('aShade').onclick = () => { S.shade = !S.shade; note(S, null, S.shade ? 'Притенили растение: прямого солнца стало меньше.' : 'Убрали притенение.', 'act'); render(); save(); };
@@ -2540,24 +2591,81 @@ function makePot(T, lvl, jar) {
   g.add(pot, rimM, soil); g.userData.top = 0.62; return g;
 }
 // Цветковое растение: стебель, листья, цветки цвета своей культуры и плоды своего типа
-function angio3D(T, col, st, k) {
-  const g = new T.Group(), crop = cropOf(S), droop = clamp(1 - S.turgor, 0, 1);
-  const lm = new T.MeshStandardMaterial({ color: col, roughness: 0.65, side: T.DoubleSide });
-  const stemM = new T.MeshStandardMaterial({ color: col.clone().lerp(new T.Color('#6f8f3a'), 0.35), roughness: 0.8 });
-  const H = 0.4 + k * 0.9;
-  // стебель слегка зигзагом — так растут побеги, от узла к узлу
-  const sp = []; for (let i = 0; i <= 8; i++) sp.push(new T.Vector3((i % 2 ? 1 : -1) * 0.015 * (i > 0), H * i / 8, 0));
-  const stemCurve = new T.CatmullRomCurve3(sp);
-  g.add(new T.Mesh(new T.TubeGeometry(stemCurve, 48, 0.018, 8), stemM));
-  { // кончик стебля скруглён — его закрывает розетка молодых листьев (добавляется ниже)
-    const cap = new T.Mesh(new T.SphereGeometry(0.018, 10, 8), stemM); cap.position.copy(stemCurve.getPoint(1)); g.add(cap);
+// Стебли культур: у каждой свой. kind — форма побега, r — толщина, h — высота, leaf — тип листа, br — число боковых побегов
+const STEM3D = {
+  tomato: { kind: 'herb', h: 1, r: 0.02, col: '#6f9a3a', leaf: 'compound', br: 5, hairs: 1 },
+  cherry: { kind: 'tree', h: 1.05, r: 0.028, col: '#6b3328', leaf: 'simple', w: 0.04, ls: 1.25, br: 5, lenticels: 1 },
+  apple: { kind: 'tree', h: 1, r: 0.03, col: '#7a6650', leaf: 'simple', w: 0.05, ls: 1.25, br: 5 },
+  cucumber: { kind: 'vine', h: 1.1, r: 0.011, col: '#5f8f34', leaf: 'broad', w: 0.075, ls: 1.35, br: 2, hairs: 1, tendrils: 1, stake: 1 },
+  pea: { kind: 'vine', h: 1, r: 0.007, col: '#8dbb68', leaf: 'compound', br: 1, tendrils: 1, twig: 1 },
+  sunflower: { kind: 'single', h: 1.25, r: 0.032, col: '#5f8a34', leaf: 'broad', w: 0.07, ls: 1.5, br: 0, hairs: 1 },
+  wheat: { kind: 'culm', h: 1.05, r: 0.0075, col: '#a9c46a', leaf: 'blade', br: 0, nodes: 1 },
+  strawberry: { kind: 'rosette', h: 0.12, r: 0.022, col: '#6f8f3a', leaf: 'trifoliate', br: 0, runners: 1 },
+  raspberry: { kind: 'cane', h: 1.05, r: 0.017, col: '#8a6a4a', leaf: 'compound', br: 0, prickles: 1, canes: 2 },
+  cabbage: { kind: 'stump', h: 0.3, r: 0.05, col: '#a9c290', leaf: 'broad', w: 0.09, ls: 1.7, br: 0, glauc: 1 },
+  poppy: { kind: 'single', h: 1.05, r: 0.009, col: '#86a898', leaf: 'simple', w: 0.025, br: 1, hairs: 1, glauc: 1 },
+};
+// трубка-стебель, которая сужается от основания к верхушке
+function taperTube(T, curve, r0, r1, mat, seg = 40, rad = 8) {
+  const geo = new T.TubeGeometry(curve, seg, 1, rad, false), pos = geo.attributes.position, c = new T.Vector3(), v = new T.Vector3();
+  for (let i = 0; i <= seg; i++) {
+    curve.getPointAt(i / seg, c); const r = r0 + (r1 - r0) * i / seg;
+    for (let j = 0; j <= rad; j++) { const idx = i * (rad + 1) + j; v.fromBufferAttribute(pos, idx).sub(c).multiplyScalar(r).add(c); pos.setXYZ(idx, v.x, v.y, v.z); }
   }
-  const leafletShape = (w) => { const sh = new T.Shape(); sh.moveTo(0, 0); sh.quadraticCurveTo(0.05, w, 0.11, 0); sh.quadraticCurveTo(0.05, -w, 0, 0); return new T.ShapeGeometry(sh, 6); };
-  const simpleLeaf = leafletShape(0.045), leaflet = leafletShape(crop.type === 'berry' ? 0.05 : 0.03);
-  const compound = crop.type === 'berry' || crop.type === 'legume';
+  pos.needsUpdate = true; geo.computeVertexNormals(); return new T.Mesh(geo, mat);
+}
+function angio3D(T, col, st, k) {
+  const g = new T.Group(), crop = cropOf(S), droop = clamp(1 - S.turgor, 0, 1), SD = STEM3D[S.crop] || STEM3D.tomato;
+  const woody = SD.kind === 'tree' || SD.kind === 'cane';
+  const leafCol = SD.glauc ? col.clone().lerp(new T.Color('#8fb3a6'), 0.35) : col;
+  const lm = new T.MeshStandardMaterial({ color: leafCol, roughness: 0.65, side: T.DoubleSide });
+  const stemM = new T.MeshStandardMaterial({ color: new T.Color(SD.col).lerp(col, woody ? 0 : 0.25), roughness: woody ? 0.95 : 0.8 });
+  const H = (0.4 + k * 0.9) * SD.h, R0 = SD.r * (0.75 + k * 0.45), R1 = woody ? SD.r * 0.35 : SD.r * 0.6;
+  // форма главного побега
+  const sp = [];
+  if (SD.kind === 'vine') for (let i = 0; i <= 18; i++) { const a = i * 0.95; sp.push(new T.Vector3(Math.cos(a) * 0.028, H * i / 18, Math.sin(a) * 0.028)); } // обвивает опору
+  else if (SD.kind === 'herb') for (let i = 0; i <= 8; i++) sp.push(new T.Vector3((i % 2 ? 1 : -1) * 0.015 * (i > 0), H * i / 8, 0)); // зигзаг от узла к узлу
+  else for (let i = 0; i <= 6; i++) sp.push(new T.Vector3(Math.sin(i * 1.7) * 0.004 * (i > 0), H * i / 6, Math.cos(i * 2.3) * 0.003 * (i > 0)));
+  const stemCurve = new T.CatmullRomCurve3(sp);
+  g.add(taperTube(T, stemCurve, R0, R1, stemM));
+  { const cap = new T.Mesh(new T.SphereGeometry(R1, 10, 8), stemM); cap.position.copy(stemCurve.getPoint(1)); g.add(cap); }
+  // мелкие детали поверхности стебля: волоски, шипы, чечевички, узлы-коленца
+  const along = (curve, n, r0, r1, fn) => { for (let i = 0; i < n; i++) { const t = (i + 0.5) / n, p = curve.getPointAt(t), tan = curve.getTangentAt(t), a = i * 2.39996;
+    const side = new T.Vector3(Math.cos(a), 0, Math.sin(a)); side.sub(tan.clone().multiplyScalar(side.dot(tan))).normalize(); fn(p, tan, side, r0 + (r1 - r0) * t, t); } };
+  const hairs = (curve, n, r0, r1) => { const hm = new T.MeshStandardMaterial({ color: '#d8e6c0', roughness: 1 }), hg = new T.CylinderGeometry(0.0009, 0.0005, 0.012, 3);
+    along(curve, n, r0, r1, (p, tan, side, r) => { const h = new T.Mesh(hg, hm); h.position.copy(p).add(side.clone().multiplyScalar(r + 0.005)); h.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), side.clone().add(tan.clone().multiplyScalar(0.5)).normalize()); g.add(h); }); };
+  const prickles = (curve, n, r0, r1) => { const pm = new T.MeshStandardMaterial({ color: '#9a4a36', roughness: 0.8 }), pg = new T.ConeGeometry(0.0035, 0.012, 5);
+    along(curve, n, r0, r1, (p, tan, side, r) => { const h = new T.Mesh(pg, pm); h.position.copy(p).add(side.clone().multiplyScalar(r + 0.004)); h.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), side.clone().sub(tan.clone().multiplyScalar(0.5)).normalize()); g.add(h); }); };
+  const nodes = (curve, r) => { const nm = new T.MeshStandardMaterial({ color: new T.Color(SD.col).lerp(new T.Color('#5f7a2a'), 0.4), roughness: 0.7 });
+    for (const t of [0.22, 0.45, 0.68]) { const n = new T.Mesh(new T.TorusGeometry(r * 1.05, r * 0.45, 6, 14), nm); n.position.copy(curve.getPointAt(t)); n.quaternion.setFromUnitVectors(new T.Vector3(0, 0, 1), curve.getTangentAt(t)); g.add(n); } };
+  if (SD.hairs) hairs(stemCurve, Math.round(40 + k * 40), R0, R1);
+  if (SD.prickles) prickles(stemCurve, 30, R0, R1);
+  if (SD.lenticels) { const lmx = new T.MeshStandardMaterial({ color: '#c9a98a', roughness: 1 });
+    along(stemCurve, 26, R0, R1, (p, tan, side, r, t) => { if (t > 0.8) return; const b = new T.Mesh(new T.BoxGeometry(r * 1.1, 0.002, 0.002), lmx); b.position.copy(p).add(side.clone().multiplyScalar(r * 0.98)); b.lookAt(p.clone().add(side)); g.add(b); }); }
+  if (SD.nodes) nodes(stemCurve, R1 * 1.1);
+  // опора для лазающих растений: колышек у огурца, ветвистая палочка у гороха
+  if (SD.stake) { const st0 = new T.Mesh(new T.CylinderGeometry(0.009, 0.011, H * 1.2, 8), new T.MeshStandardMaterial({ color: '#c9b07a', roughness: 0.7 })); st0.position.y = H * 0.6 - 0.05; g.add(st0);
+    for (const y of [0.3, 0.6, 0.9]) { const n = new T.Mesh(new T.TorusGeometry(0.012, 0.0025, 4, 10), new T.MeshStandardMaterial({ color: '#8a7a5a' })); n.position.y = H * y; n.rotation.x = Math.PI / 2; g.add(n); } }
+  if (SD.twig) { const tm = new T.MeshStandardMaterial({ color: '#7a5a3c', roughness: 1 }), tw = new T.Mesh(new T.CylinderGeometry(0.005, 0.008, H * 1.15, 6), tm); tw.position.y = H * 0.575 - 0.04; g.add(tw);
+    for (let j = 0; j < 4; j++) { const b = new T.Mesh(new T.CylinderGeometry(0.003, 0.004, 0.16, 5), tm), a = j * 1.9; b.position.set(Math.cos(a) * 0.05, H * (0.35 + j * 0.17), Math.sin(a) * 0.05); b.rotation.set(Math.sin(a) * 0.9, 0, -Math.cos(a) * 0.9); g.add(b); } }
+  // усики: закрученные пружинкой нити, которыми растение цепляется за опору
+  if (SD.tendrils) { const tdm = new T.MeshStandardMaterial({ color: '#9cc76a', roughness: 0.7 });
+    for (let i = 0; i < 2 + Math.floor(k * 4); i++) { const t = 0.2 + i * 0.13; if (t > 0.92) break; const p = stemCurve.getPointAt(t), a = i * 2.2 + 0.7, out = new T.Vector3(Math.cos(a), 0.25, Math.sin(a)).normalize();
+      const pts = []; for (let q = 0; q <= 24; q++) { const u = q / 24, ang = u * Math.PI * 5, rr = 0.012 * u; const c = p.clone().add(out.clone().multiplyScalar(0.05 * u + 0.012));
+        pts.push(c.add(new T.Vector3(Math.cos(ang) * rr, Math.sin(ang) * rr + 0.02 * u, Math.sin(ang) * rr * 0.5))); }
+      g.add(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), 40, 0.0022, 4), tdm)); } }
+  const leafletShape = (w, L = 0.11) => { const sh = new T.Shape(); sh.moveTo(0, 0); sh.quadraticCurveTo(L * 0.45, w, L, 0); sh.quadraticCurveTo(L * 0.45, -w, 0, 0); return new T.ShapeGeometry(sh, 6); };
+  const simpleLeaf = SD.leaf === 'blade' ? leafletShape(0.011, 0.26) : leafletShape(SD.w || 0.045, SD.leaf === 'broad' ? 0.12 : 0.11);
+  const leaflet = leafletShape(crop.type === 'berry' ? 0.05 : S.crop === 'strawberry' ? 0.045 : 0.03);
+  const compound = SD.leaf === 'compound';
   const makeLeaf = (size) => {
     const L = new T.Group();
-    if (!compound) { const m = new T.Mesh(simpleLeaf, lm); m.scale.setScalar(size * 1.5); L.add(m); return L; }
+    if (SD.leaf === 'trifoliate') { // земляника: длинный черешок и три зубчатых листочка
+      const len = 0.2 * size, pet = new T.Mesh(new T.CylinderGeometry(0.003, 0.004, len, 5), stemM); pet.rotation.z = -Math.PI / 2; pet.position.x = len / 2; L.add(pet);
+      for (const a of [-0.9, 0, 0.9]) { const m = new T.Mesh(leaflet, lm); m.scale.setScalar(size * 1.1); m.position.x = len; m.rotation.set(0, a, 0.2); L.add(m); }
+      return L;
+    }
+    if (!compound) { const m = new T.Mesh(simpleLeaf, lm); m.scale.setScalar(size * 1.5 * (SD.ls || 1)); m.rotation.x = SD.kind === 'stump' ? -1.35 : SD.leaf === 'blade' ? -0.3 : -0.85; L.add(m); return L; } // пластинку разворачиваем почти горизонтально
     const len = 0.26 * size;
     const rach = new T.Mesh(new T.CylinderGeometry(0.004, 0.006, len, 5), stemM); rach.rotation.z = -Math.PI / 2; rach.position.x = len / 2; L.add(rach);
     for (const t of [0.3, 0.55, 0.8]) for (const sd of [-1, 1]) {
@@ -2566,25 +2674,59 @@ function angio3D(T, col, st, k) {
     const tip = new T.Mesh(leaflet, lm); tip.scale.setScalar(size * 1.1); tip.position.x = len * 0.95; L.add(tip);
     return L;
   };
-  const nLeaves = Math.min(14, 3 + Math.floor(S.biomass * 0.6));
+  const nLeaves = SD.kind === 'culm' ? 4 : SD.kind === 'rosette' ? Math.min(9, 4 + Math.floor(S.biomass * 0.3)) : SD.kind === 'stump' ? Math.min(12, 5 + Math.floor(S.biomass * 0.4)) : Math.min(woody ? 20 : 14, 3 + Math.floor(S.biomass * (woody ? 0.9 : 0.6)));
   // верхушка: розетка молодых листьев, смотрящих вверх, — как у живого побега
   const youngTop = (pos, sz, n = 5) => { for (let j = 0; j < n; j++) { const L = makeLeaf(sz * (0.55 + (j % 2) * 0.25)); L.position.copy(pos); L.rotation.set(0, j * (Math.PI * 2 / n) + 0.3, 0.75 - droop * 0.9 + (j % 2) * 0.25); g.add(L); } };
-  youngTop(stemCurve.getPoint(1), 0.75);
+  if (SD.kind === 'stump') { // капуста: на верхушке кочерыжки плотный кочан из свёрнутых листьев
+    const hm = new T.MeshStandardMaterial({ color: leafCol.clone().lerp(new T.Color('#e4f0c8'), 0.45), roughness: 0.6 }), r = 0.06 + k * 0.07;
+    for (let j = 0; j < 3; j++) { const h = new T.Mesh(new T.SphereGeometry(r * (1 - j * 0.12), 20, 14), hm); h.scale.set(1, 0.85, 1); h.rotation.y = j; h.position.copy(stemCurve.getPoint(1)).add(new T.Vector3(0, r * 0.55, 0)); g.add(h); if (st >= 3) break; }
+  } else youngTop(stemCurve.getPoint(1), SD.kind === 'rosette' ? 0.5 : 0.75);
   // боковые побеги (пасынки, ветви) из пазух листьев, со своими листьями и верхушкой
-  const nBr = S.biomass < 4 ? 0 : Math.min(5, 1 + Math.floor((S.biomass - 4) / 3));
+  const nBr = S.biomass < 4 ? 0 : Math.min(SD.br, 1 + Math.floor((S.biomass - 4) / 3));
   for (let b = 0; b < nBr; b++) {
     const t = 0.25 + 0.5 * b / Math.max(1, nBr), base = stemCurve.getPoint(t), ang = b * 2.4 + 1.1;
     const dir = new T.Vector3(Math.cos(ang), 1.05 - droop * 0.6, Math.sin(ang)).normalize(), len = (0.18 + k * 0.32) * (1 - t * 0.5);
     const mid = base.clone().add(dir.clone().multiplyScalar(len * 0.5)).add(new T.Vector3(0, len * 0.08, 0)), end = base.clone().add(dir.clone().multiplyScalar(len));
     const bc = new T.QuadraticBezierCurve3(base, mid, end);
-    g.add(new T.Mesh(new T.TubeGeometry(bc, 12, 0.011, 6), stemM));
-    for (let j = 1; j <= 3; j++) { const L = makeLeaf((0.7 - j * 0.08) * (0.8 + k * 0.4)); L.position.copy(bc.getPoint(j / 4)); L.rotation.set(0, ang + (j % 2 ? 1.2 : -1.2), -0.3 + droop * 1.0); g.add(L); }
-    const cap = new T.Mesh(new T.SphereGeometry(0.011, 8, 6), stemM); cap.position.copy(end); g.add(cap);
+    const br0 = woody ? R0 * 0.45 : Math.max(0.006, R0 * 0.55);
+    g.add(taperTube(T, bc, br0, br0 * 0.5, stemM, 12, 6));
+    if (SD.hairs) hairs(bc, 12, br0, br0 * 0.5);
+    const nbl = woody ? 6 : 3;
+    for (let j = 1; j <= nbl; j++) { const L = makeLeaf((0.7 - j * 0.24 / nbl) * (0.8 + k * 0.4)); L.position.copy(bc.getPoint(j / (nbl + 1))); L.rotation.set(0, ang + (j % 2 ? 1.2 : -1.2), -0.3 + droop * 1.0); g.add(L); }
+    const cap = new T.Mesh(new T.SphereGeometry(br0 * 0.5, 8, 6), stemM); cap.position.copy(end); g.add(cap);
     youngTop(end, 0.45, 4);
   }
+  // малина: ещё несколько побегов-стеблей с шипами прямо от корня
+  if (SD.canes) for (let c = 0; c < Math.min(SD.canes, Math.floor(S.biomass / 5)); c++) {
+    const a = c * 2.6 + 0.8, base = new T.Vector3(Math.cos(a) * 0.04, 0, Math.sin(a) * 0.04), hh = H * (0.7 - c * 0.12);
+    const cc = new T.QuadraticBezierCurve3(base, base.clone().add(new T.Vector3(Math.cos(a) * 0.06, hh * 0.6, Math.sin(a) * 0.06)), base.clone().add(new T.Vector3(Math.cos(a) * 0.16, hh, Math.sin(a) * 0.16)));
+    g.add(taperTube(T, cc, R0 * 0.85, R1, stemM, 20, 6)); prickles(cc, 18, R0 * 0.85, R1);
+    for (let j = 1; j <= 4; j++) { const L = makeLeaf(0.75 + k * 0.3); L.position.copy(cc.getPoint(0.25 + j * 0.17)); L.rotation.set(0, a + (j % 2 ? 1.3 : -1.3), -0.3 + droop); g.add(L); }
+    youngTop(cc.getPoint(1), 0.5, 4);
+  }
+  // пшеница кустится: от узла кущения у земли растут ещё несколько соломин, у каждой свой колос
+  const tillerTops = [];
+  if (SD.kind === 'culm') for (let c = 0; c < Math.min(4, Math.floor(S.biomass / 4)); c++) {
+    const a = c * 2.4 + 0.5, base = new T.Vector3(Math.cos(a) * 0.015, 0, Math.sin(a) * 0.015), hh = H * (0.9 - (c % 2) * 0.08);
+    const cc = new T.QuadraticBezierCurve3(base, base.clone().add(new T.Vector3(Math.cos(a) * 0.04, hh * 0.5, Math.sin(a) * 0.04)), base.clone().add(new T.Vector3(Math.cos(a) * 0.1, hh, Math.sin(a) * 0.1)));
+    g.add(taperTube(T, cc, R0 * 0.9, R1, stemM, 16, 6)); nodes(cc, R1);
+    for (const t of [0.22, 0.45, 0.68]) { const L = makeLeaf(0.85); L.position.copy(cc.getPointAt(t)); L.rotation.set(0, a + t * 7, 0.15 + droop * 0.9); g.add(L); }
+    tillerTops.push(cc.getPoint(1));
+  }
+  // земляника пускает усы: ползучие побеги с маленькой дочерней розеткой на конце
+  if (SD.runners && S.biomass > 5) for (let c = 0; c < Math.min(3, Math.floor((S.biomass - 3) / 4)); c++) {
+    const a = c * 2.3 + 1.2, d = new T.Vector3(Math.cos(a), 0, Math.sin(a)), rim = 0.5 * ([1, 1, 1.15, 1.3][S.pot || 1]);
+    const cc = new T.CatmullRomCurve3([new T.Vector3(0, 0.03, 0), d.clone().multiplyScalar(rim * 0.6).add(new T.Vector3(0, 0.12, 0)), d.clone().multiplyScalar(rim + 0.08).add(new T.Vector3(0, 0.06, 0)), d.clone().multiplyScalar(rim + 0.2).add(new T.Vector3(0, -0.18, 0))]);
+    g.add(new T.Mesh(new T.TubeGeometry(cc, 30, 0.0035, 5), new T.MeshStandardMaterial({ color: '#b5523a', roughness: 0.7 })));
+    const end = cc.getPoint(1); for (let j = 0; j < 3; j++) { const L = makeLeaf(0.35); L.position.copy(end); L.rotation.set(0, j * 2.1, 0.6); g.add(L); }
+  }
   for (let i = 0; i < nLeaves; i++) {
-    const t = 0.12 + 0.82 * i / nLeaves, p = stemCurve.getPoint(t), L = makeLeaf((1.15 - t * 0.5) * (0.8 + k * 0.5));
-    L.position.copy(p); L.rotation.set(0, i * 2.4, -0.35 + droop * 1.1); g.add(L);
+    const low = SD.kind === 'rosette' || SD.kind === 'stump';
+    const t = low ? 0.25 + 0.7 * i / nLeaves : SD.kind === 'culm' ? 0.12 + 0.6 * i / nLeaves : 0.12 + 0.82 * i / nLeaves, p = stemCurve.getPoint(t);
+    const L = makeLeaf((1.15 - t * 0.5) * (0.8 + k * 0.5));
+    // у розетки листья смотрят вверх-наружу, у злаков листья-ленты дугой отгибаются от соломины
+    const tilt = SD.kind === 'rosette' ? 0.9 : SD.kind === 'stump' ? -0.15 + (i / nLeaves) * 0.75 : SD.kind === 'culm' ? 0.2 : -0.35;
+    L.position.copy(p); L.rotation.set(0, i * 2.4, tilt + droop * 1.1); g.add(L);
   }
   if (st < 3) return g;
   const petalM = new T.MeshStandardMaterial({ color: crop.petal || '#9cc35a', roughness: 0.5, side: T.DoubleSide });
@@ -2657,6 +2799,7 @@ function angio3D(T, col, st, k) {
       else { const fl = new T.Group(); for (let q = 0; q < 4; q++) { const p = new T.Mesh(sph(0.012, 8), st === 3 ? green : petalM); p.scale.set(1, 0.25, 0.7); const b = q / 4 * Math.PI * 2; p.position.set(Math.cos(b) * 0.01, 0, Math.sin(b) * 0.01); p.rotation.y = -b; fl.add(p); } fl.position.set(Math.cos(a) * 0.025, y, Math.sin(a) * 0.025); f.add(fl); } }
   }
   g.add(f);
+  for (const tp of tillerTops) { const f2 = f.clone(); f2.position.copy(tp); g.add(f2); }
   return g;
 }
 function proceduralPlant(T) {
@@ -2748,6 +2891,13 @@ const DZ_TINT = { mildew: '#f2f2ea', rust: '#d9722a', mosaic: '#e8d75a', spot: '
 async function buildPlant3D(T) {
   let h = 7; for (const c of S.sp + (S.crop || '')) h = (h * 31 + c.charCodeAt(0)) % 2147483647; RS = h || 7;
   const root = new T.Group(), lvl = levelOf(S.xp), pot = makePot(T, lvl, S.sp === 'algae'); root.add(pot);
+  if (S.sp !== 'algae') {
+    const k = [1, 1, 1.15, 1.3][S.pot || 1]; pot.scale.setScalar(k); pot.userData.top *= k;
+    if (potSoon(S)) for (let i = 0; i < (rootbound(S) ? 7 : 3); i++) { // корни лезут из-под горшка
+      const a = i / 7 * Math.PI * 2 + 0.4, r = new T.Mesh(new T.CylinderGeometry(0.008, 0.012, 0.16, 6), new T.MeshStandardMaterial({ color: 0xd9c49a, roughness: 1 }));
+      r.position.set(Math.cos(a) * 0.3 * k, 0.03, Math.sin(a) * 0.3 * k); r.rotation.set(Math.sin(a) * 1.2, 0, -Math.cos(a) * 1.2); root.add(r);
+    }
+  }
   let plant = null, usedModel = false;
   try { if (MODEL_FILES[S.sp]) { plant = await loadModel(MODEL_FILES[S.sp]); usedModel = true; } } catch (e) { plant = null; }
   if (!plant) plant = proceduralPlant(T);
@@ -3017,7 +3167,7 @@ async function update3D() {
   m3.amb.intensity = e.dl > 0 ? 0.12 : 0.22;
   m3.lamp.intensity = s.lamp ? 1.8 : 0;
   const dz = s.disease ? s.disease.id + Math.round(s.disease.sev * 4) : '';
-  const sig = [s.frost, s.sp, s.crop, Math.round(s.biomass * 2), stageOf(s), Math.round(s.fruit * 8), Math.round(s.turgor * 5), Math.round(s.hp / 12), dz, levelOf(s.xp), !!s.dead, s.sp === 'algae' ? Math.round(s.moisture / 12) + '/' + (s.lastP > 0.25) : '', Math.round(s.moisture / 25), Math.round(s.chl * 5)].join('|');
+  const sig = [s.frost, s.pot, potSoon(s), rootbound(s), s.sp, s.crop, Math.round(s.biomass * 2), stageOf(s), Math.round(s.fruit * 8), Math.round(s.turgor * 5), Math.round(s.hp / 12), dz, levelOf(s.xp), !!s.dead, s.sp === 'algae' ? Math.round(s.moisture / 12) + '/' + (s.lastP > 0.25) : '', Math.round(s.moisture / 25), Math.round(s.chl * 5)].join('|');
   if (sig !== m3sig && !m3busy) {
     m3busy = true; m3sig = sig;
     const plant = toonify(await buildPlant3D(T));
@@ -3265,6 +3415,7 @@ function showGame(on) { $('game').hidden = !on; $('openSettings').hidden = !on; 
 let pane = 'care', seenLog = '';
 const logKey = () => S && S.log[0] ? S.log[0].h + S.log[0].text : '';
 try { pane = localStorage.getItem('pp-pane') || 'care'; } catch (e) {}
+if (!['care', 'blocks', 'log'].includes(pane)) pane = 'care';
 function showPane(k) {
   pane = k;
   document.querySelectorAll('.ptabs [data-pane]').forEach(b => b.setAttribute('aria-selected', b.dataset.pane === k));
@@ -3278,16 +3429,15 @@ function showPane(k) {
 function paneBadges() {
   if (!S) return;
   const set = (k, on) => $('pt-' + k).classList.toggle('alert', !!on && pane !== k);
-  set('care', S.disease || S.turgor < 0.35 || S.dead);
+  set('care', S.disease || S.turgor < 0.35 || S.dead || rootbound(S));
   set('blocks', growthGate(S) && S.biomass >= growthGate(S).cap);
   if (pane === 'log') seenLog = logKey();
   set('log', S.log[0] && S.log[0].kind === 'warn' && logKey() !== seenLog);
-  set('gauges', false);
 }
 document.querySelector('.ptabs').addEventListener('click', ev => { const b = ev.target.closest('[data-pane]'); if (b) showPane(b.dataset.pane); });
 document.querySelector('.ptabs').addEventListener('keydown', ev => {
   if (ev.key !== 'ArrowRight' && ev.key !== 'ArrowLeft') return;
-  const ks = ['care', 'gauges', 'blocks', 'log'], i = (ks.indexOf(pane) + (ev.key === 'ArrowRight' ? 1 : 3)) % 4;
+  const ks = ['care', 'blocks', 'log'], i = (ks.indexOf(pane) + (ev.key === 'ArrowRight' ? 1 : 2)) % 3;
   showPane(ks[i]); $('pt-' + ks[i]).focus();
 });
 
