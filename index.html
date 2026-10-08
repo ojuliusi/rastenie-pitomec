@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Растение-питомец</title>
+<title>PetPlant</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@600;700&family=Nunito:wght@500;700;800;900&display=swap">
@@ -451,7 +451,7 @@ header #openSettings { flex: none; }
 <div class="wrap">
   <header>
     <div>
-      <h1>Растение-<span>питомец</span></h1>
+      <h1>Pet<span>Plant</span></h1>
     </div>
     <nav class="garden" id="garden" aria-label="Мои растения" hidden>
     <span class="row-label">Мои растения</span>
@@ -1895,7 +1895,7 @@ function decor2D(where) {
   let o = '';
   if (where === 'pot') {
     if (decorOn('pebbles')) ['#e8737a', '#6fa8dc', '#f2b45a', '#8bc46a', '#b48fd1', '#f6d36b'].forEach((c, i) => o += `<ellipse cx="${158 + i * 16}" cy="${302 - (i % 2)}" rx="5" ry="3" fill="${c}" stroke="rgba(0,0,0,.25)"/>`);
-    if (decorOn('bow')) o += `<g transform="translate(200 330)"><path d="M0 0 C-14 -12 -26 -6 -24 4 C-22 12 -10 8 0 0 Z M0 0 C14 -12 26 -6 24 4 C22 12 10 8 0 0 Z" fill="#ee86aa" stroke="#b44f76"/><path d="M-2 2 L-10 20 M2 2 L10 20" stroke="#ee86aa" stroke-width="4" stroke-linecap="round"/><circle r="4.5" fill="#d9658f"/></g>`;
+    if (false && decorOn('bow')) o += `<g transform="translate(200 330)"><path d="M0 0 C-14 -12 -26 -6 -24 4 C-22 12 -10 8 0 0 Z M0 0 C14 -12 26 -6 24 4 C22 12 10 8 0 0 Z" fill="#ee86aa" stroke="#b44f76"/><path d="M-2 2 L-10 20 M2 2 L10 20" stroke="#ee86aa" stroke-width="4" stroke-linecap="round"/><circle r="4.5" fill="#d9658f"/></g>`;
     if (decorOn('stars')) [[160, 360], [238, 350], [178, 388], [226, 382]].forEach(([x, y], i) => o += `<path transform="translate(${x} ${y}) scale(${0.8 + (i % 2) * 0.3})" d="M0 -7 L2 -2 L7 -2 L3 1 L4.5 6.5 L0 3.5 L-4.5 6.5 L-3 1 L-7 -2 L-2 -2 Z" fill="#f6d36b" stroke="#c99a2a"/>`);
     if (decorOn('label')) { const nm = ((G.student && G.student.name) || 'Моё').split(' ')[0].slice(0, 9); o += `<path d="M238 302 L238 262" stroke="#b08a5a" stroke-width="3"/><rect x="214" y="244" width="48" height="20" rx="4" fill="#fffaf0" stroke="#b08a5a" stroke-width="1.5"/><text x="238" y="258" font-size="10" text-anchor="middle" fill="#4a3a2e" font-weight="700">${esc(nm)}</text>`; }
     if (decorOn('ladybug')) o += `<g transform="translate(146 287)"><ellipse rx="8" ry="6" fill="#d9332a" stroke="#4a1a14"/><path d="M0 -6 L0 6" stroke="#4a1a14"/><circle cx="-8" cy="0" r="3.5" fill="#2a1a14"/><circle cx="-3" cy="-2" r="1.4" fill="#2a1a14"/><circle cx="3" cy="2" r="1.4" fill="#2a1a14"/><circle cx="4" cy="-3" r="1.2" fill="#2a1a14"/></g>`;
@@ -2802,7 +2802,12 @@ function decor3D(T, root, pot, plant) {
     const head = new T.Mesh(new T.SphereGeometry(0.016, 10, 8), M('#2a1a14')); head.position.set(0.034, 0.006, 0); g.add(head);
     for (const [px, pz] of [[-0.01, 0.017], [-0.01, -0.017], [0.012, 0.014], [0.012, -0.014]]) { const d = new T.Mesh(new T.SphereGeometry(0.007, 8, 6), M('#2a1a14')); d.position.set(px, 0.026, pz); g.add(d); }
     g.rotation.y = -a + Math.PI / 2; root.add(g); }
-  if (decorOn('gnome')) { const g = new T.Group(); g.position.set(0.72 * (jar ? 1 : k), 0, 0.15); g.rotation.y = -0.5;
+  if (decorOn('gnome')) { const g = new T.Group(); g.position.set(-0.75 * (jar ? 1 : k), 0, 0.28); g.rotation.y = 0.5; // слева от горшка: справа стоят часы
+    loadModel('models/room/gnome.glb').then(m => { // настоящий садовый гномик (Poly Haven, CC0)
+      const sz = new T.Box3().setFromObject(m).getSize(new T.Vector3()); m.scale.setScalar(0.4 / sz.y);
+      m.position.y -= new T.Box3().setFromObject(m).min.y; toonify(m);
+      g.clear(); g.add(m); g.rotation.y = 0.35;
+    }).catch(() => {});
     const b = new T.Mesh(new T.CylinderGeometry(0.06, 0.085, 0.16, 14), M('#3d7fc0')); b.position.y = 0.08; g.add(b);
     const f = new T.Mesh(new T.SphereGeometry(0.05, 14, 10), M('#f2c8a0')); f.position.y = 0.2; g.add(f);
     const bd = new T.Mesh(new T.ConeGeometry(0.045, 0.09, 12), M('#ffffff')); bd.position.set(0, 0.165, 0.03); bd.rotation.x = Math.PI; g.add(bd);
@@ -2825,6 +2830,7 @@ function makePot(T, lvl, jar) {
   const K = skinOf(S, lvl);
   const pts = [[0.0, 0], [0.32, 0], [0.42, 0.62], [0.47, 0.62], [0.47, 0.7], [0.4, 0.7], [0.36, 0.1], [0, 0.1]].map(([x, y]) => new T.Vector2(x, y));
   const pot = new T.Mesh(new T.LatheGeometry(pts, 48), new T.MeshStandardMaterial({ map: potTexture(T, K), roughness: 0.85 }));
+  pot.material.userData.outlineParameters = { visible: false }; // иначе контур внутренней стенки просвечивает полосой
   const rimM = new T.Mesh(new T.TorusGeometry(0.445, 0.04, 12, 48), new T.MeshStandardMaterial({ color: K.rim, roughness: 0.6, metalness: K.metal ? 0.6 : 0 }));
   rimM.rotation.x = Math.PI / 2; rimM.position.y = 0.69;
   const soil = new T.Mesh(new T.CircleGeometry(0.4, 40), new T.MeshStandardMaterial({ color: new T.Color(mix('#b88d5e', '#3d2818', S.moisture / 100)), roughness: 1 }));
@@ -3381,7 +3387,7 @@ function toonify(obj) {
     if (m.emissive) t.emissive = m.emissive.clone();
     t.depthWrite = m.depthWrite !== false;
     // тонкие листья-карточки и прозрачное стекло без контура: иначе выглядят грязно
-    t.userData.outlineParameters = { thickness: m.alphaTest > 0 || m.transparent ? 0 : 0.0045, color: [0.18, 0.13, 0.1], alpha: 1, visible: !(m.alphaTest > 0 || (m.transparent && m.opacity < 0.9)) };
+    t.userData.outlineParameters = m.userData.outlineParameters || { thickness: m.alphaTest > 0 || m.transparent ? 0 : 0.0045, color: [0.18, 0.13, 0.1], alpha: 1, visible: !(m.alphaTest > 0 || (m.transparent && m.opacity < 0.9)) };
     o.material = t;
   });
   return obj;
@@ -4045,7 +4051,7 @@ function renderExps(s, over) {
 // ---------- Туториал ----------
 // Приветствие при первом заходе (поверх выбора растения) и экскурсия по экрану после посадки первого растения.
 const TOUR_WELCOME = [
-  { k: 'Добро пожаловать', t: 'Растение-питомец 🌱', x: 'Здесь ты вырастишь настоящее растение — от семени или споры до плодов и семян. Оно живёт по законам биологии: без света не образует крахмал, от лишних удобрений у него горят корни, а в жару оно испаряет больше воды.' },
+  { k: 'Добро пожаловать', t: 'PetPlant 🌱', x: 'Здесь ты вырастишь настоящее растение — от семени или споры до плодов и семян. Оно живёт по законам биологии: без света не образует крахмал, от лишних удобрений у него горят корни, а в жару оно испаряет больше воды.' },
   { k: 'Как выиграть', t: 'Доведи растение до размножения', x: 'Ухаживай за ним, следи за приборами и проходи блоки курса: каждый блок открывает новые инструменты. Без пройденных блоков растение не вырастет до конца.' },
   { k: 'С чего начать', t: 'Выбери растение', x: 'Сначала выбери группу: водоросли, мхи, плауны, папоротники, голосеменные или цветковые. У каждой своя биология. Впиши своё имя — так учитель увидит твои успехи.', target: '#species' },
 ];
