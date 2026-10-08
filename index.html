@@ -278,6 +278,12 @@ footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-co
       <label class="chip"><input type="radio" name="season" id="season-autumn" value="autumn"><span>Осень</span></label>
       <label class="chip"><input type="radio" name="season" id="season-winter" value="winter"><span>Зима</span></label>
     </fieldset>
+    <fieldset class="modes seasons" id="themeSet">
+      <legend class="row-label">Тема оформления</legend>
+      <label class="chip"><input type="radio" name="theme" id="theme-system" value="system" checked><span>Как в системе</span></label>
+      <label class="chip"><input type="radio" name="theme" id="theme-light" value="light"><span>Светлая</span></label>
+      <label class="chip"><input type="radio" name="theme" id="theme-dark" value="dark"><span>Тёмная</span></label>
+    </fieldset>
     <fieldset class="modes" id="modeSet">
       <legend class="row-label">Как идёт время</legend>
       <label class="sp-card"><input type="radio" name="mode" id="mode-lessons" value="lessons" checked><span class="g">По занятиям</span><span class="t">Между занятиями растение ждёт. В конце урока ученик ухаживает за ним и нажимает «Прожить сутки».</span></label>
@@ -2132,6 +2138,19 @@ function applyMode() {
     : MODE === 'real' ? 'Растения живут в настоящем времени: день и ночь как за окном. Заходи проведать их каждый день. Прогресс сохраняется в этом браузере.'
     : 'Растения живут по занятиям: между уроками время стоит. Поухаживай за растением и нажми «Прожить сутки». Прогресс сохраняется в этом браузере.';
 }
+// тема: хранится только на этом устройстве
+function applyTheme(t) {
+  if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+  else delete document.documentElement.dataset.theme;
+  const el = document.getElementById('theme-' + (t || 'system')); if (el) el.checked = true;
+}
+let THEME = 'system';
+try { THEME = localStorage.getItem('pp-theme') || 'system'; } catch (e) {}
+applyTheme(THEME);
+$('themeSet').addEventListener('change', ev => {
+  THEME = ev.target.value; applyTheme(THEME);
+  try { localStorage.setItem('pp-theme', THEME); } catch (e) {}
+});
 $('seasonSet').addEventListener('change', ev => {
   const v = ev.target.value; SEASON_PICK = v;
   if (G) { G.season = v; SEASON = resolveSeason(); for (const k in G.plants) note(G.plants[k], null, `Время года: ${SEASONS[SEASON].name.toLowerCase()}${v === 'auto' ? ' (по календарю)' : ''}. Световой день ${Math.round(SEASONS[SEASON].set - SEASONS[SEASON].rise)} ч.`, 'info'); }

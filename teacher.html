@@ -17,9 +17,12 @@
   --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
 }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #10150e; --panel: #181f15; --ink: #e5ecdd; --muted: #98a38f; --line: #2b3526; --leaf: #6fc26b; --leaf-soft: #213220;
+  :root:not([data-theme="light"]) { --bg: #10150e; --panel: #181f15; --ink: #e5ecdd; --muted: #98a38f; --line: #2b3526; --leaf: #6fc26b; --leaf-soft: #213220;
     --water: #63aee6; --sun: #f0bd4a; --danger: #ec7259; --danger-soft: #3a1f19; color-scheme: dark; }
 }
+:root[data-theme="dark"] { --bg: #10150e; --panel: #181f15; --ink: #e5ecdd; --muted: #98a38f; --line: #2b3526; --leaf: #6fc26b; --leaf-soft: #213220;
+    --water: #63aee6; --sun: #f0bd4a; --danger: #ec7259; --danger-soft: #3a1f19; color-scheme: dark; }
+:root[data-theme="light"] { color-scheme: light; }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body); }
@@ -76,7 +79,7 @@ input { font: 500 14px var(--f-body); padding: 9px 12px; border-radius: 10px; bo
   <section id="board" hidden>
     <div class="row" style="justify-content: space-between; margin-bottom: 12px;">
       <span class="muted" id="updated"></span>
-      <span class="row"><input id="filter" placeholder="Найти ученика"><button class="btn" id="refresh" type="button">Обновить</button></span>
+      <span class="row"><select id="theme" class="btn" aria-label="Тема оформления"><option value="system">Тема как в системе</option><option value="light">Светлая тема</option><option value="dark">Тёмная тема</option></select><input id="filter" placeholder="Найти ученика"><button class="btn" id="refresh" type="button">Обновить</button></span>
     </div>
     <div class="stats" id="stats"></div>
     <div class="students" id="students" style="margin-top: 14px;"></div>
@@ -86,6 +89,10 @@ input { font: 500 14px var(--f-body); padding: 9px 12px; border-radius: 10px; bo
 // Тот же адрес, что в игре (Google Apps Script). Пока пусто, страница показывает подсказку.
 const SYNC_URL = '';
 const $ = id => document.getElementById(id);
+function applyTheme(t) { if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; $('theme').value = t || 'system'; }
+let theme = 'system'; try { theme = localStorage.getItem('pp-theme') || 'system'; } catch (e) {}
+applyTheme(theme);
+$('theme').addEventListener('change', e => { applyTheme(e.target.value); try { localStorage.setItem('pp-theme', e.target.value); } catch (er) {} });
 let data = [], key = '';
 try { key = localStorage.getItem('pp-teacher-key') || ''; } catch (e) {}
 $('key').value = key;
