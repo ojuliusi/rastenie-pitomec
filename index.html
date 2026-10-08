@@ -79,6 +79,15 @@ svg .maskify [stroke]:not([stroke="none"]) { stroke: #fff; stroke-width: 5px; }
 .lvl .xpbar i { display: block; height: 100%; background: var(--sun); transition: width .4s; }
 .lvl.up { animation: pop .9s ease-out; }
 @keyframes pop { 0% { transform: scale(1); } 30% { transform: scale(1.25); box-shadow: 0 0 0 6px color-mix(in srgb, var(--sun) 35%, transparent); } 100% { transform: scale(1); } }
+.scene-wrap { position: relative; }
+.fact { position: absolute; left: 12px; right: 12px; top: 12px; z-index: 2; background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--sun); border-radius: 12px; padding: 12px 14px; display: grid; gap: 6px; box-shadow: 0 10px 28px rgba(0,0,0,.2); animation: factIn .35s ease-out; }
+.fact.reveal { border-left-color: var(--leaf); }
+.fact .fact-k { font: 500 11px var(--f-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--sun); }
+.fact.reveal .fact-k { color: var(--leaf); }
+.fact b { font: 600 16px var(--f-body); }
+.fact p { margin: 0; font-size: 14px; }
+.fact .btn { justify-self: start; }
+@keyframes factIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
 .xpnote { margin: 0; padding: 0 14px 14px; font-size: 13px; color: var(--muted); }
 @keyframes rise { from { transform: translateY(0); opacity: .9; } to { transform: translateY(-60px); opacity: 0; } }
 .speed { display: flex; gap: 4px; }
@@ -192,7 +201,7 @@ svg .maskify [stroke]:not([stroke="none"]) { stroke: #fff; stroke-width: 5px; }
 
 footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; color: var(--muted); font-size: 13px; }
 .link { background: none; border: 0; padding: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font: inherit; }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } #scene .bub, #scene .spark, .lvl.up { animation: none; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } #scene .bub, #scene .spark, .lvl.up, .fact { animation: none; } }
 </style>
 </head>
 <body>
@@ -258,7 +267,15 @@ footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-co
             <button id="sp4" data-speed="4" aria-pressed="false">×4</button>
           </div>
         </div>
-        <svg id="scene" viewBox="0 0 400 440" role="img" aria-label="Растение в разрезе"></svg>
+        <div class="scene-wrap">
+          <svg id="scene" viewBox="0 0 400 440" role="img" aria-label="Растение в разрезе"></svg>
+          <div class="fact" id="fact" role="status" hidden>
+            <span class="fact-k" id="factK">Знаешь ли ты?</span>
+            <b id="factTitle"></b>
+            <p id="factText"></p>
+            <button class="btn" id="factOk">Понятно</button>
+          </div>
+        </div>
         <div class="vitals">
           <div class="vital"><label>Здоровье <b id="vHp">100</b></label><div class="bar"><i id="bHp"></i></div></div>
           <div class="vital"><label><span id="rootLabel">Корни</span> <b id="vRoot">100</b></label><div class="bar"><i id="bRoot"></i></div></div>
@@ -316,7 +333,7 @@ footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-co
             </div>
           </div>
           <div class="sick" id="sick" hidden>
-            <p class="row-label">Растение заболело</p>
+            <p class="row-label" id="sickLabel">Растение заболело</p>
             <p id="sickSym"></p>
             <div class="row"><button class="btn" id="aLoupe"><span class="dot" style="background:var(--muted)"></span>Осмотреть под лупой</button></div>
             <p class="look" id="sickLook" hidden></p>
@@ -683,30 +700,55 @@ const DISEASES = {
     look: 'Под лупой видны крошечные паукообразные клещи. Они высасывают клетки, а размножаются в сухом горячем воздухе.',
     cure: ['mist', 'soap'], hurts: 'chl',
     cured: 'Клещ отступил. Клещи не любят влажный воздух, поэтому в жару опрыскивай растение и не пересушивай почву.' },
-  blackleg: { name: 'Чёрная ножка', kind: 'грибковое заболевание всходов', sp: ['angio', 'gymno'], young: true,
+  blackleg: { name: 'Чёрная ножка', kind: 'болезнь всходов (почвенные грибы и оомицеты)', sp: ['angio', 'gymno'], young: true,
     when: (s, e) => s.moisture > 85,
     symptom: 'Стебелёк у самой земли потемнел и стал тонким, как ниточка. Росток заваливается.',
-    look: 'Основание стебля поражено грибком, который живёт в сырой почве. Он опасен для молодых всходов.',
+    look: 'Основание стебля поражено почвенными организмами: грибами и похожими на них оомицетами. Они живут в сырой почве и опасны для молодых всходов.',
     cure: ['dry'], hurts: 'root',
-    cured: 'Почва подсохла, зола подсушила стебелёк, и гриб отступил. Всходы нельзя переливать.' },
+    cured: 'Почва подсохла, зола подсушила стебелёк, и возбудитель отступил. Всходы нельзя переливать.' },
   shutte: { name: 'Шютте', kind: 'грибковое заболевание хвои', sp: ['gymno'],
     when: (s, e) => s.moisture > 75 && s.lightHist < 0.4,
     symptom: 'На хвое появились бурые пятна, хвоинки начали осыпаться.',
     look: 'На побуревшей хвое видны мелкие чёрные точки — плодовые тела гриба. Он развивается в сырости и тени.',
     cure: ['fungicide', 'cutleaves'], hurts: 'chl',
     cured: 'Больную хвою убрали, гриб остановлен. Сосна любит солнце и сухую почву.' },
-  mould: { name: 'Серая плесень', kind: 'грибковое заболевание', sp: ['moss', 'lycopod', 'fern'],
+  mould: { name: 'Плесень', kind: 'плесневые грибы', sp: ['moss', 'lycopod', 'fern'],
     when: (s, e) => s.moisture > 90 && e.temp > 19,
     symptom: 'Часть растения покрылась серым пушистым налётом и начала подгнивать.',
-    look: 'Серый пушок — это грибница с массой спор. Плесень разрастается, когда долго сыро и тепло, а воздух не движется.',
+    look: 'Серый пушок — это грибница плесневых грибов с массой спор. Плесень разрастается, когда долго сыро и тепло, а воздух не движется.',
     cure: ['dry', 'fungicide'], hurts: 'root',
     cured: 'Плесень остановлена. Даже влаголюбивым растениям вредно, когда вода стоит в горшке.' },
-  bloom: { name: 'Цветение воды', kind: 'размножение цианобактерий', sp: ['algae'],
+  bloom: { name: 'Цветение воды', kind: 'не болезнь, а конкуренция: цианобактерии вытесняют водоросль', sp: ['algae'], label: 'Беда в банке',
     when: (s, e) => e.temp > 25 && s.minerals > 62,
     symptom: 'Вода помутнела и стала сине-зелёной, появился неприятный запах.',
-    look: 'Под микроскопом — масса одноклеточных цианобактерий. Они бурно размножаются в тёплой воде с избытком солей и затеняют спирогиру.',
+    look: 'Под микроскопом — масса цианобактерий. Спирогира сама не заболела: соседи бурно размножаются в тёплой воде с избытком солей, затеняют её и отнимают ресурсы.',
     cure: ['changewater'], hurts: 'chl',
     cured: 'Свежая вода разбавила соли, и цианобактерии отступили. Не перегревай банку и не пересаливай воду.' },
+};
+// Плашки «Знаешь ли ты?»: подсказка при появлении болезни (без названия, чтобы не испортить диагноз) и факт после лечения.
+const FACTS = {
+  mosaic: ['Есть возбудители болезней настолько мелкие, что проходят даже через фильтр, который задерживает бактерии.',
+    'Вирус табачной мозаики — первый открытый вирус. В 1892 году русский учёный Дмитрий Ивановский заметил, что сок больного табака остаётся заразным даже после фильтра, задерживающего бактерии.'],
+  rust: ['Одно рыжее пятнышко на листе может нести сотни тысяч спор, и ветер уносит их на километры.',
+    'Многим ржавчинным грибам для жизни нужны два разных растения-хозяина. Ржавчина папоротников часть жизни проводит на пихте, а пузырчатая ржавчина сосны — на смородине и крыжовнике.'],
+  spot: ['Споры грибов есть в воздухе всегда: в кубометре воздуха их могут быть тысячи.',
+    'Мхи на редкость устойчивы к болезням: в их клетках много веществ, подавляющих грибы и бактерии. Поэтому заболевает обычно ослабленный мох.'],
+  chytrid: ['Некоторые грибы умеют плавать: их споры двигаются в воде с помощью жгутика.',
+    'Хитридиевые грибы — одни из самых древних грибов. Их плавающие споры со жгутиком похожи на сперматозоиды. Такие грибы могут погубить массу водорослей в озере за считанные дни.'],
+  mildew: ['Налёт на листьях бывает живым: иногда это целый организм, который растёт прямо поверх растения.',
+    'Мучнистая роса поражает тысячи видов растений, от дуба до огурца. Гриб живёт на поверхности листа и запускает в клетки тонкие «присоски» — гаустории.'],
+  aphid: ['Липкий налёт на листьях часто оставляют насекомые: это сладкие выделения, их называют падью. Ею кормятся муравьи.',
+    'Летом тля размножается без самцов, и самки рождают сразу живых детёнышей. За сезон сменяется до двадцати поколений. Одна божья коровка за день съедает десятки тлей.'],
+  mite: ['Тонкая паутинка на растении — не всегда работа паука.',
+    'Паутинный клещ — не насекомое, а паукообразное: у взрослого клеща 8 ног. Он размером около полумиллиметра, а в жару новое поколение вырастает примерно за неделю.'],
+  blackleg: ['В почве живут микроорганизмы, которые нападают только на самые молодые растения.',
+    'Чёрную ножку вызывают разные почвенные организмы. Часть из них, например питиум, — оомицеты: они похожи на грибы, но по происхождению ближе к бурым водорослям и диатомеям.'],
+  shutte: ['Хвоя тоже болеет, и некоторые болезни заметны весной, сразу после схода снега.',
+    '«Шютте» по-немецки значит «осыпание». Этот гриб — главный враг сосновых питомников: сеянцы могут потерять почти всю хвою.'],
+  mould: ['Пушистый налёт — это тысячи тончайших нитей, и на каждой могут созревать споры.',
+    'Плесневые грибы — важные «санитары» природы: они перерабатывают мёртвые остатки растений. На живое растение они переходят, когда оно ослаблено сыростью.'],
+  bloom: ['В воде живут не только водоросли, но и древние бактерии, которые тоже умеют фотосинтезировать.',
+    'Цианобактериям больше 3 миллиардов лет. Именно их фотосинтез наполнил атмосферу Земли кислородом. Но при тепле и избытке солей они захватывают водоём и вытесняют водоросли.'],
 };
 function newState(sp = 'angio') {
   return { sp, hour: 6, biomass: 0.6, moisture: sp === 'algae' ? 90 : 60, minerals: 50, starch: 6, hp: 100, rootHP: 100,
@@ -784,6 +826,7 @@ function step(s) {
       const chance = (D.when(s, e) ? 0.008 : 0) + (D.bg && s.biomass > (D.bgMin || 2) ? D.bg : 0);
       if (chance && Math.random() < chance * (1 + (100 - s.hp) / 50)) {
         s.disease = { id, sev: 0.05, looked: false };
+        s.fact = { id, kind: 0 };
         note(s, null, 'Что-то не так! ' + D.symptom + ' Осмотри растение и выбери лечение.', 'warn');
         break;
       }
@@ -1363,9 +1406,19 @@ function render() {
   $('banner').hidden = !over;
   if (s.dead) { $('bTitle').textContent = 'Растение погибло'; $('bText').textContent = s.dead + ' Попробуй ещё раз и следи за приборами.'; }
   else if (s.done) { $('bTitle').textContent = 'Цикл завершён!'; $('bText').textContent = `${SP.stages[6][1]} На это ушло ${Math.floor(s.hour / 24) + 1} дн.`; }
+  const fc = s.fact && FACTS[s.fact.id];
+  $('fact').hidden = !fc;
+  if (fc) {
+    const D = DISEASES[s.fact.id];
+    $('fact').classList.toggle('reveal', s.fact.kind === 1);
+    $('factK').textContent = s.fact.kind === 1 ? 'Интересный факт' : 'Знаешь ли ты?';
+    $('factTitle').textContent = s.fact.kind === 1 ? `${D.name} (${D.kind})` : (D.label || 'Растение заболело') + '. Подсказка для диагноза';
+    $('factText').textContent = fc[s.fact.kind];
+  }
   $('sick').hidden = !s.disease || over;
   if (s.disease && !over) {
     const D = DISEASES[s.disease.id];
+    $('sickLabel').textContent = D.label || 'Растение заболело';
     $('sickSym').textContent = D.symptom + (s.disease.sev >= 0.6 ? ' Болезнь зашла далеко!' : '');
     $('sickLook').hidden = !s.disease.looked;
     $('sickLook').textContent = s.disease.looked ? D.look : '';
@@ -1424,6 +1477,7 @@ $('cures').addEventListener('click', ev => {
   const k = b.dataset.cure, D = DISEASES[S.disease.id];
   if (D.cure.includes(k)) {
     note(S, null, `Диагноз: ${D.name.toLowerCase()} (${D.kind}). «${CURES[k][0]}» помогло! ${D.cured}`, 'good');
+    S.fact = { id: S.disease.id, kind: 1 };
     S.disease = null; S.cool.cured = S.hour;
     addXP(S, 25);
   } else {
@@ -1432,6 +1486,8 @@ $('cures').addEventListener('click', ev => {
   }
   render(); renderGarden(); save();
 });
+
+$('factOk').onclick = () => { S.fact = null; render(); save(); };
 
 let speed = 1, acc = 0;
 document.querySelectorAll('.speed button').forEach(b => b.onclick = () => {
