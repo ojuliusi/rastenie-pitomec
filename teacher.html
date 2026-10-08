@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Растение-питомец: учитель</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: шапка со сводкой по классу, ниже карточка на каждого ученика */
+:root {
+  --bg: #eef1e7; --panel: #f9fbf5; --ink: #1d281b; --muted: #5e6a57; --line: #d3dbc8;
+  --leaf: #357f3a; --leaf-soft: #dcebd5; --water: #2a73ad; --sun: #c98a12; --danger: #b8402b; --danger-soft: #f6dfd8;
+  --f-display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --f-body: "Golos Text", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #10150e; --panel: #181f15; --ink: #e5ecdd; --muted: #98a38f; --line: #2b3526; --leaf: #6fc26b; --leaf-soft: #213220;
+    --water: #63aee6; --sun: #f0bd4a; --danger: #ec7259; --danger-soft: #3a1f19; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; padding-block: 24px 48px; display: grid; gap: 18px; }
+h1 { font: 700 clamp(20px, 3.4vw, 28px)/1.15 var(--f-display); margin: 0; }
+h1 span { color: var(--leaf); }
+.sub { margin: 4px 0 0; color: var(--muted); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.btn { font: 600 14px var(--f-body); padding: 9px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+.btn.primary { background: var(--water); border-color: var(--water); color: #fff; }
+.btn:focus-visible, input:focus-visible { outline: 2px solid var(--water); outline-offset: 2px; }
+input { font: 500 14px var(--f-body); padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); min-width: 0; }
+.muted { color: var(--muted); font-size: 13px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.stat { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.stat b { display: block; font: 500 24px/1.2 var(--f-mono); font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--muted); }
+.students { display: grid; gap: 12px; }
+.student { display: grid; grid-template-columns: minmax(160px, 220px) minmax(0, 1fr); gap: 14px; }
+@media (max-width: 680px) { .student { grid-template-columns: minmax(0, 1fr); } }
+.student h3 { margin: 0; font: 600 17px var(--f-body); }
+.plants { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 10px; }
+.plant { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 4px; min-width: 0; }
+.plant.bad { border-color: var(--danger); background: var(--danger-soft); }
+.plant .t { font-weight: 600; }
+.plant .k { font-size: 13px; color: var(--muted); }
+.bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 3px; }
+.tag { display: inline-block; font: 500 11px var(--f-mono); padding: 2px 8px; border-radius: 6px; background: var(--leaf-soft); color: var(--leaf); }
+.tag.bad { background: var(--danger-soft); color: var(--danger); }
+.tag.done { background: color-mix(in srgb, var(--water) 16%, transparent); color: var(--water); }
+.err { color: var(--danger); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Растение-<span>питомец</span> · учитель</h1>
+    <p class="sub">Прогресс учеников: растения, стадии, здоровье, уровни и пройденные блоки курса.</p>
+  </header>
+
+  <section class="card" id="setup" hidden>
+    <p><b>Сбор прогресса ещё не подключён.</b> Чтобы игры учеников присылали сюда данные, нужно один раз опубликовать скрипт в Google Таблице и вписать его адрес в игру.</p>
+  </section>
+
+  <form class="card row" id="login">
+    <label for="key" class="muted">Пароль учителя</label>
+    <input id="key" type="password" autocomplete="current-password" placeholder="Пароль из скрипта">
+    <button class="btn primary" type="submit">Показать класс</button>
+    <span class="err" id="loginErr"></span>
+  </form>
+
+  <section id="board" hidden>
+    <div class="row" style="justify-content: space-between; margin-bottom: 12px;">
+      <span class="muted" id="updated"></span>
+      <span class="row"><input id="filter" placeholder="Найти ученика"><button class="btn" id="refresh" type="button">Обновить</button></span>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="students" id="students" style="margin-top: 14px;"></div>
+  </section>
+</div>
+<script>
+// Тот же адрес, что в игре (Google Apps Script). Пока пусто, страница показывает подсказку.
+const SYNC_URL = '';
+const $ = id => document.getElementById(id);
+let data = [], key = '';
+try { key = localStorage.getItem('pp-teacher-key') || ''; } catch (e) {}
+$('key').value = key;
+$('setup').hidden = !!SYNC_URL;
+
+const ago = t => {
+  if (!t) return 'нет данных';
+  const m = Math.round((Date.now() - t) / 60000);
+  if (m < 1) return 'только что'; if (m < 60) return `${m} мин назад`;
+  const h = Math.round(m / 60); if (h < 24) return `${h} ч назад`;
+  return `${Math.round(h / 24)} дн. назад`;
+};
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+async function loadData() {
+  if (!SYNC_URL) { $('loginErr').textContent = 'Сначала нужно подключить сбор прогресса.'; return; }
+  $('loginErr').textContent = 'Загружаю…';
+  try {
+    const r = await fetch(`${SYNC_URL}?key=${encodeURIComponent(key)}`);
+    const j = await r.json();
+    if (!j.ok) { $('loginErr').textContent = j.error || 'Не получилось загрузить данные.'; $('board').hidden = true; return; }
+    try { localStorage.setItem('pp-teacher-key', key); } catch (e) {}
+    data = j.students || [];
+    $('loginErr').textContent = '';
+    $('board').hidden = false;
+    $('updated').textContent = 'Обновлено: ' + new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    draw();
+  } catch (e) {
+    $('loginErr').textContent = 'Нет связи с таблицей. Проверьте интернет и адрес скрипта.';
+  }
+}
+function draw() {
+  const q = $('filter').value.trim().toLowerCase();
+  const list = data.filter(s => !q || (s.name || '').toLowerCase().includes(q)).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
+  const plants = data.flatMap(s => s.plants || []);
+  const stats = [
+    [data.length, 'учеников'], [plants.length, 'растений'],
+    [plants.filter(p => p.status === 'болеет').length, 'болеют сейчас'],
+    [plants.filter(p => p.status === 'погибло').length, 'погибли'],
+    [plants.filter(p => p.status === 'цикл завершён').length, 'циклов завершено'],
+    [plants.reduce((a, p) => a + (p.blocks || 0), 0), 'блоков пройдено'],
+  ];
+  $('stats').innerHTML = stats.map(([n, t]) => `<div class="stat"><b>${n}</b><span>${t}</span></div>`).join('');
+  $('students').innerHTML = list.length ? list.map(s => `
+    <article class="card student">
+      <div><h3>${esc(s.name)}</h3><div class="muted">Был в игре: ${ago(s.updated)}</div><div class="muted">${esc(s.season || '')}${s.mode === 'real' ? ' · реальное время' : ' · по занятиям'}</div></div>
+      <div class="plants">${(s.plants || []).map(p => {
+        const bad = p.status === 'погибло' || p.status === 'болеет';
+        const tag = p.status === 'погибло' ? 'bad' : p.status === 'болеет' ? 'bad' : p.status === 'цикл завершён' ? 'done' : '';
+        const col = p.hp < 40 ? 'var(--danger)' : p.hp < 65 ? 'var(--sun)' : 'var(--leaf)';
+        return `<div class="plant ${bad ? 'bad' : ''}">
+          <div class="t">${esc(p.plant)} <span class="muted">· ${esc(p.group)}</span></div>
+          <div class="k">${esc(p.stage)} · день ${p.day} · ур. ${p.level}${p.gen > 1 ? ` · поколение ${p.gen}` : ''}</div>
+          <div class="k">Здоровье ${p.hp}</div><div class="bar"><i style="width:${Math.max(0, Math.min(100, p.hp))}%;background:${col}"></i></div>
+          <div class="k">Блоки курса: ${p.blocks} из ${p.blocksTotal}</div>
+          <div><span class="tag ${tag}">${esc(p.status)}${p.disease ? ': ' + esc(p.disease) : ''}</span></div>
+        </div>`; }).join('') || '<span class="muted">Растений пока нет</span>'}</div>
+    </article>`).join('') : '<p class="muted">Пока никто не прислал прогресс. Данные появляются, когда ученик открывает игру с указанным именем.</p>';
+}
+$('login').addEventListener('submit', e => { e.preventDefault(); key = $('key').value.trim(); loadData(); });
+$('refresh').onclick = loadData;
+$('filter').addEventListener('input', draw);
+if (key && SYNC_URL) loadData();
+setInterval(() => { if (!$('board').hidden && !document.hidden) loadData(); }, 60000);
+</script>
+</body>
+</html>

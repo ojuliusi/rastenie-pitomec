@@ -108,6 +108,13 @@ svg .maskify [stroke]:not([stroke="none"]) { stroke: #fff; stroke-width: 5px; }
 .cut-side .diag-msg { color: var(--danger); font-size: 13px; }
 .cut-side .diag-msg:empty { display: none; }
 #cutText { font-size: 15px; line-height: 1.55; }
+.name-set { display: grid; gap: 6px; max-width: 420px; }
+.seasons { display: flex; flex-wrap: wrap; gap: 8px; }
+.seasons legend { width: 100%; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 99px; cursor: pointer; font-size: 14px; }
+.chip:has(input:checked) { border-color: var(--leaf); background: var(--leaf-soft); }
+.chip input { accent-color: var(--leaf); margin: 0; }
+.pill.season { background: color-mix(in srgb, var(--water) 14%, transparent); color: var(--water); }
 .xpnote { margin: 0; padding: 0 14px 14px; font-size: 13px; color: var(--muted); }
 @keyframes rise { from { transform: translateY(0); opacity: .9; } to { transform: translateY(-60px); opacity: 0; } }
 .speed { display: flex; gap: 4px; }
@@ -258,6 +265,19 @@ footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-co
       <button class="btn danger" id="replant" hidden>Посадить заново</button>
       <span class="locked-note">Растения разных групп растут одновременно. Переключаться между ними можно вкладками над растением.</span>
     </div>
+    <div class="name-set">
+      <label class="row-label" for="studentName">Имя и фамилия ученика</label>
+      <input id="studentName" class="select" maxlength="40" autocomplete="name" placeholder="Например, Маша Иванова">
+      <span class="locked-note">Нужно, чтобы учитель видел твой прогресс.</span>
+    </div>
+    <fieldset class="modes seasons" id="seasonSet">
+      <legend class="row-label">Время года</legend>
+      <label class="chip"><input type="radio" name="season" id="season-auto" value="auto" checked><span>По календарю</span></label>
+      <label class="chip"><input type="radio" name="season" id="season-spring" value="spring"><span>Весна</span></label>
+      <label class="chip"><input type="radio" name="season" id="season-summer" value="summer"><span>Лето</span></label>
+      <label class="chip"><input type="radio" name="season" id="season-autumn" value="autumn"><span>Осень</span></label>
+      <label class="chip"><input type="radio" name="season" id="season-winter" value="winter"><span>Зима</span></label>
+    </fieldset>
     <fieldset class="modes" id="modeSet">
       <legend class="row-label">Как идёт время</legend>
       <label class="sp-card"><input type="radio" name="mode" id="mode-lessons" value="lessons" checked><span class="g">По занятиям</span><span class="t">Между занятиями растение ждёт. В конце урока ученик ухаживает за ним и нажимает «Прожить сутки».</span></label>
@@ -281,6 +301,7 @@ footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-co
         <div class="stage-top">
           <span class="clock" id="clock">День 1 · 06:00</span>
           <span class="who" id="who"></span>
+          <span class="pill season" id="seasonPill"></span>
           <span class="pill" id="stagePill">Проросток</span>
           <span class="lvl" id="lvl" title="Уровень растения"><b id="lvlNum">Ур. 1</b><span id="lvlName">Новичок</span><span class="xpbar"><i id="xpFill"></i></span></span>
           <div class="row" id="dayBtns" hidden>
@@ -427,7 +448,7 @@ const HARM = 1.6;
 const SPECIES = {
   algae: {
     group: 'Водоросли', name: 'Спирогира', trait: 'Нитчатая водоросль в банке с водой. Нет корней, стебля и листьев.',
-    start: 'sill', sat: 0.5, pmax: 0.9, burnAt: 2, dryLo: 8, span: 20, wiltDmg: 1.4, transp: 0.12, rotThr: null, heatMax: 28,
+    start: 'sill', sat: 0.5, pmax: 0.9, burnAt: 2, dryLo: 8, span: 20, wiltDmg: 1.4, transp: 0.12, rotThr: null, heatMax: 28, coldMin: 3,
     green: '#4f9a3a', rootWord: 'Клетки', wetWord: 'Уровень воды в банке', wetOk: [45, 100], trWord: 'Испарение из банки',
     water: 'Долить отстоянную воду', feed: 'Добавить соли в воду', sample: 'нить спирогиры', leaves: 'нити', pot: 'банку',
     stages: [
@@ -449,7 +470,7 @@ const SPECIES = {
   },
   moss: {
     group: 'Мхи', name: 'Кукушкин лён', trait: 'Нет корней, только ризоиды. Любит тень и сырость, без воды не размножится.',
-    start: 'room', sat: 0.25, pmax: 0.75, burnAt: 0.6, dryLo: 28, span: 30, wiltDmg: 0.25, transp: 1.3, rotThr: null, heatMax: 28,
+    start: 'room', sat: 0.25, pmax: 0.75, burnAt: 0.6, dryLo: 28, span: 30, wiltDmg: 0.25, transp: 1.3, rotThr: null, heatMax: 28, coldMin: -15,
     green: '#4c8a2e', rootWord: 'Ризоиды', wetWord: 'Влажность почвы', wetOk: [45, 98], trWord: 'Испарение',
     water: 'Полить и опрыскать', feed: 'Подкормить', sample: 'веточка мха', leaves: 'листочки', pot: 'горшок',
     stages: [
@@ -470,7 +491,7 @@ const SPECIES = {
   },
   lycopod: {
     group: 'Плауны', name: 'Плаун булавовидный', trait: 'Первые растения с настоящими корнями. Споры зреют в колосках.',
-    start: 'room', sat: 0.3, pmax: 0.8, burnAt: 0.7, dryLo: 14, span: 30, wiltDmg: 1.1, transp: 0.8, rotThr: 30, heatMax: 29,
+    start: 'room', sat: 0.3, pmax: 0.8, burnAt: 0.7, dryLo: 14, span: 30, wiltDmg: 1.1, transp: 0.8, rotThr: 30, heatMax: 29, coldMin: -8,
     green: '#3b7a3a', rootWord: 'Корни', wetWord: 'Влажность почвы', wetOk: [35, 90], trWord: 'Испарение листочками',
     water: 'Полить', feed: 'Подкормить', sample: 'веточка плауна', leaves: 'листочки', pot: 'горшок',
     stages: [
@@ -490,7 +511,7 @@ const SPECIES = {
   },
   fern: {
     group: 'Папоротники', name: 'Щитовник мужской', trait: 'Вайи и споры в сорусах. Любит тень и влажную почву.',
-    start: 'room', sat: 0.3, pmax: 0.8, burnAt: 0.7, dryLo: 16, span: 30, wiltDmg: 1.1, transp: 1.1, rotThr: 30, heatMax: 29,
+    start: 'room', sat: 0.3, pmax: 0.8, burnAt: 0.7, dryLo: 16, span: 30, wiltDmg: 1.1, transp: 1.1, rotThr: 30, heatMax: 29, coldMin: 1,
     green: '#3f8a3c', rootWord: 'Корни', wetWord: 'Влажность почвы', wetOk: [35, 90], trWord: 'Испарение вайями',
     water: 'Полить', feed: 'Подкормить', sample: 'кусочек вайи', leaves: 'вайи', pot: 'горшок',
     stages: [
@@ -510,7 +531,7 @@ const SPECIES = {
   },
   gymno: {
     group: 'Голосеменные', name: 'Сосна обыкновенная', trait: 'Семена лежат открыто на чешуях шишек. Опыление ветром. Любит солнце.',
-    start: 'sill', sat: 0.8, pmax: 0.95, burnAt: 2, dryLo: 0, span: 25, wiltDmg: 0.9, transp: 0.45, rotThr: 12, heatMax: 34,
+    start: 'sill', sat: 0.8, pmax: 0.95, burnAt: 2, dryLo: 0, span: 25, wiltDmg: 0.9, transp: 0.45, rotThr: 12, heatMax: 34, coldMin: -30,
     green: '#2d5a36', rootWord: 'Корни', wetWord: 'Влажность почвы', wetOk: [20, 80], trWord: 'Испарение хвоей',
     water: 'Полить', feed: 'Подкормить', sample: 'хвоинка', leaves: 'хвоя', pot: 'горшок',
     stages: [
@@ -531,7 +552,7 @@ const SPECIES = {
   },
   angio: {
     group: 'Покрытосеменные', name: 'Цветковое растение', trait: 'Цветок, опыление и плод с семенами внутри. Любит свет.',
-    start: 'sill', sat: 1, pmax: 0.9, burnAt: 2, dryLo: 6, span: 30, wiltDmg: 1.3, transp: 1, rotThr: 16, heatMax: 32,
+    start: 'sill', sat: 1, pmax: 0.9, burnAt: 2, dryLo: 6, span: 30, wiltDmg: 1.3, transp: 1, rotThr: 16, heatMax: 32, coldMin: 5,
     green: '#3e8a35', rootWord: 'Корни', wetWord: 'Влажность почвы', wetOk: [30, 85], trWord: 'Испарение листьями',
     water: 'Полить', feed: 'Подкормить', sample: 'лист', leaves: 'листья', pot: 'горшок',
     stages: [
@@ -722,6 +743,7 @@ const TX = {
     starve: 'Растение погибло от голода: без света нет фотосинтеза, а без него нет крахмала.',
     heat: 'Растение перегрелось и не успевало пить столько, сколько испаряло.',
     sun: 'Растение погибло от солнечных ожогов: ему нужна полутень.',
+    cold: 'Растение замёрзло: в клетках образовался лёд и разорвал их. Холодостойкость у растений разная.',
     disease: 'Растение погибло от болезни: её не вылечили вовремя.' },
 };
 function tx(sp, key, vars = {}) {
@@ -865,16 +887,29 @@ function newState(sp = 'angio') {
     unlocked: {}, pollinated: false, fruit: 0, lastP: 0,
     done: false, dead: null, rootHarm: null, cause: null, stageIdx: 0, log: [], cool: {}, iodine: null, xp: 0, gen: 1, lvlUp: 0, disease: null };
 }
-function daylight(h) { const x = h % 24; return (x > 6 && x < 20) ? Math.sin(Math.PI * (x - 6) / 14) : 0; }
+// Времена года: длина дня, сила солнца, погода на балконе, отопление в квартире
+const SEASONS = {
+  spring: { name: 'Весна', rise: 6, set: 20, sun: 0.8, out: [9, 9], heating: false },
+  summer: { name: 'Лето', rise: 4.5, set: 21.5, sun: 1, out: [19, 15], heating: false },
+  autumn: { name: 'Осень', rise: 7, set: 18.5, sun: 0.65, out: [5, 6], heating: true },
+  winter: { name: 'Зима', rise: 9, set: 16, sun: 0.35, out: [-9, 4], heating: true },
+};
+let SEASON = 'summer';
+const seasonByMonth = m => m < 2 || m === 11 ? 'winter' : m < 5 ? 'spring' : m < 8 ? 'summer' : 'autumn';
+function daylight(h) { const Z = SEASONS[SEASON], x = h % 24; return (x > Z.rise && x < Z.set) ? Math.sin(Math.PI * (x - Z.rise) / (Z.set - Z.rise)) : 0; }
 function env(s) {
   const L = LOC[s.loc], SP = SPECIES[s.sp], dl = daylight(s.hour);
-  let sun = dl * L.light; if (s.shade) sun *= 0.45;
+  const Z = SEASONS[SEASON];
+  let sun = dl * L.light * Z.sun; if (s.shade) sun *= 0.45;
   const light = clamp(sun + (s.lamp ? 0.35 : 0), 0, 1);
-  const temp = L.t0 + dl * L.amp * (s.shade ? 0.6 : 1) + (s.lamp ? 1 : 0);
+  let temp = s.loc === 'balcony' ? Z.out[0] + dl * Z.out[1] * (s.shade ? 0.6 : 1) : L.t0 + dl * L.amp * Z.sun * (s.shade ? 0.6 : 1);
+  if (Z.heating && s.loc === 'sill') temp += 1.5; // батарея под подоконником
+  if (s.lamp) temp += 1;
   const leafArea = Math.min(3, 0.5 + s.biomass * 0.12);
   const stomata = s.turgor > 0.35 ? 1 : 0.35;
   const tr = leafArea * (0.3 + 1.4 * light) * (1 + Math.max(0, temp - 20) * 0.1) * stomata * 0.55 * SP.transp;
-  return { dl, light, temp, leafArea, stomata, tr };
+  const dryAir = Z.heating && s.loc !== 'balcony' ? (s.loc === 'sill' ? 1.45 : 1.2) : 1; // отопление сушит воздух
+  return { dl, light, temp, leafArea, stomata, tr: tr * dryAir, dryAir };
 }
 function stageOf(s) {
   if (s.done) return 6; if (s.pollinated) return 5; if (s.biomass >= 16) return 4;
@@ -913,17 +948,18 @@ function step(s) {
 
   // фотосинтез и дыхание
   const hot = SP.heatMax - 2;
-  const tf = temp <= hot ? 1 : Math.max(0.15, 1 - (temp - hot) * 0.13);
+  const warm = clamp((temp - (SP.coldMin <= -8 ? -2 : SP.coldMin + 2)) / 10, 0, 1); // в холоде рост и фотосинтез замедляются
+  const tf = (temp <= hot ? 1 : Math.max(0.15, 1 - (temp - hot) * 0.13)) * warm;
   const P = (burnt ? 0.5 : 1) * Math.min(1, light / SP.sat) * SP.pmax * Math.min(1, s.turgor * 1.3) * s.chl * leafArea * tf * e.stomata;
   s.lastP = P;
   s.starch += P;
-  s.starch -= (0.04 + s.biomass * 0.01) * (1 + (temp - 20) * 0.03);
+  s.starch -= (0.04 + s.biomass * 0.01) * clamp(1 + (temp - 20) * 0.035, 0.03, 2); // в холоде дыхание почти замирает
   let starving = false; if (s.starch < 0) { s.starch = 0; starving = true; }
 
   // рост
   const gate = growthGate(s);
   if (s.starch > 1.5 && s.minerals > 2 && s.turgor > 0.4 && s.biomass < 24 && !(gate && s.biomass >= gate.cap)) {
-    const g = 0.09 * PACE * Math.min(1, s.starch / 12) * Math.min(1, s.minerals / 30) * (s.rootHP / 100);
+    const g = 0.09 * PACE * warm * Math.min(1, s.starch / 12) * Math.min(1, s.minerals / 30) * (s.rootHP / 100);
     s.biomass = gate ? Math.min(gate.cap, s.biomass + g) : s.biomass + g; s.starch -= g * 2.5 / PACE; s.minerals = Math.max(0, s.minerals - g * 4 / PACE);
   }
   if (s.pollinated && s.fruit < 1 && s.starch > 1 && s.turgor > 0.3) { s.fruit = Math.min(1, s.fruit + PACE / 40); s.starch -= 0.4; }
@@ -960,8 +996,10 @@ function step(s) {
   if (s.disease) harm.push(['disease', 0.3 + s.disease.sev * 1.1]);
   if (s.turgor < 0.3) harm.push([s.rootHP < 50 && s.rootHarm ? s.rootHarm : 'wilt', SP.wiltDmg]);
   if (s.rootHP < 35) harm.push([s.rootHarm || 'rot', 0.9]);
-  if (starving) harm.push(['starve', 0.7]);
+  const dormant = warm === 0 && temp >= SP.coldMin; // зимний покой: растение не растёт и почти не тратит запасы
+  if (starving && !dormant) harm.push(['starve', 0.7]);
   if (temp > SP.heatMax && (s.sp === 'algae' || s.turgor < 0.5)) harm.push(['heat', 1]);
+  if (temp < SP.coldMin) harm.push(['cold', 1.2 + (SP.coldMin - temp) * 0.15]);
   if (burnt) harm.push(['sun', 0.8 + 3 * (light - SP.burnAt) / (1 - SP.burnAt)]);
   if (harm.length) { harm.sort((a, b) => b[1] - a[1]); s.cause = harm[0][0] === 'starve' && s.turgor < 0.3 ? 'wilt' : harm[0][0]; s.hp -= harm.reduce((a, b) => a + b[1], 0) * HARM; }
   else s.hp = Math.min(100, s.hp + 0.4);
@@ -972,13 +1010,18 @@ function step(s) {
     note(s, 'dark', 'Мало света. Фотосинтез почти не идёт, новый крахмал не образуется, а старый растение тратит на дыхание.' + locked('lamp', 'Фитолампа'), 'warn', 36);
   if (s.lightHist < 0.15 * SP.sat && s.lightHist >= 0.06) note(s, 'dim', 'Растение тянется к свету и растёт медленно: здесь слишком тускло для активного фотосинтеза.', 'warn', 48);
   if (s.lightHist < 0.06) note(s, 'pale', `Бледнеют ${SP.leaves}: без света хлорофилл не образуется.`, 'warn', 48);
-  if (starving) note(s, 'starve', 'Запас крахмала кончился. Растению нечем дышать и не из чего расти. Нужен свет.', 'warn', 24);
+  if (dormant && s.loc === 'balcony') note(s, 'dormant', 'Мороз. Растение в зимнем покое: оно не растёт и почти не тратит запасы. Весной проснётся.', 'info', 72);
+  if (starving && !dormant) note(s, 'starve', 'Запас крахмала кончился. Растению нечем дышать и не из чего расти. Нужен свет.', 'warn', 24);
   if (burnt) note(s, 'sun', tx(s.sp, 'sun') + locked('shade', 'Притенение'), 'warn', 20);
   if (s.turgor < 0.35) note(s, 'wilt', tx(s.sp, 'wilt'), 'warn', 12);
   if (SP.rotThr && s.soggy > SP.rotThr) note(s, 'rot', tx(s.sp, 'rot'), 'warn', 18);
   if (s.minerals > 85) note(s, 'burn', tx(s.sp, 'burn'), 'warn', 12);
   if (temp > Math.min(29, SP.heatMax - 1) && (tr > 1.4 || s.sp === 'algae' || s.sp === 'gymno'))
     note(s, 'heat', tx(s.sp, 'heat', { t: temp.toFixed(0), ml: (tr * 10).toFixed(0) }), 'warn', 30);
+  if (temp < SP.coldMin) note(s, 'cold', `Холодно: ${temp.toFixed(0)} °C. Для этого растения это слишком: вода в клетках может замёрзнуть. Занеси горшок в тепло!`, 'warn', 12);
+  else if (temp < SP.coldMin + 8 && s.loc === 'balcony') note(s, 'cool', `Прохладно: ${temp.toFixed(0)} °C. В холоде фотосинтез и рост замедляются.` + (s.sp === 'gymno' ? ' Сосна зимостойкая: в мороз она просто впадает в покой.' : s.sp === 'moss' ? ' Мхи выносливы и переживают даже морозы.' : ''), 'info', 48);
+  if (e.dryAir > 1.3 && s.sp !== 'algae') note(s, 'dryair', 'Работает отопление: воздух над батареей сухой и тёплый, почва на подоконнике сохнет быстрее.', 'info', 96);
+  if (SEASON === 'winter' && e.dl > 0.6 && light < 0.25 && !s.lamp && SP.sat > 0.5) note(s, 'winterdark', 'Зимой день короткий, а солнце низкое: даже на подоконнике света мало. Растениям помогает фитолампа.', 'warn', 72);
   if (s.minerals < 12 && s.biomass > 2) note(s, 'poor', tx(s.sp, 'poor') + locked('feed', 'Подкормка'), 'warn', 36);
   if (e.dl === 0 && !s.cool.night) note(s, 'night', 'Наступила ночь. Без света фотосинтеза нет: растение только дышит и расходует крахмал.', 'info', 1e9);
 
@@ -1007,6 +1050,10 @@ const LESSON = location.hash === '#urok';
 const KEY = LESSON ? 'plant-pet-lesson-v2' : 'plant-pet-real-v2';
 const OLD_KEY = LESSON ? 'plant-pet-lesson-v1' : 'plant-pet-real-v1';
 const HOUR = 3600000;
+// Адрес таблицы учителя (Google Apps Script). Пока пусто, прогресс никуда не отправляется.
+const SYNC_URL = '';
+let SEASON_PICK = 'auto', NAME_PENDING = '';
+const resolveSeason = () => { const pick = G ? G.season || 'auto' : SEASON_PICK; return pick === 'auto' ? seasonByMonth(new Date().getMonth()) : pick; };
 // Сад: у каждой группы может быть своё растение, все растут одновременно. S — растение, открытое сейчас.
 let G = null, S = null;
 // Режим времени: 'lessons' — время стоит, пока ученик не нажмёт «Прожить сутки»; 'real' — живёт по настоящим часам.
@@ -1025,7 +1072,7 @@ function load() {
       for (const k in g.plants || {}) if (SPECIES[k]) plants[k] = revive(g.plants[k], unlocked);
       const active = plants[g.active] ? g.active : Object.keys(plants)[0];
       if (active) MODE = g.mode || 'lessons';
-      return active ? { active, plants, unlocked, mode: MODE } : null;
+      return active ? { active, plants, unlocked, mode: MODE, season: g.season || 'auto', student: g.student || null } : null;
     }
     r = localStorage.getItem(OLD_KEY); // растение из прошлой версии игры
     if (r) {
@@ -1041,11 +1088,13 @@ function save() {
     if (!G) { localStorage.removeItem(KEY); localStorage.removeItem(OLD_KEY); return; }
     const plants = {};
     for (const k in G.plants) { const { unlocked, ...rest } = G.plants[k]; plants[k] = rest; }
-    localStorage.setItem(KEY, JSON.stringify({ active: G.active, unlocked: G.unlocked, mode: MODE, plants }));
+    localStorage.setItem(KEY, JSON.stringify({ active: G.active, unlocked: G.unlocked, mode: MODE, season: G.season, student: G.student, plants }));
+    pushProgress(false);
   } catch (e) {}
 }
 function fresh(sp, crop) {
-  if (!G) G = { active: sp, plants: {}, unlocked: {}, mode: MODE };
+  if (!G) G = { active: sp, plants: {}, unlocked: {}, mode: MODE, season: SEASON_PICK, student: null };
+  ensureStudent();
   const P = newState(sp);
   P.unlocked = G.unlocked;
   if (sp === 'angio') { P.cropRandom = !crop || crop === 'random'; P.crop = P.cropRandom ? CROP_KEYS[Math.floor(Math.random() * CROP_KEYS.length)] : crop; }
@@ -1059,6 +1108,27 @@ function fresh(sp, crop) {
     note(P, null, `Поколение ${P.gen}. Уровень ${levelOf(P.xp)} — «${LEVEL_NAMES[levelOf(P.xp) - 1]}» — сохранился.`, 'good');
   }
   G.plants[sp] = P; G.active = sp; S = P;
+}
+function ensureStudent() {
+  if (!G) return;
+  if (!G.student) G.student = { id: 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), name: NAME_PENDING };
+}
+// Отправка короткой сводки учителю: не чаще раза в минуту, и сразу при уходе со страницы
+let lastPush = 0;
+function pushProgress(force) {
+  if (!SYNC_URL || !G || LESSON) return;
+  ensureStudent();
+  if (!force && Date.now() - lastPush < 60000) return;
+  lastPush = Date.now();
+  const plants = SP_ORDER.filter(k => G.plants[k]).map(k => {
+    const P = G.plants[k], st = stageOf(P);
+    return { group: SPECIES[k].group, plant: k === 'angio' ? cropOf(P).name : SPECIES[k].name, stage: SPECIES[k].stages[st][0], stageNum: st,
+      day: Math.floor(P.hour / 24) + 1, hp: Math.round(P.hp), level: levelOf(P.xp), xp: P.xp, gen: P.gen || 1,
+      status: P.dead ? 'погибло' : P.done ? 'цикл завершён' : P.disease ? 'болеет' : 'растёт', disease: P.disease ? DISEASES[P.disease.id].name : '',
+      blocks: BLOCKS[k].filter(b => (G.unlocked[k] || {})[b.id]).length, blocksTotal: BLOCKS[k].length };
+  });
+  const body = JSON.stringify({ id: G.student.id, name: G.student.name || 'Без имени', mode: MODE, season: SEASONS[SEASON].name, updated: Date.now(), plants });
+  try { fetch(SYNC_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body, keepalive: true }).catch(() => {}); } catch (e) {}
 }
 function select(sp) { G.active = sp; S = G.plants[sp]; renderBlocks(); render(); renderGarden(); save(); }
 
@@ -1101,9 +1171,11 @@ function drawBackground(s, e) {
     <radialGradient id="glow"><stop offset="0" stop-color="#ffe7a0" stop-opacity=".75"/><stop offset="1" stop-color="#ffe7a0" stop-opacity="0"/></radialGradient></defs>`;
   if (s.loc === 'balcony') {
     o += `<rect width="400" height="440" fill="${sky}"/>`;
-    if (dl > 0) { const sx = 40 + (h - 6) / 14 * 320, sy = 150 - dl * 110; o += `<circle cx="${f1(sx)}" cy="${f1(sy)}" r="22" fill="#ffd34d"/>`; }
+    if (dl > 0) { const Z = SEASONS[SEASON], sx = 40 + (h - Z.rise) / (Z.set - Z.rise) * 320, sy = 150 - dl * 110 * (0.5 + Z.sun * 0.5); o += `<circle cx="${f1(sx)}" cy="${f1(sy)}" r="22" fill="#ffd34d"/>`; }
     else o += `<circle cx="320" cy="70" r="14" fill="#e9ecf5"/><circle cx="326" cy="65" r="13" fill="${sky}"/>`;
-    o += `<rect y="280" width="400" height="160" fill="#8e8576"/>`;
+    o += `<rect y="280" width="400" height="160" fill="${SEASON === 'winter' ? '#e7edf1' : '#8e8576'}"/>`;
+    if (SEASON === 'autumn') for (let k = 0; k < 14; k++) o += `<ellipse cx="${(k * 61) % 400}" cy="${292 + (k * 37) % 140}" rx="6" ry="3" transform="rotate(${k * 40} ${(k * 61) % 400} ${292 + (k * 37) % 140})" fill="${k % 2 ? '#d9822b' : '#c4502a'}"/>`;
+    if (SEASON === 'winter') for (let k = 0; k < 30; k++) o += `<circle cx="${(k * 53) % 400}" cy="${(k * 97) % 280}" r="${1.5 + (k % 3)}" fill="#ffffff" opacity=".85"/>`;
     for (let x = 8; x < 400; x += 26) o += `<rect x="${x}" y="230" width="5" height="180" fill="#4f5560"/>`;
     o += `<rect y="224" width="400" height="9" fill="#3f444d"/>`;
   } else {
@@ -1112,7 +1184,9 @@ function drawBackground(s, e) {
     if (L.win) {
       const W = s.loc === 'sill' ? [70, 20, 300, 300] : [16, 50, 96, 150];
       o += `<rect x="${W[0]}" y="${W[1]}" width="${W[2]}" height="${W[3]}" fill="${sky}"/>`;
-      if (dl > 0 && s.loc === 'sill') { const sx = W[0] + 30 + (h - 6) / 14 * (W[2] - 60), sy = W[1] + 150 - dl * 110; o += `<circle cx="${f1(sx)}" cy="${f1(sy)}" r="20" fill="#ffd34d"/>`; }
+      if (SEASON === 'winter') o += `<rect x="${W[0]}" y="${W[1] + W[3] * 0.82}" width="${W[2]}" height="${W[3] * 0.18}" fill="#eef3f6"/>`;
+      else if (SEASON === 'autumn') o += `<rect x="${W[0]}" y="${W[1] + W[3] * 0.8}" width="${W[2]}" height="${W[3] * 0.2}" fill="#b9853a" opacity=".55"/>`;
+      if (dl > 0 && s.loc === 'sill') { const Z = SEASONS[SEASON], sx = W[0] + 30 + (h - Z.rise) / (Z.set - Z.rise) * (W[2] - 60), sy = W[1] + 150 - dl * 110 * (0.5 + Z.sun * 0.5); o += `<circle cx="${f1(sx)}" cy="${f1(sy)}" r="20" fill="#ffd34d"/>`; }
       o += `<rect x="${W[0]}" y="${W[1]}" width="${W[2]}" height="${W[3]}" fill="none" stroke="#f3efe6" stroke-width="7"/>`;
       o += `<path d="M${W[0] + W[2] / 2} ${W[1]} v${W[3]} M${W[0]} ${W[1] + W[3] * 0.4} h${W[2]}" stroke="#f3efe6" stroke-width="5"/>`;
       if (s.shade) o += `<rect x="${W[0] - 4}" y="${W[1] - 4}" width="${W[2] + 8}" height="${W[3] + 8}" fill="#efe6cf" opacity=".72"/>` +
@@ -1630,6 +1704,9 @@ function setLocked(btn, locked, disabled) {
 function render() {
   if (!S) return;
   const s = S, SP = SPc(), e = env(s), st = stageOf(s);
+  SEASON = resolveSeason();
+  const Z = SEASONS[SEASON];
+  $('seasonPill').textContent = `${Z.name} · световой день ${Math.round(Z.set - Z.rise)} ч`;
   $('clock').textContent = fmtTime(s.hour, !LESSON && MODE === 'real');
   $('who').innerHTML = `${SP.group}: <b>${s.sp === 'angio' ? (s.stageIdx >= 3 || !s.cropRandom ? cropOf(s).name : 'неизвестно, что вырастет') : SP.name}</b>`;
   const pill = $('stagePill'); pill.textContent = s.dead ? 'Погибло' : SP.stages[st][0]; pill.classList.toggle('bad', !!s.dead);
@@ -2055,6 +2132,15 @@ function applyMode() {
     : MODE === 'real' ? 'Растения живут в настоящем времени: день и ночь как за окном. Заходи проведать их каждый день. Прогресс сохраняется в этом браузере.'
     : 'Растения живут по занятиям: между уроками время стоит. Поухаживай за растением и нажми «Прожить сутки». Прогресс сохраняется в этом браузере.';
 }
+$('seasonSet').addEventListener('change', ev => {
+  const v = ev.target.value; SEASON_PICK = v;
+  if (G) { G.season = v; SEASON = resolveSeason(); for (const k in G.plants) note(G.plants[k], null, `Время года: ${SEASONS[SEASON].name.toLowerCase()}${v === 'auto' ? ' (по календарю)' : ''}. Световой день ${Math.round(SEASONS[SEASON].set - SEASONS[SEASON].rise)} ч.`, 'info'); }
+  SEASON = resolveSeason(); render(); renderGarden(); save();
+});
+$('studentName').addEventListener('input', ev => {
+  NAME_PENDING = ev.target.value.trim();
+  if (G) { ensureStudent(); G.student.name = NAME_PENDING; save(); }
+});
 $('modeSet').addEventListener('change', ev => {
   const m = ev.target.value; if (m === MODE) return;
   MODE = m;
@@ -2077,6 +2163,10 @@ $('modeSet').addEventListener('change', ev => {
 function start(data) {
   G = (data && data.G) || load();
   if (G && G.mode) MODE = G.mode;
+  SEASON = resolveSeason();
+  if (G) $(`season-${G.season || 'auto'}`).checked = true;
+  if (G && G.student) $('studentName').value = G.student.name || '';
+  document.addEventListener('visibilitychange', () => { if (document.hidden) pushProgress(true); });
   S = G ? G.plants[G.active] : null;
   window.claude?.hot?.snapshot?.(() => ({ G }));
   applyMode();
