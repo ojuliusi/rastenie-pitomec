@@ -409,12 +409,10 @@ header #openSettings { flex: none; }
 /* ===== Подсказка у заблокированной кнопки ===== */
 .btn[aria-disabled="true"] { background: var(--line) !important; color: var(--lock); box-shadow: 0 2px 0 var(--outline); opacity: .85; cursor: help; }
 .btn[data-tip] { position: relative; }
-.btn[data-tip]:is([aria-disabled="true"], :disabled):hover::after, .btn[data-tip].tip-show::after {
-  content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 9px); transform: translateX(-50%); z-index: 30;
-  width: max-content; max-width: min(250px, 80vw); padding: 7px 11px; border-radius: 12px; background: var(--ink); color: var(--panel);
-  font: 700 12.5px/1.35 var(--f-body); text-align: center; white-space: normal; pointer-events: none; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
-.btn[data-tip]:is([aria-disabled="true"], :disabled):hover::before, .btn[data-tip].tip-show::before {
-  content: ''; position: absolute; left: 50%; bottom: calc(100% + 3px); transform: translateX(-50%); border: 6px solid transparent; border-top-color: var(--ink); border-bottom: 0; z-index: 30; pointer-events: none; }
+.float-tip { position: fixed; z-index: 80; max-width: min(260px, calc(100vw - 16px)); padding: 7px 11px; border-radius: 12px; background: var(--ink); color: var(--panel);
+  font: 700 12.5px/1.35 var(--f-body); text-align: center; pointer-events: none; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+.float-tip::after { content: ''; position: absolute; left: var(--ax, 50%); top: 100%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: var(--ink); border-bottom: 0; }
+.float-tip.below::after { top: auto; bottom: 100%; border: 6px solid transparent; border-bottom-color: var(--ink); border-top: 0; }
 /* ===== Раскраски горшка ===== */
 .row-label-flex { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .row-label-flex .btn { text-transform: none; letter-spacing: 0; font-size: 13px; padding: 5px 12px; }
@@ -426,7 +424,6 @@ header #openSettings { flex: none; }
 .decor-ico { font-size: 44px; line-height: 1.1; padding: 6px 0; }
 .skin.on { border-color: var(--leaf); box-shadow: 0 3px 0 var(--leaf); background: var(--leaf-soft); }
 .skin[aria-disabled="true"] { cursor: help; }
-.skin[data-tip]:hover::after { content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%); width: max-content; max-width: 200px; padding: 6px 10px; border-radius: 10px; background: var(--ink); color: var(--panel); font: 700 12px/1.3 var(--f-body); z-index: 5; pointer-events: none; }
 /* ===== Опыты и украшения ===== */
 .exp-hint { font: 600 11.5px var(--f-body); color: var(--muted); text-transform: none; letter-spacing: 0; margin-left: 6px; }
 .exps-more { display: contents; }
@@ -3801,12 +3798,25 @@ $('bRestart').onclick = () => plant(S.sp, S.sp === 'angio' ? (S.cropRandom ? 'ra
 $('bChoose').onclick = () => openSettings(false, true);
 function showGame(on) { $('game').hidden = !on; $('openSettings').hidden = !on; }
 
+// подсказка у заблокированной кнопки: отдельная плашка поверх страницы, сдвигается так, чтобы не обрезаться краем
+const tipEl = document.createElement('div'); tipEl.className = 'float-tip'; tipEl.hidden = true; tipEl.setAttribute('role', 'tooltip'); document.body.appendChild(tipEl);
+let tipFor = null, tipT = 0;
+function showTip(el) {
+  tipFor = el; tipEl.textContent = el.dataset.tip; tipEl.hidden = false;
+  const r = el.getBoundingClientRect(), w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+  const x = clamp(r.left + r.width / 2 - w / 2, 8, innerWidth - w - 8); let y = r.top - h - 10; const below = y < 8; if (below) y = r.bottom + 10;
+  tipEl.style.left = x + 'px'; tipEl.style.top = y + 'px'; tipEl.classList.toggle('below', below);
+  tipEl.style.setProperty('--ax', clamp(r.left + r.width / 2 - x, 12, w - 12) + 'px');
+}
+const hideTip = () => { tipEl.hidden = true; tipFor = null; };
+const tipTarget = t => { const b = t && t.closest && t.closest('[data-tip]'); return b && (b.getAttribute('aria-disabled') === 'true' || b.disabled) ? b : null; };
+document.addEventListener('mouseover', ev => { const b = tipTarget(ev.target); if (b) { clearTimeout(tipT); showTip(b); } else if (tipFor) hideTip(); });
+document.addEventListener('scroll', hideTip, true);
 // нажатие на заблокированную кнопку не выполняет действие, а показывает подсказку (на телефоне нет наведения)
 document.addEventListener('click', ev => {
   const b = ev.target.closest && ev.target.closest('.btn[aria-disabled="true"]'); if (!b) return;
   ev.stopImmediatePropagation(); ev.preventDefault();
-  document.querySelectorAll('.btn.tip-show').forEach(x => x.classList.remove('tip-show'));
-  b.classList.add('tip-show'); clearTimeout(b._tipT); b._tipT = setTimeout(() => b.classList.remove('tip-show'), 2800);
+  if (b.dataset.tip) { showTip(b); clearTimeout(tipT); tipT = setTimeout(hideTip, 2800); }
 }, true);
 // ---------- Раскраски горшка ----------
 // Коллекция раскрасок: часть открывается уровнем растения, часть — достижениями (опыты, блоки, лечение, пересадка, урожай).
