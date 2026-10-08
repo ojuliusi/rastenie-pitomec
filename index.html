@@ -501,6 +501,7 @@ header #openSettings { flex: none; }
     <div class="row">
       <button class="btn primary" id="plant"><span class="dot"></span><span class="lbl">Посадить</span></button>
       <button class="btn danger" id="replant" hidden>Посадить заново</button>
+      <button class="btn danger" id="removePlant" hidden>Убрать это растение</button>
       <span class="locked-note">Растения разных групп растут одновременно. Переключаться между ними можно вкладками над растением.</span>
     </div>
     <div class="name-set">
@@ -524,7 +525,7 @@ header #openSettings { flex: none; }
     </fieldset>
     <fieldset class="modes" id="modeSet">
       <legend class="row-label">Как идёт время</legend>
-      <label class="sp-card"><input type="radio" name="mode" id="mode-lessons" value="lessons" checked><span class="g">По занятиям</span><span class="t">Между занятиями растение ждёт. В конце урока ученик ухаживает за ним и нажимает «Прожить сутки».</span></label>
+      <label class="sp-card"><input type="radio" name="mode" id="mode-lessons" value="lessons" checked><span class="g">По занятиям</span><span class="t">Пока игра открыта, идут часы: 1 час — 30 секунд. Закрыл игру — растение ждёт. «Прожить сутки» проматывает время.</span></label>
       <label class="sp-card"><input type="radio" name="mode" id="mode-real" value="real"><span class="g">В реальном времени</span><span class="t">Растение живёт круглые сутки, как настоящее. Заходить к нему нужно каждый день.</span></label>
     </fieldset>
     <div class="danger-zone" id="dangerZone">
@@ -1895,7 +1896,7 @@ function load() {
     let r = localStorage.getItem(KEY);
     if (r) {
       const g = JSON.parse(r), unlocked = g.unlocked || {}, plants = {};
-      for (const k in g.plants || {}) if (SPECIES[k]) plants[k] = revive(g.plants[k], unlocked);
+      for (const k in g.plants || {}) if (g.plants[k] && SPECIES[g.plants[k].sp]) { plants[k] = revive(g.plants[k], unlocked); plants[k].key = k; }
       const active = plants[g.active] ? g.active : Object.keys(plants)[0];
       if (active) MODE = g.mode || 'lessons';
       return active ? { active, plants, unlocked, mode: MODE, season: g.season || 'auto', student: g.student || null, decor: g.decor || {}, decorHide: g.decorHide || {}, potSkin: g.potSkin || 'auto', stats: g.stats || {}, skinSeen: g.skinSeen || {}, finals: g.finals || [] } : null;
@@ -1904,7 +1905,8 @@ function load() {
     if (r) {
       const old = JSON.parse(r); if (!SPECIES[old.sp]) old.sp = 'angio';
       const unlocked = old.unlocked && !('root' in old.unlocked) && !('repro' in old.unlocked) ? old.unlocked : {};
-      return { active: old.sp, plants: { [old.sp]: revive(old, unlocked) }, unlocked, mode: MODE };
+      const P0 = revive(old, unlocked); P0.key = old.sp;
+      return { active: old.sp, plants: { [old.sp]: P0 }, unlocked, mode: MODE };
     }
   } catch (e) {}
   return null;
@@ -1918,22 +1920,34 @@ function save() {
     pushProgress(false);
   } catch (e) {}
 }
-function fresh(sp, crop) {
+// растения в саду хранятся по ключу: первое растение группы — 'angio', следующие — 'angio-2', 'angio-3'…
+const plantKeys = () => G ? Object.keys(G.plants).sort((a, b) => SP_ORDER.indexOf(G.plants[a].sp) - SP_ORDER.indexOf(G.plants[b].sp) || (parseInt(a.split('-')[1]) || 1) - (parseInt(b.split('-')[1]) || 1)) : [];
+const plantsOf = sp => plantKeys().filter(k => G.plants[k].sp === sp);
+function newKey(sp) { if (!G || !G.plants[sp]) return sp; let n = 2; while (G.plants[sp + '-' + n]) n++; return sp + '-' + n; }
+// подпись растения во вкладках: культура или группа, а если таких несколько — с номером
+function plantTitle(k) {
+  const P = G.plants[k], base = P.sp === 'angio' ? cropOf(P).name : SPECIES[P.sp].group;
+  const same = plantKeys().filter(x => { const Q = G.plants[x]; return Q.sp === P.sp && (Q.sp !== 'angio' || cropOf(Q).name === base); });
+  return same.length > 1 ? `${base} ${same.indexOf(k) + 1}` : base;
+}
+const MAX_PLANTS = 12;
+function fresh(sp, crop, key) {
   if (!G) G = { active: sp, plants: {}, unlocked: {}, mode: MODE, season: SEASON_PICK, student: null };
   ensureStudent();
-  const P = newState(sp);
+  key = key || newKey(sp);
+  const P = newState(sp); P.key = key;
   P.unlocked = G.unlocked;
   if (sp === 'angio') { P.cropRandom = !crop || crop === 'random'; P.crop = P.cropRandom ? CROP_KEYS[Math.floor(Math.random() * CROP_KEYS.length)] : crop; }
   if (!LESSON && MODE === 'real') { const now = new Date(); now.setMinutes(0, 0, 0); P.hour = now.getHours(); P.lastTs = now.getTime(); }
   const SP = SPECIES[sp];
   note(P, null, `${sp === 'angio' ? `Посадили семя: ${P.cropRandom ? 'что вырастет — сюрприз' : CROPS[P.crop].name.toLowerCase()}.` : SP.tx.start} Место: ${LOC[P.loc].name.toLowerCase()}. ${SP.stages[0][1]}`, 'good');
   P.cool.stage0 = P.hour;
-  const prev = G.plants[sp];
+  const prev = G.plants[key];
   if (prev && prev.xp) {
     P.xp = prev.xp; P.gen = (prev.gen || 1) + 1;
     note(P, null, `Поколение ${P.gen}. Уровень ${levelOf(P.xp)} — «${LEVEL_NAMES[levelOf(P.xp) - 1]}» — сохранился.`, 'good');
   }
-  G.plants[sp] = P; G.active = sp; S = P;
+  G.plants[key] = P; G.active = key; S = P;
 }
 function ensureStudent() {
   if (!G) return;
@@ -1946,9 +1960,9 @@ function pushProgress(force) {
   ensureStudent();
   if (!force && Date.now() - lastPush < 60000) return;
   lastPush = Date.now();
-  const plants = SP_ORDER.filter(k => G.plants[k]).map(k => {
-    const P = G.plants[k], st = stageOf(P);
-    return { group: SPECIES[k].group, plant: k === 'angio' ? cropOf(P).name : SPECIES[k].name, stage: SPECIES[k].stages[st][0], stageNum: st,
+  const plants = plantKeys().map(key => {
+    const P = G.plants[key], k = P.sp, st = stageOf(P);
+    return { group: SPECIES[k].group, plant: (k === 'angio' ? cropOf(P).name : SPECIES[k].name) + (plantsOf(k).length > 1 ? ` (${plantTitle(key)})` : ''), stage: SPECIES[k].stages[st][0], stageNum: st,
       day: Math.floor(P.hour / 24) + 1, hp: Math.round(P.hp), level: levelOf(P.xp), xp: P.xp, gen: P.gen || 1,
       status: P.dead ? 'погибло' : P.done ? 'цикл завершён' : P.disease ? 'болеет' : 'растёт', disease: P.disease ? DISEASES[P.disease.id].name : '',
       blocks: BLOCKS[k].filter(b => (G.unlocked[k] || {})[b.id]).length, blocksTotal: BLOCKS[k].length };
@@ -1956,7 +1970,7 @@ function pushProgress(force) {
   const body = JSON.stringify({ id: G.student.id, name: G.student.name || 'Без имени', mode: MODE, season: SEASONS[SEASON].name, updated: Date.now(), plants, finals: (G.finals || []).slice(-5) }); // ячейка таблицы вмещает до 50 000 символов
   try { fetch(SYNC_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body, keepalive: true }).catch(() => {}); } catch (e) {}
 }
-function select(sp) { G.active = sp; S = G.plants[sp]; renderBlocks(); render(); renderGarden(); save(); }
+function select(key) { G.active = key; S = G.plants[key]; renderBlocks(); render(); renderGarden(); save(); }
 
 // ---------- сцена ----------
 const svg = document.getElementById('scene');
@@ -2618,7 +2632,10 @@ function setGauge(id, val, text, min, max, okA, okB, alert) {
   g.classList.toggle('alert', !!alert);
 }
 function bar(id, v, warnAt = 40) { const b = $(id); b.style.width = clamp(v, 0, 100) + '%'; b.style.background = v < warnAt ? 'var(--danger)' : v < 65 ? 'var(--sun)' : 'var(--leaf)'; }
-const fmtTime = (h, live) => `День ${Math.floor(h / 24) + 1} · ${String(h % 24).padStart(2, '0')}:${live ? String(new Date().getMinutes()).padStart(2, '0') : '00'}`;
+// mins: минуты текущего часа (живые часы); без них — ровный час, как в дневнике
+const fmtTime = (h, mins) => `День ${Math.floor(h / 24) + 1} · ${String(h % 24).padStart(2, '0')}:${String(mins === true ? new Date().getMinutes() : Math.floor(mins || 0)).padStart(2, '0')}`;
+const HOUR_SEC = 30; // по занятиям, пока игра открыта: один час жизни растения — 30 секунд
+let flow = 0;        // доля текущего часа, прошедшая в живом времени
 const LOCK_SVG = '<svg class="lockico" viewBox="0 0 12 12" aria-hidden="true"><rect x="2" y="5" width="8" height="6" rx="1" fill="currentColor"/><path d="M4 5V3.5a2 2 0 0 1 4 0V5" stroke="currentColor" stroke-width="1.3" fill="none"/></svg>';
 // заблокированная кнопка остаётся «живой» для наведения и нажатия: показывает подсказку, как её открыть
 function setLocked(btn, locked, disabled, tip) {
@@ -2636,7 +2653,7 @@ function render() {
   SEASON = resolveSeason();
   const Z = SEASONS[SEASON];
   $('seasonPill').textContent = `${Z.name} · световой день ${Math.round(Z.set - Z.rise)} ч`;
-  $('clock').textContent = fmtTime(s.hour, !LESSON && MODE === 'real');
+  $('clock').textContent = fmtTime(s.hour, !LESSON && MODE === 'real' ? true : !LESSON && MODE === 'lessons' ? flow * 60 : 0);
   $('who').innerHTML = `${SP.group}: <b>${s.sp === 'angio' ? (s.stageIdx >= 3 || !s.cropRandom ? cropOf(s).name : 'неизвестно, что вырастет') : SP.name}</b>`;
   const pill = $('stagePill'); pill.textContent = s.dead ? 'Погибло' : SP.stages[st][0]; pill.classList.toggle('bad', !!s.dead);
   const lvl = levelOf(s.xp), loX = LEVELS[lvl - 1], hiX = LEVELS[lvl];
@@ -3656,7 +3673,8 @@ function init3D() {
     if (wings) { const a = Math.sin(performance.now() / 160) * 0.7; wings[0].rotation.y = a; wings[1].rotation.y = -a; }
     controls.update();
     const cf = m3.env && m3.env.userData.clockFace;
-    if (cf && S && cf.h !== Math.floor(S.hour)) { cf.h = Math.floor(S.hour); drawDial(cf.cv, S.hour); cf.tex.needsUpdate = true; }
+    const hf = S ? S.hour + (MODE === 'real' && !LESSON ? new Date().getMinutes() / 60 : flow) : 0;
+    if (cf && S && cf.h !== Math.floor(hf * 12)) { cf.h = Math.floor(hf * 12); drawDial(cf.cv, hf); cf.tex.needsUpdate = true; } // каждые 5 игровых минут
     // камера не уходит за стены, пол и потолок
     const bd = m3.env && m3.env.userData.bounds;
     if (bd) { const p = camera.position; p.set(clamp(p.x, bd[0], bd[1]), clamp(p.y, bd[2], bd[3]), clamp(p.z, bd[4], bd[5])); camera.lookAt(controls.target); }
@@ -3872,11 +3890,11 @@ function plantStatus(P) {
 function renderGarden() {
   if (!G) { $('garden').hidden = true; return; }
   $('garden').hidden = false;
-  $('gardenTabs').innerHTML = SP_ORDER.filter(k => G.plants[k]).map(k => {
+  $('gardenTabs').innerHTML = plantKeys().map(k => {
     const [cls, txt] = plantStatus(G.plants[k]);
-    return `<button class="tab" id="tab-${k}" data-sp="${k}" role="tab" aria-selected="${k === G.active}"><i class="st ${cls}"></i><span><b>${SPECIES[k].group}</b><small>ур. ${levelOf(G.plants[k].xp)} · ${txt}</small></span></button>`;
+    return `<button class="tab" id="tab-${k}" data-sp="${k}" role="tab" aria-selected="${k === G.active}" title="${SPECIES[G.plants[k].sp].group}"><i class="st ${cls}"></i><span><b>${plantTitle(k)}</b><small>ур. ${levelOf(G.plants[k].xp)} · ${txt}</small></span></button>`;
   }).join('');
-  $('addPlant').hidden = Object.keys(G.plants).length >= SP_ORDER.length;
+  $('addPlant').hidden = Object.keys(G.plants).length >= MAX_PLANTS;
 }
 $('gardenTabs').addEventListener('click', ev => { const b = ev.target.closest('[data-sp]'); if (b && b.dataset.sp !== G.active) select(b.dataset.sp); });
 $('addPlant').onclick = () => openSettings(false, true);
@@ -3890,9 +3908,11 @@ $('species').innerHTML = SP_ORDER.map((k, i) => {
 }).join('');
 const chosen = () => (document.querySelector('#species input:checked') || {}).value;
 function syncChoice() {
-  const sp = chosen(), P = G && G.plants[sp];
-  $('plant').querySelector('.lbl').textContent = P ? 'Открыть это растение' : 'Посадить';
-  $('replant').hidden = !P;
+  const sp = chosen(), n = G ? plantsOf(sp).length : 0;
+  $('plant').querySelector('.lbl').textContent = n ? 'Посадить ещё одно' : 'Посадить';
+  $('plant').disabled = !!G && Object.keys(G.plants).length >= MAX_PLANTS;
+  $('replant').hidden = !(S && S.sp === sp);
+  $('removePlant').hidden = !(S && S.sp === sp);
   $('cropSet').hidden = sp !== 'angio';
   disarm();
 }
@@ -3903,9 +3923,9 @@ function openSettings(first, pickNew) {
   $('closeSettings').hidden = !!first;
   $('dangerZone').hidden = !!first;
   $('hSet').textContent = first ? 'Выбери растение' : 'Настройки';
-  SP_ORDER.forEach(k => { const P = G && G.plants[k]; $('have-' + k).textContent = P ? 'Уже растёт: ' + plantStatus(P)[1] : ''; });
+  SP_ORDER.forEach(k => { const ks = G ? plantsOf(k) : []; $('have-' + k).textContent = ks.length > 1 ? `Растёт: ${ks.length}` : ks.length ? 'Уже растёт: ' + plantStatus(G.plants[ks[0]])[1] : ''; });
   let cur = S ? S.sp : 'angio';
-  if (pickNew && G) cur = SP_ORDER.find(k => !G.plants[k]) || cur;
+  if (pickNew && G) cur = SP_ORDER.find(k => !plantsOf(k).length) || cur;
   $(`sp-${cur}`).checked = true;
   syncChoice();
   if (!first) $('settings').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -3926,19 +3946,26 @@ function disarm() {
   for (const k in armed) if (armed[k]) clearTimeout(armed[k]), armed[k] = null;
   $('reset').textContent = 'Сбросить весь прогресс'; $('reset').classList.remove('armed');
   $('replant').textContent = 'Посадить заново'; $('replant').classList.remove('armed');
+  $('removePlant').textContent = 'Убрать это растение'; $('removePlant').classList.remove('armed');
 }
 $('plant').onclick = () => {
   const sp = chosen(); if (!sp) return;
-  if (G && G.plants[sp]) { closeSettings(); showGame(true); select(sp); return; }
-  plant(sp);
+  plant(sp); // всегда новое растение: в саду может расти несколько растений одной группы
 };
-$('replant').onclick = () => {
-  const sp = chosen(), P = G && G.plants[sp]; if (!P) return;
-  if (!P.dead && !P.done && !arm($('replant'), 'replant', 'Это растение пропадёт. Нажми ещё раз', 'Посадить заново')) return;
-  plant(sp);
+$('replant').onclick = () => { // заменить текущее растение новым того же вида
+  if (!S || S.sp !== chosen()) return;
+  if (!S.dead && !S.done && !arm($('replant'), 'replant', 'Это растение пропадёт. Нажми ещё раз', 'Посадить заново')) return;
+  plant(S.sp, undefined, S.key);
 };
-function plant(sp, crop) {
-  fresh(sp, crop !== undefined ? crop : sp === 'angio' ? $('crop').value : null);
+$('removePlant').onclick = () => {
+  if (!S || !arm($('removePlant'), 'remove', `«${plantTitle(S.key)}» исчезнет. Нажми ещё раз`, 'Убрать это растение')) return;
+  delete G.plants[S.key];
+  const left = plantKeys();
+  if (!left.length) { G.plants = {}; S = null; G.active = null; save(); showGame(false); renderGarden(); openSettings(true); return; }
+  select(left[0]); openSettings(false);
+};
+function plant(sp, crop, key) {
+  fresh(sp, crop !== undefined ? crop : sp === 'angio' ? $('crop').value : null, key);
   closeSettings(); showGame(true); renderBlocks(); render(); renderGarden(); save();
   if (!tourDone('game')) setTimeout(() => startTour('game'), 500);
 }
@@ -3946,7 +3973,7 @@ $('reset').onclick = () => {
   if (!arm($('reset'), 'reset', 'Точно? Нажми ещё раз — всё удалится', 'Сбросить весь прогресс')) return;
   G = null; S = null; save(); showGame(false); renderGarden(); openSettings(true);
 };
-$('bRestart').onclick = () => plant(S.sp, S.sp === 'angio' ? (S.cropRandom ? 'random' : S.crop) : null);
+$('bRestart').onclick = () => plant(S.sp, S.sp === 'angio' ? (S.cropRandom ? 'random' : S.crop) : null, S.key);
 $('bChoose').onclick = () => openSettings(false, true);
 function showGame(on) { $('game').hidden = !on; $('openSettings').hidden = !on; }
 
@@ -4081,7 +4108,7 @@ function checkSkins() {
   }
 }
 // ---------- Финальный тест ----------
-const finalSent = s => (G.finals || []).some(f => f.sp === s.sp && f.gen === (s.gen || 1));
+const finalSent = s => (G.finals || []).some(f => (f.key || f.sp) === (s.key || s.sp) && f.gen === (s.gen || 1));
 // Когда цикл замкнулся, ученик отвечает развёрнуто на 5 вопросов своей группы. Ответы уходят учителю вместе с прогрессом.
 const FINAL_REFLECT = 'Какая ошибка в уходе у тебя была (или могла быть) и как ты её исправил(а)? Объясни с точки зрения биологии.';
 const FINAL_QS = {
@@ -4113,7 +4140,7 @@ const FINAL_QS = {
 const finalQs = s => FINAL_QS[s.sp].map(q => typeof q === 'function' ? q(s) : q);
 const FINAL_MIN = 25; // слишком короткий ответ не принимаем
 function openFinal() {
-  const qs = finalQs(S), sent = (G.finals || []).filter(f => f.sp === S.sp && f.gen === (S.gen || 1)).pop();
+  const qs = finalQs(S), sent = (G.finals || []).filter(f => (f.key || f.sp) === (S.key || S.sp) && f.gen === (S.gen || 1)).pop();
   const draft = S.finalDraft || [];
   $('finalIntro').textContent = sent
     ? `Ответы отправлены ${new Date(sent.at).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}. Учитель увидит их на своей странице.`
@@ -4131,7 +4158,7 @@ $('finalForm').addEventListener('submit', ev => {
   const short = ans.map((a, i) => a.length < FINAL_MIN ? i + 1 : 0).filter(Boolean);
   if (short.length) { $('finalMsg').textContent = `Ответь подробнее на ${short.length > 1 ? 'вопросы' : 'вопрос'} ${short.join(', ')}: хотя бы пару предложений.`; return; }
   G.finals = G.finals || [];
-  G.finals.push({ sp: S.sp, group: SPECIES[S.sp].group, plant: S.sp === 'angio' ? cropOf(S).name : SPECIES[S.sp].name, gen: S.gen || 1, day: Math.floor(S.hour / 24) + 1, at: Date.now(), answers: qs.map((q, i) => ({ q, a: ans[i] })) });
+  G.finals.push({ sp: S.sp, key: S.key || S.sp, group: SPECIES[S.sp].group, plant: S.sp === 'angio' ? cropOf(S).name : SPECIES[S.sp].name, gen: S.gen || 1, day: Math.floor(S.hour / 24) + 1, at: Date.now(), answers: qs.map((q, i) => ({ q, a: ans[i] })) });
   S.finalDraft = null; addXP(S, 30);
   note(S, null, 'Финальный тест отправлен учителю. +30 опыта!', 'good');
   save(); pushProgress(true); render(); openFinal();
@@ -4392,7 +4419,7 @@ const TOUR_WELCOME = [
 const TOUR_GAME = [
   { k: 'Твоё растение', t: 'Это сцена', x: 'Здесь живёт твоё растение. Крути сцену мышкой или пальцем, приближай колёсиком или щипком. Кнопка «Разрез» показывает корни в почве.', target: '.scene-wrap' },
   { k: 'Состояние', t: 'Здоровье, корни и тургор', x: 'Тургор — давление воды в клетках: когда он падает, растение вянет. Если здоровье дойдёт до нуля, растение погибнет.', target: '.vitals' },
-  { k: 'Время', t: 'Как идёт время', x: 'В режиме «по занятиям» растение ждёт тебя между уроками. Поухаживай за ним и нажми «Прожить сутки» — тогда пройдёт день его жизни. Наверху видно время, время года и стадию роста.', target: () => $('dayBtns').hidden ? '.stage-top' : '#dayBtns' },
+  { k: 'Время', t: 'Как идёт время', x: 'Пока игра открыта, идут часы: один час жизни растения — 30 секунд. Закроешь игру — растение подождёт. Чтобы промотать время, нажми «Прожить сутки». Наверху видно время, время года и стадию роста.', target: () => $('dayBtns').hidden ? '.stage-top' : '#dayBtns' },
   { k: 'Приборы', t: 'Следи за приборами', x: 'Свет, температура, влажность почвы, соли и испарение. Светлая полоса на шкале — норма, чёрная метка — сейчас.', target: '.pane-gauges', pane: 'care' },
   { k: 'Уход', t: 'Ухаживай за растением', x: 'Поливай и переставляй горшок: на подоконнике светло, в углу темно, на балконе жарко. Подкормка, фитолампа, притенение и размножение закрыты замочком — их открывают блоки курса. Когда корням станет тесно, здесь появится кнопка пересадки.', target: '[data-pane="care"][aria-labelledby="hAct"] .actions', pane: 'care' },
   { k: 'Блоки курса', t: 'Проходи блоки', x: 'В каждом блоке 5 вопросов, и они каждый раз разные. За ошибку растение теряет здоровье и может заболеть — тогда появится вопрос и про болезнь.', target: '#pt-blocks' },
@@ -4554,7 +4581,7 @@ function applyMode() {
   $(`mode-${MODE}`).checked = true;
   $('modeNote').textContent = LESSON ? 'Режим урока: 1 секунда = 1 час жизни растения.'
     : MODE === 'real' ? 'Растения живут в настоящем времени: день и ночь как за окном. Заходи проведать их каждый день. Прогресс сохраняется в этом браузере.'
-    : 'Растения живут по занятиям: между уроками время стоит. Поухаживай за растением и нажми «Прожить сутки». Прогресс сохраняется в этом браузере.';
+    : `Растения живут по занятиям: пока игра открыта, идут часы (1 час — ${HOUR_SEC} секунд), а когда закроешь — время стоит. Чтобы промотать время, нажми «Прожить сутки». Прогресс сохраняется в этом браузере.`;
 }
 // тема: хранится только на этом устройстве
 function applyTheme(t) {
@@ -4617,6 +4644,16 @@ function start(data) {
     render();
     setInterval(() => catchUp(false), 30000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) catchUp(true); });
+    // по занятиям: пока вкладка открыта, часы идут (1 час — 30 секунд); закрыл игру — время стоит
+    setInterval(() => {
+      if (!G || MODE !== 'lessons' || living || document.hidden) return;
+      flow += 1 / HOUR_SEC;
+      if (flow >= 1) {
+        flow -= 1;
+        for (const k in G.plants) { const P = G.plants[k]; if (!P.dead && !P.done) step(P); }
+        render(); renderGarden(); if (S && S.hour % 3 === 0) save();
+      } else if (S) $('clock').textContent = fmtTime(S.hour, flow * 60);
+    }, 1000);
     return;
   }
   render();
