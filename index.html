@@ -661,6 +661,14 @@ const ACT_NAME = { feed: 'Подкормка', lamp: 'Фитолампа', shade
 const unlockedSet = s => (s.unlocked[s.sp] = s.unlocked[s.sp] || {});
 const has = (s, act) => BLOCKS[s.sp].some(b => b.unlocks.includes(act) && unlockedSet(s)[b.id]);
 const blockFor = (sp, act) => BLOCKS[sp].find(b => b.unlocks.includes(act));
+// Рост привязан к курсу: каждая следующая стадия требует ещё одного пройденного блока (любого, кроме блока о размножении).
+const GATES = [[7, 1], [13, 2], [16, 3]];
+function growthGate(s) {
+  const study = BLOCKS[s.sp].filter(b => b.id !== 'repro');
+  const passed = study.filter(b => unlockedSet(s)[b.id]).length;
+  for (const [t, need] of GATES) if (s.biomass < t && passed < Math.min(need, study.length)) return { cap: t - 0.01, stage: stageOf({ ...s, biomass: t, pollinated: false, done: false }), passed, total: study.length };
+  return null;
+}
 const SP_ORDER = ['algae', 'moss', 'lycopod', 'fern', 'gymno', 'angio'];
 const TX = {
   wilt: 'Листья поникли. В почве мало воды, клетки потеряли тургор, и растение закрыло устьица.',
@@ -875,9 +883,10 @@ function step(s) {
   let starving = false; if (s.starch < 0) { s.starch = 0; starving = true; }
 
   // рост
-  if (s.starch > 1.5 && s.minerals > 2 && s.turgor > 0.4 && s.biomass < 24) {
+  const gate = growthGate(s);
+  if (s.starch > 1.5 && s.minerals > 2 && s.turgor > 0.4 && s.biomass < 24 && !(gate && s.biomass >= gate.cap)) {
     const g = 0.09 * PACE * Math.min(1, s.starch / 12) * Math.min(1, s.minerals / 30) * (s.rootHP / 100);
-    s.biomass += g; s.starch -= g * 2.5 / PACE; s.minerals = Math.max(0, s.minerals - g * 4 / PACE);
+    s.biomass = gate ? Math.min(gate.cap, s.biomass + g) : s.biomass + g; s.starch -= g * 2.5 / PACE; s.minerals = Math.max(0, s.minerals - g * 4 / PACE);
   }
   if (s.pollinated && s.fruit < 1 && s.starch > 1 && s.turgor > 0.3) { s.fruit = Math.min(1, s.fruit + PACE / 40); s.starch -= 0.4; }
 
@@ -904,6 +913,9 @@ function step(s) {
     if (D.hurts === 'starch') s.starch = Math.max(0, s.starch - d.sev * 0.3);
     if (D.hurts === 'root') s.rootHP = clamp(s.rootHP - d.sev * 1.2, 0, 100);
   }
+
+  if (gate && s.biomass >= gate.cap)
+    note(s, 'gate' + gate.stage, `Растение готово к стадии «${SP.stages[gate.stage][0]}», но дальше расти не будет, пока не пройден ещё один блок курса (пройдено ${gate.passed} из ${gate.total}).`, 'warn', 24);
 
   // здоровье
   const harm = [];
@@ -1461,6 +1473,8 @@ function render() {
   const notes = [], names = { feed: SP.feed.toLowerCase(), lamp: 'фитолампа', shade: 'притенение', repro: SP.repro.short };
   for (const act of ['feed', 'lamp', 'shade', 'repro']) if (!has(s, act)) notes.push(`${names[act]} — после блока «${blockFor(s.sp, act).title}»`);
   if (has(s, 'repro') && st < 4) notes.push(`${SP.repro.short} — когда растение будет готово (стадия «${SP.stages[4][0]}»)`);
+  const gt = !over && growthGate(s);
+  if (gt) notes.unshift(`стадия «${SP.stages[gt.stage][0]}» — после ещё одного блока курса (пройдено ${gt.passed} из ${gt.total})`);
   $('lockNote').textContent = notes.length ? 'Пока закрыто: ' + notes.join('; ') + '.' : '';
   $('locLabel').textContent = `Куда поставить ${SP.pot}`;
   document.querySelectorAll('#locs .btn').forEach(b => { b.setAttribute('aria-pressed', b.dataset.loc === s.loc); b.disabled = over; });
