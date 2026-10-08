@@ -121,6 +121,9 @@ svg .maskify [stroke]:not([stroke="none"]) { stroke: #fff; stroke-width: 5px; }
 .v3d { position: relative; width: 100%; aspect-ratio: 4 / 3; max-height: 70vh; border-radius: 12px; overflow: hidden; background: color-mix(in srgb, var(--bg) 70%, transparent); touch-action: none; }
 .v3d canvas { display: block; width: 100% !important; height: 100% !important; }
 .v3d-msg { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--muted); }
+.scene3d { position: relative; width: 100%; aspect-ratio: 400 / 440; max-width: 100%; touch-action: none; background: #1a1d17; overflow: hidden; }
+.scene3d canvas { position: absolute; inset: 0; display: block; width: 100% !important; height: 100% !important; }
+.view-note { padding-top: 10px; }
 .xpnote { margin: 0; padding: 0 14px 14px; font-size: 13px; color: var(--muted); }
 @keyframes rise { from { transform: translateY(0); opacity: .9; } to { transform: translateY(-60px); opacity: 0; } }
 .speed { display: flex; gap: 4px; }
@@ -320,14 +323,19 @@ footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-co
             <button class="btn" id="live6">+6 часов</button>
             <button class="btn primary" id="live24"><span class="dot"></span>Прожить сутки</button>
           </div>
-          <div class="speed" role="group" aria-label="Скорость времени">
+          <div class="speed" id="viewSw" role="group" aria-label="Вид">
+            <button data-view="3d" aria-pressed="true">3D</button>
+            <button data-view="2d" aria-pressed="false">Разрез</button>
+          </div>
+          <div class="speed" id="speedSw" role="group" aria-label="Скорость времени">
             <button id="sp0" data-speed="0" aria-pressed="false">II</button>
             <button id="sp1" data-speed="1" aria-pressed="true">×1</button>
             <button id="sp4" data-speed="4" aria-pressed="false">×4</button>
           </div>
         </div>
         <div class="scene-wrap">
-          <svg id="scene" viewBox="0 0 400 440" role="img" aria-label="Растение в разрезе"></svg>
+          <svg id="scene" viewBox="0 0 400 440" role="img" aria-label="Растение в разрезе" hidden></svg>
+          <div id="scene3d" class="scene3d" role="img" aria-label="Растение в 3D"></div>
           <div class="fact" id="fact" role="status" hidden>
             <span class="fact-k" id="factK">Знаешь ли ты?</span>
             <b id="factTitle"></b>
@@ -340,6 +348,7 @@ footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-co
           <div class="vital"><label><span id="rootLabel">Корни</span> <b id="vRoot">100</b></label><div class="bar"><i id="bRoot"></i></div></div>
           <div class="vital"><label>Тургор <b id="vTurg">90</b></label><div class="bar"><i id="bTurg"></i></div></div>
         </div>
+        <p class="xpnote view-note" id="viewNote"></p>
         <p class="xpnote" id="xpNote"></p>
         <div id="banner" hidden>
           <h3 id="bTitle"></h3>
@@ -373,7 +382,6 @@ footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-co
             <div class="row">
               <button class="btn primary" id="aWater"><span class="dot"></span><span class="lbl">Полить</span></button>
               <button class="btn" id="aFeed"><span class="dot" style="background:var(--soil)"></span><span class="lbl">Подкормить</span></button>
-              <button class="btn" id="a3d"><span class="dot" style="background:var(--leaf)"></span>Посмотреть в 3D</button>
               <button class="btn" id="aIodine"><span class="dot" style="background:#3a3f86"></span>Проба йодом на крахмал</button>
             </div>
           </div>
@@ -419,14 +427,6 @@ footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-co
     <h2 id="hLog">Дневник наблюдений</h2>
     <ul class="log" id="log"></ul>
   </section>
-
-  <div class="modal" id="v3dModal" hidden>
-    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="v3dTitle">
-      <div class="head"><h2 id="v3dTitle">Растение в 3D</h2><button class="btn" id="v3dClose">Закрыть</button></div>
-      <div class="v3d" id="v3d"><p class="v3d-msg" id="v3dMsg">Загружаю модель…</p></div>
-      <p class="locked-note" id="v3dNote">Крути растение мышкой или пальцем, колёсиком или щипком приближай.</p>
-    </div>
-  </div>
 
   <div class="modal" id="cutModal" hidden>
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="cutTitle">
@@ -1749,6 +1749,7 @@ function drawScene() {
   if (s.disease && !s.dead) o += diseaseLayer(s, plant);
   if (lvl >= 8 && !s.dead) o += sparkles(lvl, ctx.st);
   svg.innerHTML = o;
+  update3D();
   svg.setAttribute('aria-label', `${SPc().name}: ${SPc().stages[ctx.st][0].toLowerCase()}`);
 }
 
@@ -2235,8 +2236,8 @@ function proceduralPlant(T) {
     const n = 14 + Math.round(k * 40), leafG = new T.ConeGeometry(0.006, 0.04, 3), dry = clamp(1 - S.turgor, 0, 1);
     const mm = new T.MeshStandardMaterial({ color: col.clone().lerp(new T.Color('#8f7e44'), dry * 0.8), roughness: 0.8 });
     for (let i = 0; i < n; i++) {
-      const r = 0.36 * Math.sqrt(Math.random()), a = Math.random() * Math.PI * 2, h = (0.08 + k * 0.18) * (0.7 + Math.random() * 0.5);
-      const sh = new T.Group(); sh.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); sh.rotation.set((Math.random() - 0.5) * 0.3, 0, (Math.random() - 0.5) * 0.3);
+      const r = 0.36 * Math.sqrt(rnd()), a = rnd() * Math.PI * 2, h = (0.08 + k * 0.18) * (0.7 + rnd() * 0.5);
+      const sh = new T.Group(); sh.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); sh.rotation.set((rnd() - 0.5) * 0.3, 0, (rnd() - 0.5) * 0.3);
       const stem = new T.Mesh(new T.CylinderGeometry(0.004, 0.005, h, 5), mm); stem.position.y = h / 2; sh.add(stem);
       for (let j = 0; j < 7; j++) for (let q = 0; q < 4; q++) {
         const l = new T.Mesh(leafG, mm), y = h * (0.25 + 0.75 * j / 7), b = q * 1.57 + j;
@@ -2256,7 +2257,7 @@ function proceduralPlant(T) {
   if (S.sp === 'algae') { // нити спирогиры в банке
     const n = 6 + Math.round(k * 14);
     for (let i = 0; i < n; i++) {
-      const pts = [], x0 = (Math.random() - 0.5) * 0.6, z0 = (Math.random() - 0.5) * 0.6, len = 0.3 + k * 0.6 * Math.random();
+      const pts = [], x0 = (rnd() - 0.5) * 0.6, z0 = (rnd() - 0.5) * 0.6, len = 0.3 + k * 0.6 * rnd();
       for (let j = 0; j <= 8; j++) pts.push(new T.Vector3(x0 + Math.sin(j * 1.3 + i) * 0.05, 0.05 + len * j / 8, z0 + Math.cos(j * 1.1 + i) * 0.05));
       g.add(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), 40, 0.008, 6), mat));
     }
@@ -2280,76 +2281,153 @@ function proceduralPlant(T) {
   };
   const nb = 1 + Math.round(k * 6);
   for (let i = 0; i < nb; i++) {
-    const x = (i / Math.max(1, nb - 1) - 0.5) * (0.7 * k), ang = Math.random() * Math.PI * 2;
+    const x = (i / Math.max(1, nb - 1) - 0.5) * (0.7 * k), ang = rnd() * Math.PI * 2;
     const dir = new T.Vector3(0, 1, 0).applyAxisAngle(new T.Vector3(Math.cos(ang), 0, Math.sin(ang)), 0.15);
-    branch(new T.Vector3(x, 0.02, (Math.random() - 0.5) * 0.15), dir, 0.25 + k * 0.25, 0);
+    branch(new T.Vector3(x, 0.02, (rnd() - 0.5) * 0.15), dir, 0.25 + k * 0.25, 0);
   }
   return g;
 }
-async function open3D() {
-  $('v3dModal').hidden = false;
-  $('v3dTitle').textContent = `${SPc().group}: ${S.sp === 'angio' ? cropOf(S).name.toLowerCase() : SPc().name.toLowerCase()} в 3D`;
-  $('v3dMsg').hidden = false; $('v3dMsg').textContent = 'Загружаю модель…';
-  try { await ensureThree(); } catch (e) { $('v3dMsg').textContent = 'Не удалось загрузить 3D-движок. Проверь интернет и попробуй ещё раз.'; threeReady = null; return; }
-  const T = THREE, box = $('v3d');
-  if (T.ColorManagement) T.ColorManagement.legacyMode = false; // цвета из палитры игры — в sRGB
-  if (!v3) {
-    const renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); renderer.outputEncoding = T.sRGBEncoding;
-    box.appendChild(renderer.domElement);
-    const scene = new T.Scene(), camera = new T.PerspectiveCamera(40, 4 / 3, 0.01, 50);
-    scene.add(new T.HemisphereLight(0xf4f8ff, 0x6b5a40, 0.9));
-    const sun = new T.DirectionalLight(0xffffff, 1.1); sun.position.set(2, 4, 3); scene.add(sun);
-    const controls = new T.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.minDistance = 0.6; controls.maxDistance = 8;
-    v3 = { renderer, scene, camera, controls, root: null, running: false };
-    const loop = () => { if (!v3.running) return; v3.controls.update(); v3.renderer.render(v3.scene, v3.camera); requestAnimationFrame(loop); };
-    v3.start = () => { if (!v3.running) { v3.running = true; loop(); } };
-  }
-  const { renderer, scene, camera } = v3;
-  const w = box.clientWidth || 640, h = box.clientHeight || 480; renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
-  v3.controls.dispose(); v3.controls = new T.OrbitControls(camera, renderer.domElement); v3.controls.enableDamping = true; v3.controls.minDistance = 0.6; v3.controls.maxDistance = 8;
-  if (v3.root) scene.remove(v3.root);
-  const root = new T.Group(); v3.root = root; scene.add(root);
-  const lvl = levelOf(S.xp), pot = makePot(T, lvl, S.sp === 'algae'); root.add(pot);
+// ---------- основная 3D-сцена: растение, горшок и обстановка ----------
+let RS = 1; const rnd = () => (RS = (RS * 16807) % 2147483647) / 2147483647;
+let VIEW = '3d'; try { VIEW = localStorage.getItem('pp-view') || '3d'; } catch (e) {}
+let m3 = null, m3init = null, m3busy = false, m3sig = '', m3envSig = '', m3sp = '';
+const DZ_TINT = { mildew: '#f2f2ea', rust: '#d9722a', mosaic: '#e8d75a', spot: '#4a3218', shutte: '#7a4518', mould: '#c4c4bb', aphid: '#c4e05a', mite: '#ece6b0', chytrid: '#3a2a1a', blackleg: '#3a2a1a', bloom: '#2f8f88' };
+async function buildPlant3D(T) {
+  let h = 7; for (const c of S.sp + (S.crop || '')) h = (h * 31 + c.charCodeAt(0)) % 2147483647; RS = h || 7;
+  const root = new T.Group(), lvl = levelOf(S.xp), pot = makePot(T, lvl, S.sp === 'algae'); root.add(pot);
   let plant = null, usedModel = false;
-  try {
-    if (MODEL_FILES[S.sp]) { plant = await loadModel(MODEL_FILES[S.sp]); usedModel = true; }
-  } catch (e) { plant = null; } // файла модели нет (например, в версии на claude.ai) — рисуем растение сами
+  try { if (MODEL_FILES[S.sp]) { plant = await loadModel(MODEL_FILES[S.sp]); usedModel = true; } } catch (e) { plant = null; }
   if (!plant) plant = proceduralPlant(T);
-  // размер по стадии роста и уровню; цвет — по здоровью
   const grow = Math.min(1, 0.2 + S.biomass / 16) * (1 + 0.15 * (lvl - 1) / 9);
-  const target = { gymno: 1.9, fern: 1.3, angio: 1.2, moss: 0.75, lycopod: 1, algae: 1 }[S.sp] * (usedModel ? grow : 1);
-  const bb = new T.Box3().setFromObject(plant), size = bb.getSize(new T.Vector3());
   if (usedModel) {
-    const k = target / Math.max(size.x, size.y, size.z); plant.scale.setScalar(k);
-    const bb2 = new T.Box3().setFromObject(plant); plant.position.y -= bb2.min.y;
+    const target = { gymno: 1.9, fern: 1.3 }[S.sp] * grow, size = new T.Box3().setFromObject(plant).getSize(new T.Vector3());
+    plant.scale.setScalar(target / Math.max(size.x, size.y, size.z));
+    plant.position.y -= new T.Box3().setFromObject(plant).min.y;
+    if (S.turgor < 0.35) plant.scale.y *= 0.8;
   }
-  const sick = S.dead ? 0.85 : clamp(1 - S.hp / 100, 0, 1) * 0.7 + (S.disease ? 0.15 : 0);
+  // здоровье, болезнь: листья буреют, на части листьев — цвет налёта, пятен или вредителей
+  const sick = S.dead ? 0.85 : clamp(1 - S.hp / 100, 0, 1) * 0.7;
+  const dz = S.disease && !S.dead ? S.disease : null; let idx = 0;
   plant.traverse(o => {
     if (!o.isMesh || !o.material) return;
     const m0 = o.material;
-    // листья-карточки с прозрачностью: стандартный материал с отсечением по альфе рисуется надёжнее «физического»
     o.material = m0.map ? new T.MeshLambertMaterial({ map: m0.map, color: 0xffffff, alphaTest: 0.45, transparent: false, side: T.DoubleSide }) : m0.clone();
-    if (o.material.color) o.material.color.lerp(new T.Color('#8a6a3a'), sick);
+    if (!o.material.color) return;
+    o.material.color.lerp(new T.Color('#8a6a3a'), sick);
+    if (dz && dz.id !== 'bloom' && (usedModel || idx++ % 3 !== 2)) o.material.color.lerp(new T.Color(DZ_TINT[dz.id] || '#ffffff'), 0.2 + dz.sev * 0.5);
   });
-  if (S.turgor < 0.35 && usedModel) plant.scale.y *= 0.8;
   plant.position.y += pot.userData.top; root.add(plant);
-  const all = new T.Box3().setFromObject(root), c = all.getCenter(new T.Vector3()), r = all.getSize(new T.Vector3()).length();
-  const controls = v3.controls; controls.target.copy(c); camera.position.set(c.x + r * 0.55, c.y + r * 0.3, c.z + r * 0.85); controls.update();
-  if ($('v3dModal').hidden) return; // окно закрыли, пока шла загрузка
-  $('v3dMsg').hidden = true;
-  $('v3dNote').textContent = 'Крути растение мышкой или пальцем, колёсиком или щипком приближай.' + (usedModel ? ' Модель: Poly Haven (CC0).' : '');
-  v3.start();
+  if (S.sp === 'algae') {
+    if (dz && dz.id === 'bloom') pot.traverse(o => { if (o.isMesh && o.material.opacity === 0.45) o.material.color.lerp(new T.Color('#2f8f88'), dz.sev); });
+    const bub = new T.Group(); bub.userData.bubbles = true;
+    const n = S.lastP > 0.25 && S.moisture > 20 ? Math.min(14, Math.floor(S.lastP * 10)) : 0;
+    for (let i = 0; i < n; i++) { const b = new T.Mesh(new T.SphereGeometry(0.012 + rnd() * 0.01, 8, 6), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 })); b.position.set((rnd() - 0.5) * 0.6, rnd() * 0.8, (rnd() - 0.5) * 0.6); bub.add(b); }
+    root.add(bub); root.userData.bub = bub;
+  }
+  return root;
 }
-const close3D = () => { $('v3dModal').hidden = true; if (v3) v3.running = false; };
-$('a3d').onclick = open3D;
-$('v3dClose').onclick = close3D;
-$('v3dModal').addEventListener('click', ev => { if (ev.target === $('v3dModal')) close3D(); });
-document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !$('v3dModal').hidden) close3D(); });
+function buildEnv(T) {
+  const g = new T.Group(), s = S, L = LOC[s.loc], M = c => new T.MeshStandardMaterial({ color: c, roughness: 0.9 });
+  const box = (w, h, d, c, x, y, z) => { const m = new T.Mesh(new T.BoxGeometry(w, h, d), M(c)); m.position.set(x, y, z); g.add(m); return m; };
+  g.userData.skies = [];
+  const skyPlane = (w, h, x, y, z) => { const m = new T.Mesh(new T.PlaneGeometry(w, h), new T.MeshBasicMaterial({ color: 0xa7d3ee })); m.position.set(x, y, z); g.add(m); g.userData.skies.push(m.material); return m; };
+  if (s.loc === 'balcony') {
+    const fl = new T.Mesh(new T.PlaneGeometry(12, 12), M(SEASON === 'winter' ? '#e7edf1' : '#8e8576')); fl.rotation.x = -Math.PI / 2; g.add(fl);
+    for (let x = -3; x <= 3; x += 0.28) box(0.04, 1.3, 0.04, '#4f5560', x, 0.65, -1.3);
+    box(6.2, 0.08, 0.08, '#3f444d', 0, 1.32, -1.3);
+    if (SEASON === 'autumn') for (let i = 0; i < 24; i++) { const l = new T.Mesh(new T.CircleGeometry(0.05, 8), M(i % 2 ? '#d9822b' : '#c4502a')); l.rotation.x = -Math.PI / 2; l.position.set(Math.sin(i * 7) * 2, 0.005, Math.cos(i * 3) * 1.2); l.scale.y = 0.5; g.add(l); }
+    if (SEASON === 'winter') for (let i = 0; i < 40; i++) { const f = new T.Mesh(new T.SphereGeometry(0.015, 6, 4), new T.MeshBasicMaterial({ color: 0xffffff })); f.position.set(Math.sin(i * 12.9) * 2.5, 0.3 + (i * 0.37) % 2.5, -0.6 + Math.cos(i * 4.1) * 1.2); g.add(f); }
+  } else {
+    const wall = new T.Mesh(new T.PlaneGeometry(10, 6), M(s.loc === 'corner' ? '#5f5a52' : '#d9d1bf')); wall.position.set(0, 2, -1.4); g.add(wall);
+    if (s.loc === 'corner') { const side = new T.Mesh(new T.PlaneGeometry(4, 6), M('#4f4a44')); side.rotation.y = Math.PI / 2; side.position.set(-1.3, 2, 0.4); g.add(side); }
+    if (s.loc === 'sill') box(3.2, 0.08, 1.4, '#ece8df', 0, -0.04, -0.6); else box(3.2, 0.08, 1.6, '#a8957a', 0, -0.04, -0.4);
+    if (L.win) {
+      const [w, h, x, y] = s.loc === 'sill' ? [2.6, 2.1, 0, 1.3] : [1.0, 1.4, -1.9, 1.5];
+      skyPlane(w, h, x, y, -1.39);
+      if (SEASON === 'winter') { const sn = new T.Mesh(new T.PlaneGeometry(w, h * 0.18), new T.MeshBasicMaterial({ color: 0xeef3f6 })); sn.position.set(x, y - h * 0.41, -1.385); g.add(sn); }
+      const fr = '#f3efe6';
+      box(w + 0.1, 0.06, 0.06, fr, x, y + h / 2, -1.36); box(w + 0.1, 0.06, 0.06, fr, x, y - h / 2, -1.36);
+      box(0.06, h, 0.06, fr, x - w / 2, y, -1.36); box(0.06, h, 0.06, fr, x + w / 2, y, -1.36); box(0.05, h, 0.05, fr, x, y, -1.36); box(w, 0.05, 0.05, fr, x, y + h * 0.1, -1.36);
+      if (s.shade) { const c = new T.Mesh(new T.PlaneGeometry(w + 0.2, h + 0.2), new T.MeshStandardMaterial({ color: '#efe6cf', transparent: true, opacity: 0.78 })); c.position.set(x, y, -1.3); g.add(c); }
+    }
+  }
+  if (s.shade && !L.win) { const n = new T.Mesh(new T.PlaneGeometry(4, 3), new T.MeshStandardMaterial({ color: '#2f4a33', transparent: true, opacity: 0.45, side: T.DoubleSide })); n.rotation.x = Math.PI / 2; n.position.y = 2.4; g.add(n); }
+  if (s.lamp) { box(0.7, 0.08, 0.25, '#333a36', 0, 2.3, 0); const st = new T.Mesh(new T.BoxGeometry(0.62, 0.02, 0.18), new T.MeshBasicMaterial({ color: 0xffd36b })); st.position.set(0, 2.25, 0); g.add(st); }
+  return g;
+}
+function init3D() {
+  const T = THREE, box = $('scene3d');
+  if (T.ColorManagement) T.ColorManagement.legacyMode = false;
+  const renderer = new T.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); renderer.outputEncoding = T.sRGBEncoding;
+  box.appendChild(renderer.domElement);
+  const scene = new T.Scene(), camera = new T.PerspectiveCamera(38, 400 / 440, 0.01, 60);
+  const hemi = new T.HemisphereLight(0xf4f8ff, 0x6b5a40, 0.8), sun = new T.DirectionalLight(0xfff4e0, 1), lamp = new T.PointLight(0xffd9a0, 0, 6), amb = new T.AmbientLight(0x6070a0, 0.15);
+  scene.add(hemi, sun, sun.target, lamp, amb); lamp.position.set(0, 2.1, 0);
+  const controls = new T.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.minDistance = 0.8; controls.maxDistance = 7; controls.maxPolarAngle = Math.PI * 0.55; controls.enablePan = false;
+  camera.position.set(1.4, 1.5, 2.6); controls.target.set(0, 0.8, 0);
+  m3 = { renderer, scene, camera, controls, hemi, sun, lamp, amb, plant: null, env: null, running: false };
+  const resize = () => { const w = box.clientWidth || 400, h = box.clientHeight || 440; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
+  m3.resize = resize; resize(); window.addEventListener('resize', resize);
+  const loop = () => {
+    if (!m3.running) return;
+    const bub = m3.plant && m3.plant.userData.bub;
+    if (bub) bub.children.forEach((b, i) => { b.position.y += 0.003 + (i % 3) * 0.001; if (b.position.y > 0.85) b.position.y = 0.02; });
+    controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop);
+  };
+  m3.start = () => { if (!m3.running) { m3.running = true; loop(); } };
+  m3.stop = () => { m3.running = false; };
+  document.addEventListener('visibilitychange', () => { if (document.hidden) m3.stop(); else if (VIEW === '3d') m3.start(); });
+}
+// вызывается из render(): перестраивает растение и обстановку, только когда что-то заметно изменилось
+async function update3D() {
+  if (VIEW !== '3d' || !S) return;
+  if (!m3) {
+    m3init = m3init || ensureThree().then(init3D);
+    try { await m3init; } catch (e) { threeReady = null; m3init = null; setView('2d', 'Не удалось запустить 3D: показан плоский вид.'); return; }
+    if (!m3) return;
+  }
+  const T = THREE, s = S, e = env(s), Z = SEASONS[SEASON];
+  const envSig = [s.loc, SEASON, s.lamp, s.shade].join('|');
+  if (envSig !== m3envSig) { if (m3.env) m3.scene.remove(m3.env); m3.env = buildEnv(T); m3.scene.add(m3.env); m3envSig = envSig; }
+  // свет: солнце по времени суток и сезону, небо в окне, фитолампа
+  const sky = new T.Color(mix('#1b2342', '#a7d3ee', Math.min(1, e.dl * 1.6)));
+  m3.env.userData.skies.forEach(m => m.color.copy(sky));
+  m3.scene.background = s.loc === 'balcony' ? sky : new T.Color(e.dl > 0 ? '#2a2620' : '#0d0f14');
+  const h = (s.hour % 24 - Z.rise) / (Z.set - Z.rise), az = (h - 0.5) * 2.2;
+  m3.sun.position.set(Math.sin(az) * 4, 0.6 + e.dl * 3.5, s.loc === 'balcony' ? -2.5 : -4);
+  m3.sun.intensity = e.dl * Z.sun * LOC[s.loc].light * (s.shade ? 0.45 : 1) * 2.4;
+  m3.hemi.intensity = 0.12 + Math.min(1, e.light * 1.5) * 0.75;
+  m3.amb.intensity = e.dl > 0 ? 0.12 : 0.22;
+  m3.lamp.intensity = s.lamp ? 1.8 : 0;
+  const dz = s.disease ? s.disease.id + Math.round(s.disease.sev * 4) : '';
+  const sig = [s.sp, s.crop, Math.round(s.biomass * 2), stageOf(s), Math.round(s.fruit * 8), Math.round(s.turgor * 5), Math.round(s.hp / 12), dz, levelOf(s.xp), !!s.dead, s.sp === 'algae' ? Math.round(s.moisture / 12) + '/' + (s.lastP > 0.25) : '', Math.round(s.moisture / 25), Math.round(s.chl * 5)].join('|');
+  if (sig !== m3sig && !m3busy) {
+    m3busy = true; m3sig = sig;
+    const plant = await buildPlant3D(T);
+    if (m3.plant) m3.scene.remove(m3.plant);
+    m3.plant = plant; m3.scene.add(plant);
+    const bb = new T.Box3().setFromObject(plant), c = bb.getCenter(new T.Vector3()), r = bb.getSize(new T.Vector3()).length();
+    if (m3sp !== s.sp + s.crop) { m3sp = s.sp + s.crop; m3.controls.target.copy(c); m3.camera.position.set(c.x + r * 0.55, c.y + r * 0.3, c.z + r * 1.35 + 1.0); }
+    else m3.controls.target.lerp(c, 0.5);
+    m3busy = false;
+    if (sig !== m3sig) update3D();
+  }
+  m3.resize(); m3.start();
+}
+function setView(v, note) {
+  VIEW = v; try { localStorage.setItem('pp-view', v); } catch (e) {}
+  $('scene').hidden = v !== '2d'; $('scene3d').hidden = v !== '3d';
+  document.querySelectorAll('#viewSw button').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === v));
+  $('viewNote').textContent = note || (v === '3d' ? 'Крути сцену мышкой или пальцем, колёсиком или щипком приближай.' : 'Разрез: видно корни, почву и признаки болезней вблизи.');
+  if (v === '3d') update3D(); else if (m3) m3.stop();
+}
+document.querySelectorAll('#viewSw button').forEach(b => b.onclick = () => setView(b.dataset.view));
 
 let speed = 1, acc = 0;
-document.querySelectorAll('.speed button').forEach(b => b.onclick = () => {
-  speed = +b.dataset.speed; document.querySelectorAll('.speed button').forEach(x => x.setAttribute('aria-pressed', x === b));
+document.querySelectorAll('#speedSw button').forEach(b => b.onclick = () => {
+  speed = +b.dataset.speed; document.querySelectorAll('#speedSw button').forEach(x => x.setAttribute('aria-pressed', x === b));
 });
 
 // блоки курса выбранной группы; варианты ответов перемешиваются одинаково при каждом показе
@@ -2572,7 +2650,7 @@ $('live6').onclick = () => live(6);
 $('live24').onclick = () => live(24);
 
 function applyMode() {
-  document.querySelector('.speed').hidden = !LESSON;
+  document.getElementById('speedSw').hidden = !LESSON;
   $('teacher').hidden = !LESSON;
   $('dayBtns').hidden = LESSON || MODE !== 'lessons';
   $('modeSet').hidden = LESSON;
@@ -2632,6 +2710,7 @@ function start(data) {
   S = G ? G.plants[G.active] : null;
   window.claude?.hot?.snapshot?.(() => ({ G }));
   applyMode();
+  setView(VIEW);
   if (!G) { showGame(false); openSettings(true); }
   else { showGame(true); renderBlocks(); }
   renderGarden();
