@@ -118,6 +118,9 @@ svg .maskify [stroke]:not([stroke="none"]) { stroke: #fff; stroke-width: 5px; }
 .chip:has(input:checked) { border-color: var(--leaf); background: var(--leaf-soft); }
 .chip input { accent-color: var(--leaf); margin: 0; }
 .pill.season { background: color-mix(in srgb, var(--water) 14%, transparent); color: var(--water); }
+.v3d { position: relative; width: 100%; aspect-ratio: 4 / 3; max-height: 70vh; border-radius: 12px; overflow: hidden; background: color-mix(in srgb, var(--bg) 70%, transparent); touch-action: none; }
+.v3d canvas { display: block; width: 100% !important; height: 100% !important; }
+.v3d-msg { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--muted); }
 .xpnote { margin: 0; padding: 0 14px 14px; font-size: 13px; color: var(--muted); }
 @keyframes rise { from { transform: translateY(0); opacity: .9; } to { transform: translateY(-60px); opacity: 0; } }
 .speed { display: flex; gap: 4px; }
@@ -370,6 +373,7 @@ footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-co
             <div class="row">
               <button class="btn primary" id="aWater"><span class="dot"></span><span class="lbl">Полить</span></button>
               <button class="btn" id="aFeed"><span class="dot" style="background:var(--soil)"></span><span class="lbl">Подкормить</span></button>
+              <button class="btn" id="a3d"><span class="dot" style="background:var(--leaf)"></span>Посмотреть в 3D</button>
               <button class="btn" id="aIodine"><span class="dot" style="background:#3a3f86"></span>Проба йодом на крахмал</button>
             </div>
           </div>
@@ -415,6 +419,14 @@ footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-co
     <h2 id="hLog">Дневник наблюдений</h2>
     <ul class="log" id="log"></ul>
   </section>
+
+  <div class="modal" id="v3dModal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="v3dTitle">
+      <div class="head"><h2 id="v3dTitle">Растение в 3D</h2><button class="btn" id="v3dClose">Закрыть</button></div>
+      <div class="v3d" id="v3d"><p class="v3d-msg" id="v3dMsg">Загружаю модель…</p></div>
+      <p class="locked-note" id="v3dNote">Крути растение мышкой или пальцем, колёсиком или щипком приближай.</p>
+    </div>
+  </div>
 
   <div class="modal" id="cutModal" hidden>
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="cutTitle">
@@ -1249,6 +1261,7 @@ function drawAngio(s, ctx) {
   const P = t => [(1 - t) ** 2 * B[0] + 2 * (1 - t) * t * C[0] + t * t * T[0], (1 - t) ** 2 * B[1] + 2 * (1 - t) * t * C[1] + t * t * T[1]];
   const top = droop > 0.55 ? [T[0] + lean * 0.3 + 14 * droop, T[1] + H * 0.12 * droop] : T;
   o += `<path d="M${B[0]} ${B[1]} Q${f1(C[0])} ${f1(C[1])} ${f1(top[0])} ${f1(top[1])}" stroke="${mix(col, '#5d7a33', .3)}" stroke-width="${f1(2.5 + bm * 0.22)}" fill="none" stroke-linecap="round"/>`;
+  const crop = cropOf(s);
   const n = s.biomass < 2 ? 2 : Math.min(16 + Math.round(lush * 6), 2 + Math.floor(s.biomass * (0.75 + lush * 0.3)));
   for (let i = 0; i < n; i++) {
     const t = s.biomass < 2 ? 1 : 0.12 + (i / n) * 0.82;
@@ -1257,13 +1270,12 @@ function drawAngio(s, ctx) {
     const W = Lg * (s.biomass < 2 ? 0.45 : 0.36), ang = side * (-32 + droop * 85);
     const c = i < 2 && s.minerals < 12 ? mix(col, '#d9c55a', 0.6) : col;
     const tip = s.rootHarm === 'burn' && s.rootHP < 80 ? `<path d="M${f1(Lg * 0.8)} ${f1(-W * 0.35)} Q${f1(Lg)} 0 ${f1(Lg * 0.8)} ${f1(W * 0.35)} Z" fill="#7a4a20"/>` : '';
-    o += `<g transform="translate(${f1(x)} ${f1(y)}) rotate(${f1(ang)}) scale(${side} 1)"><path d="M0 0 Q${f1(Lg / 2)} ${f1(-W)} ${f1(Lg)} 0 Q${f1(Lg / 2)} ${f1(W)} 0 0 Z" fill="${c}"/>${tip}<path d="M1 0 L${f1(Lg * 0.9)} 0" stroke="rgba(0,0,0,.18)" stroke-width="1"/></g>`;
+    o += `<g transform="translate(${f1(x)} ${f1(y)}) rotate(${f1(ang)}) scale(${side} 1)">${crop.type === 'berry' || crop.type === 'legume' ? compoundLeaf(Lg * 1.15, W, c) : `<path d="M0 0 Q${f1(Lg / 2)} ${f1(-W)} ${f1(Lg)} 0 Q${f1(Lg / 2)} ${f1(W)} 0 0 Z" fill="${c}"/>`}${tip}<path d="M1 0 L${f1(Lg * 0.9)} 0" stroke="rgba(0,0,0,.18)" stroke-width="1"/></g>`;
   }
-  const crop = cropOf(s);
   const flower = (x, y, r) => {
     if (crop.type === 'caryopsis') return st >= 5 ? fruitIcon('caryopsis', x, y, r, s.fruit) : fruitIcon('caryopsis', x, y, r, 0);
     if (crop.type === 'achene' && st >= 4 && !(st >= 5 && s.fruit >= 0.15)) return fruitIcon('achene', x, y, r, 0);
-    if (st === 3) return `<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="${r * 0.45}" ry="${r * 0.7}" fill="#5f9a3c"/><ellipse cx="${f1(x)}" cy="${f1(y - r * 0.4)}" rx="${r * 0.3}" ry="${r * 0.35}" fill="#e88aa8"/>`;
+    if (st === 3) return `<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="${r * 0.45}" ry="${r * 0.7}" fill="#5f9a3c"/><ellipse cx="${f1(x)}" cy="${f1(y - r * 0.4)}" rx="${r * 0.3}" ry="${r * 0.35}" fill="${crop.petal || '#9cc35a'}"/>`;
     if (st === 4 || (st >= 5 && s.fruit < 0.15)) {
       let f = ''; for (let k = 0; k < 5; k++) { const a = k * 72 * Math.PI / 180, px = x + Math.cos(a) * r * 0.7, py = y + Math.sin(a) * r * 0.7; f += `<ellipse cx="${f1(px)}" cy="${f1(py)}" rx="${r * 0.62}" ry="${r * 0.45}" transform="rotate(${k * 72} ${f1(px)} ${f1(py)})" fill="${droop > .55 ? mix(crop.petal, '#b8a888', .5) : lush > 0.55 ? mix(crop.petal, '#ffffff', .15) : crop.petal}" stroke="rgba(0,0,0,.12)"/>`; }
       return f + `<circle cx="${f1(x)}" cy="${f1(y)}" r="${r * 0.38}" fill="#f2c230"/>` + (s.pollinated ? `<circle cx="${f1(x)}" cy="${f1(y)}" r="${r * 0.2}" fill="#d98b1a"/>` : '');
@@ -1273,9 +1285,17 @@ function drawAngio(s, ctx) {
   };
   if (st >= 3) {
     const fr = 1 + 0.35 * lush;
-    o += flower(top[0], top[1] - 6, 14 * fr);
-    if (s.biomass >= 18 - lush * 3) { const [x, y] = P(0.8); o += flower(x + 24, y - 12, 10 * fr) + flower(x - 24, y - 4, 10 * fr); }
-    if (lush >= 0.5 && s.biomass >= 16) { const [x, y] = P(0.64); o += flower(x + 30, y - 6, 9 * fr) + flower(x - 30, y + 2, 9 * fr); }
+    if (AXIL.includes(crop.type)) {
+      // как в жизни: соцветия и плоды сидят в пазухах листьев и свисают сбоку от стебля
+      const spots = [[0.48, 1], [0.64, -1], [0.8, 1]]; if (lush >= 0.5) spots.push([0.36, -1]);
+      const nT = s.biomass >= 18 - lush * 3 ? spots.length : 2;
+      spots.slice(0, nT).forEach(([t, side], ti) => { const [x, y] = P(t); o += cluster2D(s, crop, x, y, side, ti, fr, st, droop); });
+      if (crop.type === 'berry' || crop.type === 'legume') { const [x, y] = top; o += `<circle cx="${f1(x)}" cy="${f1(y - 2)}" r="3" fill="${mix(col, '#a8d070', .3)}"/>`; }
+    } else {
+      o += flower(top[0], top[1] - 6, 14 * fr);
+      if (s.biomass >= 18 - lush * 3) { const [x, y] = P(0.8); o += flower(x + 24, y - 12, 10 * fr) + flower(x - 24, y - 4, 10 * fr); }
+      if (lush >= 0.5 && s.biomass >= 16) { const [x, y] = P(0.64); o += flower(x + 30, y - 6, 9 * fr) + flower(x - 30, y + 2, 9 * fr); }
+    }
   }
   return o;
 }
@@ -1658,6 +1678,38 @@ const FLOWER = petal => {
 };
 
 
+const AXIL = ['berry', 'drupe', 'apple', 'tykvina', 'multinut', 'multidrupe', 'legume'];
+// сложный перистый лист (томат, горох): черешок, пары листочков и верхушечный листочек
+function compoundLeaf(L, W, c) {
+  let o = `<path d="M0 0 L${f1(L)} 0" stroke="${c}" stroke-width="1.6"/>`;
+  const lf = (x, ang, sz) => `<path transform="translate(${f1(x)} 0) rotate(${ang})" d="M0 0 Q${f1(sz * 0.5)} ${f1(-sz * 0.38)} ${f1(sz)} 0 Q${f1(sz * 0.5)} ${f1(sz * 0.38)} 0 0 Z" fill="${c}"/>`;
+  for (const t of [0.3, 0.55, 0.78]) o += lf(L * t, -55, L * 0.32) + lf(L * t, 55, L * 0.3);
+  return o + lf(L * 0.94, 0, L * 0.34);
+}
+// кисть (соцветие) в пазухе листа: бутоны → цветки → плоды разной спелости
+function cluster2D(s, crop, x, y, side, ti, fr, st, droop) {
+  const n = { berry: 4, drupe: 1, legume: 2, multinut: 2, multidrupe: 2, apple: 1, tykvina: 1 }[crop.type] || 1;
+  const ex = x + side * 14, ey = y + 4 + droop * 6;
+  let o = `<path d="M${f1(x)} ${f1(y)} Q${f1(x + side * 8)} ${f1(y - 6)} ${f1(ex)} ${f1(ey)}" stroke="#4f8a2e" stroke-width="1.4" fill="none"/>`;
+  for (let i = 0; i < n; i++) {
+    const px = ex + side * i * 8, py = ey + 6 + (i % 2) * 6;
+    o += `<path d="M${f1(ex)} ${f1(ey)} L${f1(px)} ${f1(py - 3)}" stroke="#4f8a2e" stroke-width="1"/>`;
+    if (st === 3) o += `<ellipse cx="${f1(px)}" cy="${f1(py)}" rx="2.6" ry="3.8" fill="#6aa84f"/><circle cx="${f1(px)}" cy="${f1(py + 2.5)}" r="1.6" fill="${crop.petal}"/>`;
+    else if (st === 4 || (st >= 5 && s.fruit < 0.15)) {
+      if (crop.type === 'berry') { // томат: жёлтая звёздочка с отогнутыми лепестками и конусом пыльников
+        for (let k = 0; k < 6; k++) { const a = (k * 60 + 90) * Math.PI / 180; o += `<path d="M${f1(px)} ${f1(py)} l${f1(Math.cos(a) * 6)} ${f1(Math.sin(a) * 6 - 2)}" stroke="${crop.petal}" stroke-width="2.4" stroke-linecap="round"/>`; }
+        o += `<path d="M${f1(px - 1.8)} ${f1(py - 1)} L${f1(px)} ${f1(py + 5)} L${f1(px + 1.8)} ${f1(py - 1)} Z" fill="#e0a21a"/>`;
+      } else {
+        for (let k = 0; k < 5; k++) { const a = k * 72 * Math.PI / 180; o += `<circle cx="${f1(px + Math.cos(a) * 3.2)}" cy="${f1(py + Math.sin(a) * 3.2)}" r="2.8" fill="${crop.petal}" stroke="rgba(0,0,0,.12)"/>`; }
+        o += `<circle cx="${f1(px)}" cy="${f1(py)}" r="1.6" fill="#f2c230"/>`;
+      }
+    } else {
+      const g = clamp(s.fruit * 1.5 - (ti * 0.25 + i * 0.15), 0, 1); // нижние кисти созревают первыми
+      o += fruitIcon(crop.type, px, py - 2, 7 * fr * (0.55 + 0.6 * Math.min(1, s.fruit * 2)), g);
+    }
+  }
+  return o;
+}
 // плоды на кусте: форма зависит от культуры, g — спелость 0…1
 function fruitIcon(type, x, y, r, g) {
   const c = (a, b) => mix(a, b, g);
@@ -1666,7 +1718,9 @@ function fruitIcon(type, x, y, r, g) {
     case 'drupe': return `<path d="M${f1(x)} ${f1(y - 6)} Q${f1(x - r * 0.4)} ${f1(y)} ${f1(x - r * 0.5)} ${f1(y + r * 0.6)} M${f1(x)} ${f1(y - 6)} Q${f1(x + r * 0.3)} ${f1(y + r * 0.2)} ${f1(x + r * 0.5)} ${f1(y + r * 0.75)}" stroke="#5a7a2a" stroke-width="1.6" fill="none"/>`
       + `<circle cx="${f1(x - r * 0.5)}" cy="${f1(y + r * 0.95)}" r="${f1(r * 0.42)}" fill="${c('#9cc35a', '#a3122a')}"/><circle cx="${f1(x + r * 0.5)}" cy="${f1(y + r * 1.1)}" r="${f1(r * 0.42)}" fill="${c('#9cc35a', '#a3122a')}"/>`;
     case 'apple': return `<circle cx="${f1(x)}" cy="${f1(y + r * 0.7)}" r="${f1(r * 0.75)}" fill="${c('#a8cc62', '#cf3b2e')}"/><path d="M${f1(x)} ${f1(y)} v-6" stroke="#6b4a2a" stroke-width="2"/><path d="M${f1(x)} ${f1(y - 4)} q8 -6 12 0 q-6 4 -12 0 z" fill="#4f8a2e"/>`;
-    case 'berry': return `<circle cx="${f1(x)}" cy="${f1(y + r * 0.6)}" r="${f1(r * 0.7)}" fill="${c('#8cc05a', '#e0402a')}"/><path d="M${f1(x - 6)} ${f1(y - 2)} l6 4 l6 -4 M${f1(x)} ${f1(y + 2)} v-7" stroke="#3e7a2c" stroke-width="2" fill="none"/>`;
+    case 'berry': { const cy = y + r * 0.7, rr = r * 0.72; let o = `<ellipse cx="${f1(x)}" cy="${f1(cy)}" rx="${f1(rr * 1.06)}" ry="${f1(rr * 0.92)}" fill="${c('#7fb24a', '#d8331f')}"/><ellipse cx="${f1(x - rr * 0.35)}" cy="${f1(cy - rr * 0.35)}" rx="${f1(rr * 0.25)}" ry="${f1(rr * 0.15)}" fill="#ffffff" opacity=".35"/>`;
+      for (let k = 0; k < 5; k++) { const a = (k * 72 - 90) * Math.PI / 180; o += `<path d="M${f1(x)} ${f1(cy - rr * 0.85)} l${f1(Math.cos(a) * rr * 0.55)} ${f1(Math.sin(a) * rr * 0.3 + rr * 0.1)}" stroke="#3e7a2c" stroke-width="1.4" stroke-linecap="round"/>`; }
+      return o; }
     case 'achene': { let o = ''; if (g < 0.6) for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2; o += `<ellipse cx="${f1(x + Math.cos(a) * r * 1.35)}" cy="${f1(y + Math.sin(a) * r * 1.35)}" rx="${f1(r * 0.45)}" ry="${f1(r * 0.17)}" transform="rotate(${f1(a * 180 / Math.PI)} ${f1(x + Math.cos(a) * r * 1.35)} ${f1(y + Math.sin(a) * r * 1.35)})" fill="#f2b51e" opacity="${(1 - g * 1.5).toFixed(2)}"/>`; }
       o += `<circle cx="${f1(x)}" cy="${f1(y)}" r="${f1(r * 1.05)}" fill="${c('#6b7a3a', '#4a3020')}"/>`;
       for (let k = 0; k < 18; k++) { const a = k * 2.4, rr = Math.sqrt(k / 18) * r * 0.95; o += `<ellipse cx="${f1(x + Math.cos(a) * rr)}" cy="${f1(y + Math.sin(a) * rr)}" rx="1.4" ry="2" fill="${c('#8a9a4a', '#2a2a2a')}"/>`; }
@@ -1935,6 +1989,260 @@ $('cutModal').addEventListener('click', ev => { if (ev.target === $('cutModal'))
 document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !$('cutModal').hidden) closeCut(); });
 $('aFlower').onclick = () => openCut('flower');
 $('bCut').onclick = () => openCut(S.sp === 'gymno' ? 'cone' : 'fruit');
+
+// ---------- 3D-просмотр ----------
+// three.js грузится только при первом открытии окна; модели — облегчённые копии моделей Poly Haven (CC0)
+const THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@0.147.0/';
+const MODEL_FILES = { gymno: 'models/pine.glb', fern: 'models/fern.glb' };
+let threeReady = null, v3 = null;
+function loadScript(src) { return new Promise((ok, bad) => { const el = document.createElement('script'); el.src = src; el.onload = ok; el.onerror = bad; document.head.appendChild(el); }); }
+function ensureThree() {
+  if (!threeReady) threeReady = loadScript(THREE_CDN + 'build/three.min.js')
+    .then(() => Promise.all([loadScript(THREE_CDN + 'examples/js/loaders/GLTFLoader.js'), loadScript(THREE_CDN + 'examples/js/controls/OrbitControls.js')]));
+  return threeReady;
+}
+const modelCache = {};
+function loadModel(url) {
+  if (!modelCache[url]) modelCache[url] = new Promise((ok, bad) => new THREE.GLTFLoader().load(url, g => ok(g.scene), undefined, bad));
+  return modelCache[url].then(sc => sc.clone(true));
+}
+function makePot(T, lvl, jar) {
+  const g = new T.Group();
+  if (jar) {
+    const glass = new T.Mesh(new T.CylinderGeometry(0.42, 0.42, 1.1, 40, 1, true), new T.MeshPhysicalMaterial({ color: 0xdff0f4, transparent: true, opacity: 0.22, roughness: 0.05, side: T.DoubleSide }));
+    glass.position.y = 0.55; g.add(glass);
+    const water = new T.Mesh(new T.CylinderGeometry(0.4, 0.4, 0.9 * Math.max(0.1, S.moisture / 100), 40), new T.MeshStandardMaterial({ color: 0x9cc9b0, transparent: true, opacity: 0.45 }));
+    water.position.y = 0.45 * Math.max(0.1, S.moisture / 100); g.add(water); g.userData.top = 0.02; return g;
+  }
+  const t = potTier(lvl), body = [0xb0603a, 0xb0603a, 0x3d7f8e, 0x2e5f7a, 0xc9962a][t], rim = [0xc26d43, 0xc26d43, 0x4f98a8, 0xd4a93a, 0xecc75a][t];
+  const pts = [[0.0, 0], [0.32, 0], [0.42, 0.62], [0.47, 0.62], [0.47, 0.7], [0.4, 0.7], [0.36, 0.1], [0, 0.1]].map(([x, y]) => new T.Vector2(x, y));
+  const pot = new T.Mesh(new T.LatheGeometry(pts, 48), new T.MeshStandardMaterial({ color: body, roughness: 0.85 }));
+  const rimM = new T.Mesh(new T.TorusGeometry(0.445, 0.04, 12, 48), new T.MeshStandardMaterial({ color: rim, roughness: 0.6, metalness: t >= 3 ? 0.6 : 0 }));
+  rimM.rotation.x = Math.PI / 2; rimM.position.y = 0.69;
+  const soil = new T.Mesh(new T.CircleGeometry(0.4, 40), new T.MeshStandardMaterial({ color: new T.Color(mix('#b88d5e', '#3d2818', S.moisture / 100)), roughness: 1 }));
+  soil.rotation.x = -Math.PI / 2; soil.position.y = 0.62;
+  g.add(pot, rimM, soil); g.userData.top = 0.62; return g;
+}
+// Цветковое растение: стебель, листья, цветки цвета своей культуры и плоды своего типа
+function angio3D(T, col, st, k) {
+  const g = new T.Group(), crop = cropOf(S), droop = clamp(1 - S.turgor, 0, 1);
+  const lm = new T.MeshStandardMaterial({ color: col, roughness: 0.65, side: T.DoubleSide });
+  const stemM = new T.MeshStandardMaterial({ color: col.clone().lerp(new T.Color('#6f8f3a'), 0.35), roughness: 0.8 });
+  const H = 0.4 + k * 0.9;
+  // стебель слегка зигзагом — так растут побеги, от узла к узлу
+  const sp = []; for (let i = 0; i <= 8; i++) sp.push(new T.Vector3((i % 2 ? 1 : -1) * 0.015 * (i > 0), H * i / 8, 0));
+  const stemCurve = new T.CatmullRomCurve3(sp);
+  g.add(new T.Mesh(new T.TubeGeometry(stemCurve, 48, 0.018, 8), stemM));
+  const leafletShape = (w) => { const sh = new T.Shape(); sh.moveTo(0, 0); sh.quadraticCurveTo(0.05, w, 0.11, 0); sh.quadraticCurveTo(0.05, -w, 0, 0); return new T.ShapeGeometry(sh, 6); };
+  const simpleLeaf = leafletShape(0.045), leaflet = leafletShape(crop.type === 'berry' ? 0.05 : 0.03);
+  const compound = crop.type === 'berry' || crop.type === 'legume';
+  const makeLeaf = (size) => {
+    const L = new T.Group();
+    if (!compound) { const m = new T.Mesh(simpleLeaf, lm); m.scale.setScalar(size * 1.5); L.add(m); return L; }
+    const len = 0.26 * size;
+    const rach = new T.Mesh(new T.CylinderGeometry(0.004, 0.006, len, 5), stemM); rach.rotation.z = -Math.PI / 2; rach.position.x = len / 2; L.add(rach);
+    for (const t of [0.3, 0.55, 0.8]) for (const sd of [-1, 1]) {
+      const m = new T.Mesh(leaflet, lm); m.scale.setScalar(size * (1.1 - t * 0.3)); m.position.x = len * t; m.rotation.set(sd * 0.3, 0, sd * 0.9); L.add(m);
+    }
+    const tip = new T.Mesh(leaflet, lm); tip.scale.setScalar(size * 1.1); tip.position.x = len * 0.95; L.add(tip);
+    return L;
+  };
+  const nLeaves = Math.min(14, 3 + Math.floor(S.biomass * 0.6));
+  for (let i = 0; i < nLeaves; i++) {
+    const t = 0.12 + 0.82 * i / nLeaves, p = stemCurve.getPoint(t), L = makeLeaf((1.15 - t * 0.5) * (0.8 + k * 0.5));
+    L.position.copy(p); L.rotation.set(0, i * 2.4, -0.35 + droop * 1.1); g.add(L);
+  }
+  if (st < 3) return g;
+  const petalM = new T.MeshStandardMaterial({ color: crop.petal || '#9cc35a', roughness: 0.5, side: T.DoubleSide });
+  const green = new T.MeshStandardMaterial({ color: '#4f8a2e', roughness: 0.7 });
+  const M = c => new T.MeshStandardMaterial({ color: c, roughness: 0.35 });
+  const sph = (r, ws = 16) => new T.SphereGeometry(r, ws, Math.max(8, ws - 4));
+  const flowerShowing = st === 4 || (st >= 5 && S.fruit < 0.15);
+  const item = (type, ripe) => { // один цветок или плод
+    const f = new T.Group();
+    if (st === 3) { const b = new T.Mesh(sph(0.012, 8), green); b.scale.set(1, 1.5, 1); f.add(b); return f; }
+    if (flowerShowing) {
+      if (type === 'berry') { // томат: звёздочка с отогнутыми назад лепестками, конус пыльников вниз
+        for (let j = 0; j < 6; j++) { const p = new T.Mesh(sph(0.02, 8), petalM); p.scale.set(0.35, 0.08, 1); const a = j / 6 * Math.PI * 2; p.position.set(Math.cos(a) * 0.018, 0.006, Math.sin(a) * 0.018); p.rotation.y = -a; p.rotation.x = 0.5; f.add(p); }
+        const cone = new T.Mesh(new T.ConeGeometry(0.008, 0.025, 8), M('#e0a21a')); cone.rotation.x = Math.PI; cone.position.y = -0.012; f.add(cone);
+      } else {
+        for (let j = 0; j < 5; j++) { const p = new T.Mesh(sph(0.016, 8), petalM); p.scale.set(1.2, 0.25, 0.8); const a = j / 5 * Math.PI * 2; p.position.set(Math.cos(a) * 0.016, 0, Math.sin(a) * 0.016); p.rotation.y = -a; f.add(p); }
+        const c = new T.Mesh(sph(0.007, 8), M('#f2c230')); f.add(c);
+      }
+      f.rotation.x = 0.7; f.scale.setScalar(1.6); // цветки слегка поникают
+      return f;
+    }
+    const cc = (a, b) => new T.Color(a).lerp(new T.Color(b), ripe), sz = 0.6 + Math.min(1, S.fruit * 2) * 0.6;
+    const add = (geo, color, sx = 1, sy = 1, sz2 = 1, py = 0) => { const m = new T.Mesh(geo, M(color)); m.scale.set(sx * sz, sy * sz, sz2 * sz); m.position.y = py * sz; f.add(m); return m; };
+    switch (type) {
+      case 'berry': { add(sph(0.046), cc('#7fb24a', '#d8331f'), 1.05, 0.88, 1.05, -0.045);
+        for (let j = 0; j < 5; j++) { const s2 = new T.Mesh(new T.ConeGeometry(0.004, 0.02, 4), green); const a = j / 5 * Math.PI * 2; s2.position.set(Math.cos(a) * 0.012 * sz, -0.003, Math.sin(a) * 0.012 * sz); s2.rotation.set(Math.sin(a) * 1.3, 0, -Math.cos(a) * 1.3); f.add(s2); } break; }
+      case 'drupe': add(sph(0.022), cc('#9cc35a', '#a3122a'), 1, 1, 1, -0.05); break;
+      case 'apple': add(sph(0.04), cc('#a8cc62', '#cf3b2e'), 1, 0.9, 1, -0.04); break;
+      case 'tykvina': add(new T.CapsuleGeometry(0.02, 0.09, 4, 12), cc('#8cc05a', '#3f7a2a'), 1, 1, 1, -0.07); break;
+      case 'multinut': add(new T.ConeGeometry(0.025, 0.045, 14), cc('#e6efcc', '#d8293a'), 1, 1, 1, -0.04).rotation.x = Math.PI; break;
+      case 'multidrupe': for (let j = 0; j < 10; j++) { const m = new T.Mesh(sph(0.008, 8), M(cc('#d2e2a6', '#c4203a'))); m.position.set(Math.cos(j) * 0.014 * sz, (-0.03 - (j % 4) * 0.008) * sz, Math.sin(j) * 0.014 * sz); f.add(m); } break;
+      case 'legume': add(new T.CapsuleGeometry(0.012, 0.07, 4, 10), cc('#8bc35a', '#c9b46a'), 1, 1, 0.6, -0.05); break;
+    }
+    return f;
+  };
+  if (AXIL.includes(crop.type)) {
+    // кисти в пазухах листьев: от стебля отходит цветонос, на нём несколько цветков или плодов
+    const n = { berry: 4, drupe: 2, legume: 2, multinut: 2, multidrupe: 2, apple: 1, tykvina: 1 }[crop.type] || 1;
+    const spots = [0.42, 0.58, 0.74, 0.88].slice(0, S.biomass >= 16 ? 4 : 2);
+    spots.forEach((t, ti) => {
+      const p = stemCurve.getPoint(t), ang = ti * 2.1 + 0.6, dir = new T.Vector3(Math.cos(ang), 0, Math.sin(ang));
+      const end = p.clone().add(dir.clone().multiplyScalar(0.09)).add(new T.Vector3(0, -0.02, 0));
+      const ped = new T.Mesh(new T.TubeGeometry(new T.QuadraticBezierCurve3(p, p.clone().add(dir.clone().multiplyScalar(0.05)).add(new T.Vector3(0, 0.03, 0)), end), 12, 0.004, 5), stemM); g.add(ped);
+      for (let i = 0; i < n; i++) {
+        const ripe = clamp(S.fruit * 1.5 - (ti * 0.25 + i * 0.15), 0, 1);
+        const it = item(crop.type, ripe); it.position.copy(end).add(dir.clone().multiplyScalar(i * 0.035)).add(new T.Vector3(0, -0.015 * (i % 2), (i % 2 ? 0.02 : -0.02)));
+        g.add(it);
+      }
+    });
+    return g;
+  }
+  // верхушечные: корзинка подсолнечника, колос пшеницы, коробочка мака, стручки капусты
+  const top = stemCurve.getPoint(1), f = new T.Group(); f.position.copy(top);
+  const ripe = S.fruit, cc = (a, b) => new T.Color(a).lerp(new T.Color(b), ripe);
+  if (crop.type === 'achene') {
+    const head = new T.Group(); head.rotation.x = Math.PI / 2.4; f.add(head);
+    const disk = new T.Mesh(new T.CylinderGeometry(0.11, 0.1, 0.03, 32), M(st >= 5 ? cc('#6b4a24', '#3a2614') : '#6b4a24')); head.add(disk);
+    if (st === 4 || (st >= 5 && S.fruit < 0.6)) for (let j = 0; j < 20; j++) { const p = new T.Mesh(sph(0.03, 8), petalM); p.scale.set(1.6, 0.15, 0.55); const a = j / 20 * Math.PI * 2; p.position.set(Math.cos(a) * 0.15, 0, Math.sin(a) * 0.15); p.rotation.y = -a; head.add(p); }
+    if (st === 3) { disk.material = green; disk.scale.setScalar(0.6); }
+  } else if (crop.type === 'caryopsis') {
+    for (let j = 0; j < 12; j++) { const m = new T.Mesh(sph(0.012, 8), M(st >= 5 ? cc('#9cc35a', '#dcb64e') : '#9cc35a')); m.scale.set(1, 1.8, 0.8); m.position.set(j % 2 ? 0.012 : -0.012, 0.02 + j * 0.016, 0); f.add(m);
+      const awn = new T.Mesh(new T.CylinderGeometry(0.0012, 0.0012, 0.08, 3), M(st >= 5 ? cc('#a8c870', '#d9bc6a') : '#a8c870')); awn.position.set((j % 2 ? 0.02 : -0.02), 0.06 + j * 0.016, 0); awn.rotation.z = (j % 2 ? -0.3 : 0.3); f.add(awn); }
+  } else if (crop.type === 'capsule') {
+    if (st >= 5 && S.fruit >= 0.15) { const c = new T.Mesh(sph(0.04), M(cc('#a7b884', '#9a8f6a'))); c.position.y = 0.04; f.add(c); const d = new T.Mesh(new T.CylinderGeometry(0.03, 0.03, 0.006, 16), M(cc('#8a9a6a', '#6f6650'))); d.position.y = 0.08; f.add(d); }
+    else if (st === 3) { const b = new T.Mesh(sph(0.025), green); b.scale.set(1, 1.4, 1); b.position.y = 0.03; f.add(b); }
+    else { for (let j = 0; j < 4; j++) { const p = new T.Mesh(sph(0.045, 12), petalM); p.scale.set(1, 0.2, 0.9); const a = j / 4 * Math.PI * 2; p.position.set(Math.cos(a) * 0.03, 0.04, Math.sin(a) * 0.03); p.rotation.set(0.5 * Math.sin(a), -a, 0.5 * Math.cos(a)); f.add(p); } const c = new T.Mesh(sph(0.012, 8), M('#2a2a2a')); c.position.y = 0.045; f.add(c); }
+  } else { // стручки капусты на верхушечной кисти
+    for (let j = 0; j < 6; j++) { const y = j * 0.03, a = j * 2.4;
+      if (st >= 5 && S.fruit >= 0.15) { const m = new T.Mesh(new T.CapsuleGeometry(0.005, 0.07, 4, 6), M(cc('#9cc35a', '#c9b46a'))); m.position.set(Math.cos(a) * 0.03, y + 0.03, Math.sin(a) * 0.03); m.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5); f.add(m); }
+      else { const fl = new T.Group(); for (let q = 0; q < 4; q++) { const p = new T.Mesh(sph(0.012, 8), st === 3 ? green : petalM); p.scale.set(1, 0.25, 0.7); const b = q / 4 * Math.PI * 2; p.position.set(Math.cos(b) * 0.01, 0, Math.sin(b) * 0.01); p.rotation.y = -b; fl.add(p); } fl.position.set(Math.cos(a) * 0.025, y, Math.sin(a) * 0.025); f.add(fl); } }
+  }
+  g.add(f);
+  return g;
+}
+function proceduralPlant(T) {
+  const g = new T.Group(), col = new T.Color(leafColor(S)), st = stageOf(S), k = Math.min(1, 0.25 + S.biomass / 16);
+  const mat = new T.MeshStandardMaterial({ color: col, roughness: 0.7 });
+  if (S.sp === 'angio') return angio3D(T, col, st, k);
+  if (S.sp === 'moss') { // кукушкин лён: стебельки с жёсткими листочками, позже — коробочки на ножках
+    const n = 14 + Math.round(k * 40), leafG = new T.ConeGeometry(0.006, 0.04, 3), dry = clamp(1 - S.turgor, 0, 1);
+    const mm = new T.MeshStandardMaterial({ color: col.clone().lerp(new T.Color('#8f7e44'), dry * 0.8), roughness: 0.8 });
+    for (let i = 0; i < n; i++) {
+      const r = 0.36 * Math.sqrt(Math.random()), a = Math.random() * Math.PI * 2, h = (0.08 + k * 0.18) * (0.7 + Math.random() * 0.5);
+      const sh = new T.Group(); sh.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); sh.rotation.set((Math.random() - 0.5) * 0.3, 0, (Math.random() - 0.5) * 0.3);
+      const stem = new T.Mesh(new T.CylinderGeometry(0.004, 0.005, h, 5), mm); stem.position.y = h / 2; sh.add(stem);
+      for (let j = 0; j < 7; j++) for (let q = 0; q < 4; q++) {
+        const l = new T.Mesh(leafG, mm), y = h * (0.25 + 0.75 * j / 7), b = q * 1.57 + j;
+        l.position.set(Math.cos(b) * 0.012, y, Math.sin(b) * 0.012); l.rotation.set(Math.sin(b) * (0.9 - dry * 0.6), 0, -Math.cos(b) * (0.9 - dry * 0.6)); sh.add(l);
+      }
+      if (st >= 3 && st <= 4 && i % 3 === 0) { const t = new T.Mesh(new T.SphereGeometry(0.012, 8, 6), new T.MeshStandardMaterial({ color: '#c45a3a' })); t.position.y = h + 0.01; sh.add(t); }
+      if (st >= 5 && i % 3 === 1) {
+        const gr = st === 6 ? 1 : S.fruit, sl = 0.04 + gr * 0.22;
+        const seta = new T.Mesh(new T.CylinderGeometry(0.002, 0.002, sl, 4), new T.MeshStandardMaterial({ color: '#b0603a' })); seta.position.y = h + sl / 2; sh.add(seta);
+        const cap = new T.Mesh(new T.CapsuleGeometry(0.008 + gr * 0.006, 0.02 + gr * 0.015, 4, 8), new T.MeshStandardMaterial({ color: new T.Color('#7fae4a').lerp(new T.Color('#7a5530'), gr) }));
+        cap.position.y = h + sl + 0.015; if (st === 6) cap.rotation.z = 0.8; sh.add(cap);
+      }
+      g.add(sh);
+    }
+    return g;
+  }
+  if (S.sp === 'algae') { // нити спирогиры в банке
+    const n = 6 + Math.round(k * 14);
+    for (let i = 0; i < n; i++) {
+      const pts = [], x0 = (Math.random() - 0.5) * 0.6, z0 = (Math.random() - 0.5) * 0.6, len = 0.3 + k * 0.6 * Math.random();
+      for (let j = 0; j <= 8; j++) pts.push(new T.Vector3(x0 + Math.sin(j * 1.3 + i) * 0.05, 0.05 + len * j / 8, z0 + Math.cos(j * 1.1 + i) * 0.05));
+      g.add(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), 40, 0.008, 6), mat));
+    }
+    return g;
+  }
+  // плаун: ползучий стебель и вильчато ветвящиеся побеги с мелкими листочками
+  const leafGeo = new T.ConeGeometry(0.012, 0.05, 4), clubMat = new T.MeshStandardMaterial({ color: st === 3 ? 0xb9c26a : 0xe2c34a });
+  const stem = new T.Mesh(new T.CylinderGeometry(0.018, 0.018, 0.7 * k + 0.2, 8), mat); stem.rotation.z = Math.PI / 2; stem.position.y = 0.02; g.add(stem);
+  const branch = (base, dir, len, d) => {
+    const end = base.clone().add(dir.clone().multiplyScalar(len));
+    const c = new T.Mesh(new T.CylinderGeometry(0.012, 0.015, len, 6), mat);
+    c.position.copy(base.clone().add(end).multiplyScalar(0.5)); c.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), dir.clone().normalize()); g.add(c);
+    for (let t = 0.1; t < 1; t += 0.12) for (let a = 0; a < 4; a++) {
+      const l = new T.Mesh(leafGeo, mat); l.position.copy(base.clone().lerp(end, t));
+      l.rotation.set(0.9 * Math.cos(a * 1.57), a * 1.57, 0.9 * Math.sin(a * 1.57)); g.add(l);
+    }
+    if (d < (S.biomass > 9 ? 2 : S.biomass > 4 ? 1 : 0)) {
+      branch(end, dir.clone().applyAxisAngle(new T.Vector3(0, 0, 1), 0.4), len * 0.7, d + 1);
+      branch(end, dir.clone().applyAxisAngle(new T.Vector3(0, 0, 1), -0.4), len * 0.7, d + 1);
+    } else if (st >= 3 && st <= 5) { const cl = new T.Mesh(new T.CapsuleGeometry(0.025, 0.09, 4, 8), clubMat); cl.position.copy(end.clone().add(dir.clone().normalize().multiplyScalar(0.07))); g.add(cl); }
+  };
+  const nb = 1 + Math.round(k * 6);
+  for (let i = 0; i < nb; i++) {
+    const x = (i / Math.max(1, nb - 1) - 0.5) * (0.7 * k), ang = Math.random() * Math.PI * 2;
+    const dir = new T.Vector3(0, 1, 0).applyAxisAngle(new T.Vector3(Math.cos(ang), 0, Math.sin(ang)), 0.15);
+    branch(new T.Vector3(x, 0.02, (Math.random() - 0.5) * 0.15), dir, 0.25 + k * 0.25, 0);
+  }
+  return g;
+}
+async function open3D() {
+  $('v3dModal').hidden = false;
+  $('v3dTitle').textContent = `${SPc().group}: ${S.sp === 'angio' ? cropOf(S).name.toLowerCase() : SPc().name.toLowerCase()} в 3D`;
+  $('v3dMsg').hidden = false; $('v3dMsg').textContent = 'Загружаю модель…';
+  try { await ensureThree(); } catch (e) { $('v3dMsg').textContent = 'Не удалось загрузить 3D-движок. Проверь интернет и попробуй ещё раз.'; threeReady = null; return; }
+  const T = THREE, box = $('v3d');
+  if (T.ColorManagement) T.ColorManagement.legacyMode = false; // цвета из палитры игры — в sRGB
+  if (!v3) {
+    const renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); renderer.outputEncoding = T.sRGBEncoding;
+    box.appendChild(renderer.domElement);
+    const scene = new T.Scene(), camera = new T.PerspectiveCamera(40, 4 / 3, 0.01, 50);
+    scene.add(new T.HemisphereLight(0xf4f8ff, 0x6b5a40, 0.9));
+    const sun = new T.DirectionalLight(0xffffff, 1.1); sun.position.set(2, 4, 3); scene.add(sun);
+    const controls = new T.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.minDistance = 0.6; controls.maxDistance = 8;
+    v3 = { renderer, scene, camera, controls, root: null, running: false };
+    const loop = () => { if (!v3.running) return; v3.controls.update(); v3.renderer.render(v3.scene, v3.camera); requestAnimationFrame(loop); };
+    v3.start = () => { if (!v3.running) { v3.running = true; loop(); } };
+  }
+  const { renderer, scene, camera } = v3;
+  const w = box.clientWidth || 640, h = box.clientHeight || 480; renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
+  v3.controls.dispose(); v3.controls = new T.OrbitControls(camera, renderer.domElement); v3.controls.enableDamping = true; v3.controls.minDistance = 0.6; v3.controls.maxDistance = 8;
+  if (v3.root) scene.remove(v3.root);
+  const root = new T.Group(); v3.root = root; scene.add(root);
+  const lvl = levelOf(S.xp), pot = makePot(T, lvl, S.sp === 'algae'); root.add(pot);
+  let plant;
+  try {
+    plant = MODEL_FILES[S.sp] ? await loadModel(MODEL_FILES[S.sp]) : proceduralPlant(T);
+  } catch (e) { $('v3dMsg').textContent = 'Не удалось загрузить модель растения.'; return; }
+  // размер по стадии роста и уровню; цвет — по здоровью
+  const grow = Math.min(1, 0.2 + S.biomass / 16) * (1 + 0.15 * (lvl - 1) / 9);
+  const target = { gymno: 1.9, fern: 1.3, angio: 1.2, moss: 0.75, lycopod: 1, algae: 1 }[S.sp] * (MODEL_FILES[S.sp] ? grow : 1);
+  const bb = new T.Box3().setFromObject(plant), size = bb.getSize(new T.Vector3());
+  if (MODEL_FILES[S.sp]) {
+    const k = target / Math.max(size.x, size.y, size.z); plant.scale.setScalar(k);
+    const bb2 = new T.Box3().setFromObject(plant); plant.position.y -= bb2.min.y;
+  }
+  const sick = S.dead ? 0.85 : clamp(1 - S.hp / 100, 0, 1) * 0.7 + (S.disease ? 0.15 : 0);
+  plant.traverse(o => {
+    if (!o.isMesh || !o.material) return;
+    const m0 = o.material;
+    // листья-карточки с прозрачностью: стандартный материал с отсечением по альфе рисуется надёжнее «физического»
+    o.material = m0.map ? new T.MeshLambertMaterial({ map: m0.map, color: 0xffffff, alphaTest: 0.45, transparent: false, side: T.DoubleSide }) : m0.clone();
+    if (o.material.color) o.material.color.lerp(new T.Color('#8a6a3a'), sick);
+  });
+  if (S.turgor < 0.35 && MODEL_FILES[S.sp]) plant.scale.y *= 0.8;
+  plant.position.y += pot.userData.top; root.add(plant);
+  const all = new T.Box3().setFromObject(root), c = all.getCenter(new T.Vector3()), r = all.getSize(new T.Vector3()).length();
+  const controls = v3.controls; controls.target.copy(c); camera.position.set(c.x + r * 0.55, c.y + r * 0.3, c.z + r * 0.85); controls.update();
+  if ($('v3dModal').hidden) return; // окно закрыли, пока шла загрузка
+  $('v3dMsg').hidden = true;
+  $('v3dNote').textContent = 'Крути растение мышкой или пальцем, колёсиком или щипком приближай.' + (MODEL_FILES[S.sp] ? ' Модель: Poly Haven (CC0).' : '');
+  v3.start();
+}
+const close3D = () => { $('v3dModal').hidden = true; if (v3) v3.running = false; };
+$('a3d').onclick = open3D;
+$('v3dClose').onclick = close3D;
+$('v3dModal').addEventListener('click', ev => { if (ev.target === $('v3dModal')) close3D(); });
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !$('v3dModal').hidden) close3D(); });
 
 let speed = 1, acc = 0;
 document.querySelectorAll('.speed button').forEach(b => b.onclick = () => {
