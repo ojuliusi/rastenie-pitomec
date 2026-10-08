@@ -91,6 +91,23 @@ svg .maskify [stroke]:not([stroke="none"]) { stroke: #fff; stroke-width: 5px; }
 .fact p { margin: 0; font-size: 14px; }
 .fact .btn { justify-self: start; }
 @keyframes factIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+.crop-set { display: grid; gap: 6px; max-width: 420px; }
+.select { font: 500 14px var(--f-body); padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.modal { position: fixed; inset: 0; z-index: 50; background: rgba(10, 14, 8, .5); display: grid; place-items: center; padding: 16px; }
+.modal-card { background: var(--panel); color: var(--ink); border-radius: 16px; width: min(100%, 860px); max-height: 92vh; overflow: auto; padding: 16px 18px; display: grid; gap: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+.modal-card .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.modal-card h2 { margin: 0; font: 700 18px/1.2 var(--f-display); text-transform: none; letter-spacing: 0; color: var(--ink); }
+.cut-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 700px) { .cut-grid { grid-template-columns: minmax(0, 1fr); } }
+.cut-pic { width: 100%; height: auto; display: block; background: color-mix(in srgb, var(--bg) 70%, transparent); border-radius: 12px; }
+.cut-pic .lt { fill: var(--ink); font: 12.5px var(--f-body); }
+.cut-pic .ld { stroke: var(--muted); stroke-width: 1; fill: none; }
+.cut-pic .lp { fill: var(--ink); }
+.cut-side { display: grid; gap: 10px; }
+.cut-side p { margin: 0; }
+.cut-side .diag-msg { color: var(--danger); font-size: 13px; }
+.cut-side .diag-msg:empty { display: none; }
+#cutText { font-size: 15px; line-height: 1.55; }
 .xpnote { margin: 0; padding: 0 14px 14px; font-size: 13px; color: var(--muted); }
 @keyframes rise { from { transform: translateY(0); opacity: .9; } to { transform: translateY(-60px); opacity: 0; } }
 .speed { display: flex; gap: 4px; }
@@ -230,6 +247,12 @@ footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-co
       <button class="btn" id="closeSettings">Закрыть</button>
     </div>
     <div class="species" id="species" role="radiogroup" aria-label="Группа растений"></div>
+    <div class="crop-set" id="cropSet" hidden>
+      <label class="row-label" for="crop">Какое цветковое растение посадить?</label>
+      <select id="crop" class="select">
+        <option value="random">Сюрприз — узнаешь, когда вырастет</option>
+      </select>
+    </div>
     <div class="row">
       <button class="btn primary" id="plant"><span class="dot"></span><span class="lbl">Посадить</span></button>
       <button class="btn danger" id="replant" hidden>Посадить заново</button>
@@ -291,6 +314,7 @@ footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-co
           <div class="row">
             <button class="btn primary" id="bRestart"><span class="dot"></span>Посадить снова</button>
             <button class="btn" id="bChoose">Выбрать другое растение</button>
+            <button class="btn" id="bCut" hidden>Разрезать плод</button>
           </div>
         </div>
       </section>
@@ -333,6 +357,7 @@ footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-co
               <button class="btn" id="aLamp" aria-pressed="false"><span class="dot" style="background:var(--sun)"></span>Фитолампа</button>
               <button class="btn" id="aShade" aria-pressed="false"><span class="dot" style="background:var(--muted)"></span>Притенить</button>
               <button class="btn" id="aRepro"><span class="dot" style="background:#e0b52c"></span><span class="lbl">Опылить</span></button>
+              <button class="btn" id="aFlower" hidden><span class="dot" style="background:#ee86aa"></span>Рассмотреть цветок</button>
             </div>
           </div>
           <div class="sick" id="sick" hidden>
@@ -360,6 +385,19 @@ footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-co
     <h2 id="hLog">Дневник наблюдений</h2>
     <ul class="log" id="log"></ul>
   </section>
+
+  <div class="modal" id="cutModal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="cutTitle">
+      <div class="head"><h2 id="cutTitle">Плод в разрезе</h2><button class="btn" id="cutClose">Закрыть</button></div>
+      <div class="cut-grid">
+        <svg class="cut-pic" id="cutPic" viewBox="0 0 440 275" role="img" aria-label="Схема строения"></svg>
+        <div class="cut-side">
+          <div id="cutQuiz"><p class="row-label" id="cutQ"></p><div class="row" id="cutOpts"></div><p class="diag-msg" id="cutMsg"></p></div>
+          <p id="cutText" hidden></p>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <footer>
     <span id="modeNote">Режим урока: 1 секунда = 1 час жизни растения.</span>
@@ -482,7 +520,7 @@ const SPECIES = {
       ['Шишки', 'Появились шишки: мелкие мужские у основания побегов и красноватые женские на их концах.'],
       ['Пылят мужские шишки', 'Мужские шишки выпускают облака пыльцы. У сосны её переносит ветер.'],
       ['Семена зреют', 'Пыльца попала на семязачатки женской шишки. Шишка зеленеет и растёт. В природе семена зреют почти два года.'],
-      ['Семена созрели', 'Шишка раскрылась, из неё вылетают семена с крылышками. Они лежат на чешуях открыто, поэтому сосна — голосеменное. Цикл замкнулся!']],
+      ['Семена созрели', 'Шишка раскрылась, из неё вылетают семена с крылышками. Они лежат на чешуях открыто, поэтому сосна — голосеменное. Цикл замкнулся! Разрежь шишку и рассмотри её строение.']],
     repro: { label: 'Встряхнуть ветки, как ветер', short: 'опыление', done: 'Встряхнули ветки, как ветер: облачко пыльцы долетело до женских шишек.' },
     tx: {
       wilt: 'Хвоя потускнела: в почве совсем нет воды. Сосна долго терпит засуху, узкая хвоя с восковым налётом испаряет мало, но и её запас кончается.',
@@ -501,9 +539,9 @@ const SPECIES = {
       ['Молодое растение', 'Появились настоящие листья. Семядоли отдали свой запас и сделали своё дело.'],
       ['Взрослое растение', 'Растение окрепло: много листьев, корень ветвится всё глубже.'],
       ['Бутоны', 'На верхушке появились бутоны.'],
-      ['Цветение', 'Цветок раскрылся. Чтобы получился плод, пыльца должна попасть на рыльце пестика.'],
+      ['Цветение', 'Цветок раскрылся. Рассмотри его строение. Чтобы получился плод, пыльца должна попасть на рыльце пестика.'],
       ['Завязывается плод', 'Пыльца на рыльце. Лепестки опадают, из завязи развивается плод.'],
-      ['Семена созрели', 'Плод созрел, внутри семена. Цикл замкнулся: от семени до семени!']],
+      ['Семена созрели', 'Плод созрел, внутри семена. Цикл замкнулся: от семени до семени! Разрежь плод и рассмотри его строение.']],
     repro: { label: 'Опылить кисточкой', short: 'опыление', done: 'Кисточкой перенесли пыльцу с тычинок на рыльце пестика.' },
     tx: { start: 'Семя проросло на подоконнике.' },
   },
@@ -1006,13 +1044,14 @@ function save() {
     localStorage.setItem(KEY, JSON.stringify({ active: G.active, unlocked: G.unlocked, mode: MODE, plants }));
   } catch (e) {}
 }
-function fresh(sp) {
+function fresh(sp, crop) {
   if (!G) G = { active: sp, plants: {}, unlocked: {}, mode: MODE };
   const P = newState(sp);
   P.unlocked = G.unlocked;
+  if (sp === 'angio') { P.cropRandom = !crop || crop === 'random'; P.crop = P.cropRandom ? CROP_KEYS[Math.floor(Math.random() * CROP_KEYS.length)] : crop; }
   if (!LESSON && MODE === 'real') { const now = new Date(); now.setMinutes(0, 0, 0); P.hour = now.getHours(); P.lastTs = now.getTime(); }
   const SP = SPECIES[sp];
-  note(P, null, `${SP.tx.start} Место: ${LOC[P.loc].name.toLowerCase()}. ${SP.stages[0][1]}`, 'good');
+  note(P, null, `${sp === 'angio' ? `Посадили семя: ${P.cropRandom ? 'что вырастет — сюрприз' : CROPS[P.crop].name.toLowerCase()}.` : SP.tx.start} Место: ${LOC[P.loc].name.toLowerCase()}. ${SP.stages[0][1]}`, 'good');
   P.cool.stage0 = P.hour;
   const prev = G.plants[sp];
   if (prev && prev.xp) {
@@ -1126,13 +1165,16 @@ function drawAngio(s, ctx) {
     const tip = s.rootHarm === 'burn' && s.rootHP < 80 ? `<path d="M${f1(Lg * 0.8)} ${f1(-W * 0.35)} Q${f1(Lg)} 0 ${f1(Lg * 0.8)} ${f1(W * 0.35)} Z" fill="#7a4a20"/>` : '';
     o += `<g transform="translate(${f1(x)} ${f1(y)}) rotate(${f1(ang)}) scale(${side} 1)"><path d="M0 0 Q${f1(Lg / 2)} ${f1(-W)} ${f1(Lg)} 0 Q${f1(Lg / 2)} ${f1(W)} 0 0 Z" fill="${c}"/>${tip}<path d="M1 0 L${f1(Lg * 0.9)} 0" stroke="rgba(0,0,0,.18)" stroke-width="1"/></g>`;
   }
+  const crop = cropOf(s);
   const flower = (x, y, r) => {
+    if (crop.type === 'caryopsis') return st >= 5 ? fruitIcon('caryopsis', x, y, r, s.fruit) : fruitIcon('caryopsis', x, y, r, 0);
+    if (crop.type === 'achene' && st >= 4 && !(st >= 5 && s.fruit >= 0.15)) return fruitIcon('achene', x, y, r, 0);
     if (st === 3) return `<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="${r * 0.45}" ry="${r * 0.7}" fill="#5f9a3c"/><ellipse cx="${f1(x)}" cy="${f1(y - r * 0.4)}" rx="${r * 0.3}" ry="${r * 0.35}" fill="#e88aa8"/>`;
     if (st === 4 || (st >= 5 && s.fruit < 0.15)) {
-      let f = ''; for (let k = 0; k < 5; k++) { const a = k * 72 * Math.PI / 180, px = x + Math.cos(a) * r * 0.7, py = y + Math.sin(a) * r * 0.7; f += `<ellipse cx="${f1(px)}" cy="${f1(py)}" rx="${r * 0.62}" ry="${r * 0.45}" transform="rotate(${k * 72} ${f1(px)} ${f1(py)})" fill="${droop > .55 ? '#c98ea0' : lush > 0.55 ? '#e0508c' : '#ee86aa'}"/>`; }
+      let f = ''; for (let k = 0; k < 5; k++) { const a = k * 72 * Math.PI / 180, px = x + Math.cos(a) * r * 0.7, py = y + Math.sin(a) * r * 0.7; f += `<ellipse cx="${f1(px)}" cy="${f1(py)}" rx="${r * 0.62}" ry="${r * 0.45}" transform="rotate(${k * 72} ${f1(px)} ${f1(py)})" fill="${droop > .55 ? mix(crop.petal, '#b8a888', .5) : lush > 0.55 ? mix(crop.petal, '#ffffff', .15) : crop.petal}" stroke="rgba(0,0,0,.12)"/>`; }
       return f + `<circle cx="${f1(x)}" cy="${f1(y)}" r="${r * 0.38}" fill="#f2c230"/>` + (s.pollinated ? `<circle cx="${f1(x)}" cy="${f1(y)}" r="${r * 0.2}" fill="#d98b1a"/>` : '');
     }
-    if (st >= 5) { const fr = r * (0.35 + s.fruit * 0.75); return `<circle cx="${f1(x)}" cy="${f1(y + fr * 0.4)}" r="${f1(fr)}" fill="${mix('#6fae45', '#d8422e', s.fruit)}"/><path d="M${f1(x - 4)} ${f1(y - fr * 0.5)} l4 4 l4 -4" stroke="#3e7a2c" stroke-width="2" fill="none"/>`; }
+    if (st >= 5) return fruitIcon(crop.type, x, y, r * (0.6 + s.fruit * 0.9), s.fruit);
     return '';
   };
   if (st >= 3) {
@@ -1391,6 +1433,162 @@ function sparkles(lvl, st) {
   }
   return o;
 }
+// ---------- культуры, плоды и строение в разрезе ----------
+const CROPS = {
+  cucumber: { name: 'Огурец', type: 'tykvina', petal: '#f2c230', note: 'У огурца цветки однополые: одни с тычинками, другие с пестиком. Завязь у женского цветка нижняя — под цветком уже виден крошечный огурчик.' },
+  cherry: { name: 'Вишня', type: 'drupe', petal: '#ffffff', note: 'У вишни один пестик и много тычинок. Завязь верхняя: она сидит на дне чашевидного цветоложа.' },
+  apple: { name: 'Яблоня', type: 'apple', petal: '#f6d3da', note: 'У яблони завязь нижняя: она срастается с цветоложем, и из этого цветоложа потом получается мякоть яблока.' },
+  tomato: { name: 'Томат', type: 'berry', petal: '#f2c230', note: 'У томата пыльники срастаются в конус вокруг столбика, а цветок может опылиться собственной пыльцой.' },
+  sunflower: { name: 'Подсолнечник', type: 'achene', petal: '#f2b51e', note: '«Цветок» подсолнечника — это соцветие корзинка. Жёлтые «лепестки» по краю — бесплодные язычковые цветки, а в середине сотни мелких трубчатых, каждый даст семянку.' },
+  wheat: { name: 'Пшеница', type: 'caryopsis', petal: null, note: 'Цветки пшеницы мелкие и без лепестков: их опыляет ветер. Тычинки висят на длинных нитях, а рыльца пушистые, чтобы ловить пыльцу из воздуха.' },
+  strawberry: { name: 'Земляника', type: 'multinut', petal: '#ffffff', note: 'У земляники много пестиков на выпуклом цветоложе. Каждый пестик даст орешек, а цветоложе разрастётся в сочную «ягоду».' },
+  raspberry: { name: 'Малина', type: 'multidrupe', petal: '#ffffff', note: 'У малины много пестиков на коническом цветоложе. Каждый превратится в маленькую костянку.' },
+  pea: { name: 'Горох', type: 'legume', petal: '#f4f0fb', note: 'Цветок гороха мотыльковый: парус, два весла и лодочка, в которой спрятаны десять тычинок и пестик.' },
+  cabbage: { name: 'Капуста', type: 'silique', petal: '#f2d630', note: 'У капусты четыре лепестка крестом — отсюда название семейства «крестоцветные». Тычинок шесть: четыре длинные и две короткие.' },
+  poppy: { name: 'Мак', type: 'capsule', petal: '#e0332a', note: 'У мака много тычинок, а рыльце — плоский диск-звёздочка прямо на верхушке завязи, без столбика.' },
+};
+const FRUITS = {
+  tykvina: { name: 'Тыквина', hint: 'Плод сочный, семян много, а наружный слой твёрдый.',
+    text: 'Тыквина — сочный многосемянный плод с твёрдым наружным слоем. Развивается из нижней завязи. Такие плоды у огурца, тыквы, кабачка, арбуза.' },
+  drupe: { name: 'Костянка', hint: 'Плод сочный, а семя внутри одно и спрятано в твёрдой косточке.',
+    text: 'Костянка — сочный односемянный плод. Околоплодник у неё из трёх слоёв: тонкая кожица, сочная мякоть и твёрдая косточка, внутри которой семя. Костянки у вишни, сливы, абрикоса, персика.' },
+  apple: { name: 'Яблоко', hint: 'Мякоть сочная, а семена лежат в плёнчатых гнёздах в середине.',
+    text: 'Яблоко — сочный многосемянный плод. Мякоть в основном образована разросшимся цветоложем, а сама завязь превратилась в плёнчатые гнёзда с семенами. Яблоко у яблони, груши, рябины, айвы.' },
+  berry: { name: 'Ягода', hint: 'Весь плод сочный, кроме тонкой кожицы, а семена лежат прямо в мякоти.',
+    text: 'Ягода — сочный многосемянный плод: весь околоплодник, кроме тонкой кожицы, сочный, а семена лежат прямо в мякоти. Ягоды у томата, винограда, смородины, черники, картофеля.' },
+  achene: { name: 'Семянка', hint: 'Плод сухой, семя одно, а оболочку легко отделить от семени.',
+    text: 'Семянка — сухой односемянный плод. Околоплодник кожистый и не срастается с семенем, поэтому «лузгу» легко отделить. Семянки у подсолнечника, одуванчика, череды. «Семечка» подсолнечника — это плод, а не семя!' },
+  caryopsis: { name: 'Зерновка', hint: 'Плод сухой, семя одно, и оболочка плода плотно срослась с семенем.',
+    text: 'Зерновка — сухой односемянный плод: тонкий околоплодник плотно сросся с семенной кожурой. Большую часть зерна занимает эндосперм с запасом крахмала — из него делают муку. Зерновки у пшеницы, ржи, кукурузы, риса.' },
+  multinut: { name: 'Многоорешек', hint: 'Сочная часть — не завязь, а настоящие плоды — мелкие сухие точки на поверхности.',
+    text: 'Многоорешек — сборный плод. Сочная часть земляники — разросшееся цветоложе, а настоящие плоды — мелкие орешки на его поверхности. Поэтому землянику только в быту называют ягодой.' },
+  multidrupe: { name: 'Многокостянка', hint: 'Плод собран из множества мелких сочных частей, и в каждой своя косточка.',
+    text: 'Многокостянка — сборный плод из множества мелких сросшихся костянок, каждая со своей косточкой. Когда снимаешь малину, белое цветоложе остаётся на кусте. Многокостянки у малины, ежевики, морошки.' },
+  legume: { name: 'Боб', hint: 'Плод сухой, вскрывается двумя створками, а перегородки внутри нет.',
+    text: 'Боб — сухой многосемянный плод. Вскрывается по двум швам, перегородки внутри нет, семена прикреплены к створкам вдоль одного шва. Бобы у гороха, фасоли, сои, акации.' },
+  silique: { name: 'Стручок', hint: 'Плод сухой, с двумя створками, а между ними плёнчатая перегородка.',
+    text: 'Стручок — сухой многосемянный плод: между двумя створками натянута плёнчатая перегородка, к ней прикреплены семена. Стручки у капусты, редьки, горчицы. Короткий стручок называют стручочком, как у пастушьей сумки.' },
+  capsule: { name: 'Коробочка', hint: 'Плод сухой, семян очень много, и они высыпаются через отверстия.',
+    text: 'Коробочка — сухой многосемянный плод, который вскрывается, чтобы выпустить семена. У мака семена высыпаются через дырочки под «шапочкой», как из солонки. Коробочки у мака, хлопчатника, фиалки, колокольчика.' },
+};
+const CROP_KEYS = Object.keys(CROPS);
+const cropOf = s => CROPS[s.crop] || CROPS.tomato;
+
+// подпись со стрелкой: точка на рисунке → текст справа; «|» переносит строку
+function lab(x, y, ly, text) {
+  const lines = text.split('|');
+  return `<circle cx="${x}" cy="${y}" r="2.5" class="lp"/><path d="M${x} ${y} L248 ${ly} H258" class="ld"/>` +
+    `<text x="262" y="${ly + 4 - (lines.length - 1) * 7}" class="lt">${lines.map((t, i) => `<tspan x="262" dy="${i ? 15 : 0}">${t}</tspan>`).join('')}</text>`;
+}
+const CUT = {
+  tykvina: () => {
+    let o = `<circle cx="120" cy="130" r="94" fill="#3f7a2a"/><circle cx="120" cy="130" r="86" fill="#cfe6a8"/><circle cx="120" cy="130" r="44" fill="#e7f1cc"/>`;
+    for (let k = 0; k < 3; k++) { const a = (k * 120 - 90) * Math.PI / 180; o += `<path d="M120 130 L${f1(120 + Math.cos(a) * 44)} ${f1(130 + Math.sin(a) * 44)}" stroke="#d3e4a6" stroke-width="6"/>`;
+      for (const sd of [-1, 1]) for (let j = 0; j < 3; j++) { const b = a + sd * 0.55, rr = 18 + j * 10; const x = 120 + Math.cos(b) * rr, y = 130 + Math.sin(b) * rr; o += `<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="3.2" ry="6.5" transform="rotate(${f1(b * 180 / Math.PI + 90)} ${f1(x)} ${f1(y)})" fill="#f7f2dc" stroke="#b7ad85"/>`; } }
+    return o + lab(186, 63, 40, 'Твёрдая кожура') + lab(178, 150, 110, 'Мякоть|околоплодника') + lab(140, 112, 175, 'Семена') + lab(120, 130, 225, 'Плаценты — места|крепления семян');
+  },
+  drupe: () => `<path d="M120 36 q4 -20 18 -28" stroke="#5a7a2a" stroke-width="4" fill="none"/><circle cx="120" cy="132" r="92" fill="#9e1426"/><circle cx="120" cy="132" r="86" fill="#d9465a"/>
+    <ellipse cx="120" cy="132" rx="40" ry="50" fill="#ead6a6" stroke="#b08a52" stroke-width="7"/><ellipse cx="120" cy="132" rx="24" ry="33" fill="#f4ecd4" stroke="#8a5a2b" stroke-width="2"/>`
+    + lab(188, 70, 40, 'Кожица|(наружный слой)') + lab(178, 170, 100, 'Сочная мякоть|(средний слой)') + lab(157, 118, 165, 'Косточка|(внутренний слой)') + lab(124, 140, 220, 'Семя'),
+  apple: () => {
+    let o = `<path d="M120 42 q2 -18 12 -26" stroke="#6b4a2a" stroke-width="4" fill="none"/><circle cx="120" cy="132" r="92" fill="#c3302b"/><circle cx="120" cy="132" r="87" fill="#f5edc9"/>`;
+    for (let k = 0; k < 10; k++) { const a = k * 36 * Math.PI / 180; o += `<circle cx="${f1(120 + Math.cos(a) * 56)}" cy="${f1(132 + Math.sin(a) * 56)}" r="2" fill="#c9bd8a"/>`; }
+    let star = ''; for (let k = 0; k < 10; k++) { const a = (k * 36 - 90) * Math.PI / 180, r = k % 2 ? 14 : 38; star += (k ? 'L' : 'M') + f1(120 + Math.cos(a) * r) + ' ' + f1(132 + Math.sin(a) * r) + ' '; }
+    o += `<path d="${star}Z" fill="#efe0ac" stroke="#c4ad6c" stroke-width="2"/>`;
+    for (let k = 0; k < 5; k++) { const a = (k * 72 - 90) * Math.PI / 180, x = 120 + Math.cos(a) * 24, y = 132 + Math.sin(a) * 24; o += `<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="4" ry="7" transform="rotate(${k * 72} ${f1(x)} ${f1(y)})" fill="#5a3418"/>`; }
+    return o + lab(190, 75, 40, 'Кожица') + lab(185, 160, 100, 'Мякоть: разросшееся|цветоложе') + lab(150, 120, 165, 'Плёнчатые гнёзда —|стенки завязи') + lab(120, 108, 225, 'Семена');
+  },
+  berry: () => {
+    let o = `<circle cx="120" cy="132" r="92" fill="#c42a1a"/><circle cx="120" cy="132" r="86" fill="#ef5a3c"/><circle cx="120" cy="132" r="20" fill="#f6a483"/>`;
+    for (let k = 0; k < 3; k++) { const a = (k * 120 - 90) * Math.PI / 180, x = 120 + Math.cos(a) * 46, y = 132 + Math.sin(a) * 46;
+      o += `<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="27" ry="21" transform="rotate(${k * 120} ${f1(x)} ${f1(y)})" fill="#f6b15e" opacity=".9"/>`;
+      for (let j = 0; j < 6; j++) { const b = a + (j - 2.5) * 0.18, r = 38 + (j % 2) * 12; const sx = 120 + Math.cos(b) * r, sy = 132 + Math.sin(b) * r; o += `<ellipse cx="${f1(sx)}" cy="${f1(sy)}" rx="2.6" ry="4" fill="#f5e6a8" stroke="#c9a85a" stroke-width=".8"/>`; } }
+    return o + lab(186, 66, 40, 'Кожица') + lab(196, 160, 100, 'Сочный|околоплодник') + lab(160, 140, 165, 'Гнёзда с семенами|в сочной мякоти') + lab(120, 132, 225, 'Мясистая середина,|к которой крепятся семена');
+  },
+  achene: () => `<path d="M120 22 C175 60 175 190 120 238 C65 190 65 60 120 22 Z" fill="#3b3b3b"/>`
+    + [0, 1, 2, 3].map(i => `<path d="M${102 + i * 12} 40 C${96 + i * 14} 110 ${96 + i * 14} 160 ${104 + i * 11} 222" stroke="#e7e2d4" stroke-width="3" fill="none" opacity=".8"/>`).join('')
+    + `<path d="M120 44 C160 76 160 182 120 218 C80 182 80 76 120 44 Z" fill="#fbf7ea"/><path d="M120 52 C152 82 152 178 120 210 C88 178 88 82 120 52 Z" fill="#f1e7c8" stroke="#a5824a" stroke-width="2"/>
+    <path d="M120 60 V200" stroke="#d9c79a" stroke-width="2"/><path d="M120 200 l-6 12 h12 z" fill="#d6c08a"/>`
+    + lab(150, 70, 40, 'Околоплодник —|«лузга»') + lab(146, 120, 95, 'Семенная кожура') + lab(130, 150, 150, 'Зародыш:|две семядоли') + lab(120, 208, 215, 'Корешок зародыша'),
+  caryopsis: () => `<ellipse cx="120" cy="132" rx="56" ry="98" fill="#c9963a"/><ellipse cx="120" cy="132" rx="50" ry="92" fill="#f6ecd2"/>
+    <path d="M120 40 V222" stroke="#e2d2a8" stroke-width="2" stroke-dasharray="4 4"/><path d="M78 214 q8 -38 30 -40 q-6 30 -30 40 z" fill="#d9ae4a"/><path d="M80 218 q10 -26 24 -30 q-4 22 -24 30 z" fill="#e8c45a"/>`
+    + lab(170, 100, 40, 'Околоплодник, сросшийся|с семенной кожурой') + lab(132, 120, 105, 'Эндосперм —|запас крахмала') + lab(102, 182, 165, 'Щиток (семядоля)') + lab(88, 208, 220, 'Зародыш'),
+  multinut: () => {
+    let o = `<path d="M70 52 q-10 -22 10 -28 l20 18 l20 -24 l20 24 l20 -18 q20 6 10 28 z" fill="#4f8a2e"/><path d="M120 236 C40 180 40 60 120 52 C200 60 200 180 120 236 Z" fill="#c8233a"/>
+      <path d="M120 222 C60 176 60 74 120 66 C180 74 180 176 120 222 Z" fill="#f08a8e"/><path d="M120 200 C96 168 96 96 120 82 C144 96 144 168 120 200 Z" fill="#fbe2e2"/>`;
+    for (let k = 0; k < 12; k++) { const t = k / 11, y = 70 + t * 150, w = Math.sin(Math.PI * (0.15 + t * 0.8)) * 72; for (const sd of [-1, 1]) { const x = 120 + sd * w; o += `<path d="M120 ${f1(y)} L${f1(x)} ${f1(y)}" stroke="#f7c4c4" stroke-width="1"/><ellipse cx="${f1(x)}" cy="${f1(y)}" rx="3.2" ry="4.5" fill="#e9c44a" stroke="#a8862a" stroke-width=".8"/>`; } }
+    return o + lab(190, 140, 50, 'Орешки —|настоящие плоды') + lab(150, 150, 120, 'Разросшееся сочное|цветоложе') + lab(150, 36, 185, 'Чашелистики');
+  },
+  multidrupe: () => {
+    let o = `<path d="M96 222 Q86 120 120 60 Q154 120 144 222 Z" fill="#f6ead7" stroke="#e1cfae"/>`;
+    for (let row = 0; row < 7; row++) for (let k = -3; k <= 3; k++) { const y = 70 + row * 25, spread = 30 + row * 6, x = 120 + k * spread / 2.4; if (Math.abs(x - 120) < 14 + row * 3) continue;
+      o += `<circle cx="${f1(x)}" cy="${f1(y)}" r="13" fill="#b51d36"/><circle cx="${f1(x)}" cy="${f1(y)}" r="9" fill="#e04a62"/><ellipse cx="${f1(x)}" cy="${f1(y)}" rx="3" ry="4" fill="#ead6a6" stroke="#a8864e"/>`; }
+    return o + lab(178, 118, 55, 'Мелкие костянки') + lab(171, 168, 115, 'Косточка с семенем|в каждой костянке') + lab(120, 150, 185, 'Цветоложе —|остаётся на кусте');
+  },
+  legume: () => {
+    let o = `<path d="M20 120 C70 70 180 70 230 110 C190 150 70 160 20 120 Z" fill="#6aa84f"/><path d="M28 120 C78 84 176 84 222 112 C182 140 76 146 28 120 Z" fill="#cfe8b0"/><path d="M28 118 C80 92 176 90 222 110" stroke="#4f8a2e" stroke-width="3" fill="none"/>`;
+    for (let k = 0; k < 6; k++) { const x = 52 + k * 30, y = 114 - Math.sin(Math.PI * (k + .5) / 6) * 4; o += `<path d="M${x} ${f1(y - 14)} v6" stroke="#4f8a2e" stroke-width="2"/><circle cx="${x}" cy="${f1(y)}" r="12" fill="#8fc65a" stroke="#5f9a3c"/>`; }
+    return o + lab(150, 78, 40, 'Створка (околоплодник)') + lab(112, 114, 100, 'Семена — горошины') + lab(170, 96, 160, 'Шов, к которому|прикреплены семена') + lab(222, 110, 220, 'Внутри нет перегородки');
+  },
+  silique: () => {
+    let o = `<path d="M10 130 C60 108 180 108 228 126 l18 4 l-18 4 C180 152 60 152 10 130 Z" fill="#a7c46a"/><path d="M16 130 C64 116 178 116 224 130 C178 144 64 144 16 130 Z" fill="#f5f2e2"/><path d="M16 130 H228" stroke="#d6d0b4" stroke-width="2"/>`;
+    for (let k = 0; k < 9; k++) { const x = 30 + k * 22; o += `<circle cx="${x}" cy="${k % 2 ? 123 : 137}" r="5" fill="#6b3f1c"/>`; }
+    return o + lab(120, 112, 50, 'Створки') + lab(150, 130, 110, 'Плёнчатая|перегородка') + lab(118, 123, 170, 'Семена на|перегородке') + lab(238, 130, 225, 'Носик');
+  },
+  capsule: () => {
+    let o = `<circle cx="120" cy="132" r="92" fill="#8aa070"/><circle cx="120" cy="132" r="82" fill="#eef1df"/>`;
+    for (let k = 0; k < 10; k++) { const a = k * 36 * Math.PI / 180; o += `<path d="M${f1(120 + Math.cos(a) * 82)} ${f1(132 + Math.sin(a) * 82)} L${f1(120 + Math.cos(a) * 30)} ${f1(132 + Math.sin(a) * 30)}" stroke="#c7d1a8" stroke-width="5"/>`;
+      for (let j = 0; j < 7; j++) { const r = 34 + j * 6.5; for (const sd of [-1, 1]) o += `<circle cx="${f1(120 + Math.cos(a + sd * 0.07) * r + sd * 3 * Math.cos(a + Math.PI / 2))}" cy="${f1(132 + Math.sin(a + sd * 0.07) * r + sd * 3 * Math.sin(a + Math.PI / 2))}" r="1.6" fill="#3c4a6a"/>`; } }
+    return o + lab(190, 75, 45, 'Стенка коробочки') + lab(170, 132, 110, 'Неполные|перегородки') + lab(150, 120, 170, 'Семена —|их очень много') + lab(120, 132, 225, 'Полость в центре');
+  },
+};
+const CONE = () => {
+  let o = `<rect x="114" y="28" width="12" height="208" rx="5" fill="#7a5230"/>`;
+  for (let k = 0; k < 8; k++) { const y = 46 + k * 24, len = 60 - Math.abs(k - 3.5) * 9;
+    for (const sd of [-1, 1]) { const ex = 120 + sd * len, ey = y - 14;
+      o += `<path d="M120 ${y} L${f1(ex)} ${f1(ey)} L${f1(ex + sd * 2)} ${f1(ey + 12)} L120 ${y + 10} Z" fill="#9a6a3c" stroke="#6b4423"/>`;
+      if (k > 0 && k < 7) o += `<ellipse cx="${f1(120 + sd * 16)}" cy="${f1(y - 3)}" rx="4" ry="2.6" fill="#4e2f16"/><path d="M${f1(120 + sd * 19)} ${f1(y - 4)} q${sd * 14} -8 ${sd * 24} -6 q${-sd * 8} 6 ${-sd * 24} 6 z" fill="#e3cf9e" opacity=".95"/>`; } }
+  return o + lab(120, 220, 225, 'Ось шишки') + lab(170, 112, 50, 'Семенная чешуя') + lab(144, 116, 110, 'Семя с крылышком —|лежит открыто на чешуе') + lab(78, 106, 170, 'На каждой чешуе|по два семени');
+};
+const FLOWER = petal => {
+  const p = petal || '#c9d6a0';
+  return `<path d="M120 236 V178" stroke="#5f9a3c" stroke-width="7"/><path d="M84 178 Q120 196 156 178 Q150 160 120 160 Q90 160 84 178 Z" fill="#7fb24a"/>
+    <path d="M86 172 Q60 150 64 118 Q86 140 100 162 Z" fill="#6aa84f"/><path d="M154 172 Q180 150 176 118 Q154 140 140 162 Z" fill="#6aa84f"/>
+    <path d="M96 164 Q40 120 50 56 Q92 96 108 150 Z" fill="${p}" stroke="rgba(0,0,0,.18)"/><path d="M144 164 Q200 120 190 56 Q148 96 132 150 Z" fill="${p}" stroke="rgba(0,0,0,.18)"/>
+    <path d="M104 166 Q96 124 98 98 M136 166 Q144 124 142 98" stroke="#d8c88a" stroke-width="2.5" fill="none"/><ellipse cx="98" cy="94" rx="5" ry="8" fill="#e8b830"/><ellipse cx="142" cy="94" rx="5" ry="8" fill="#e8b830"/>
+    <ellipse cx="120" cy="150" rx="15" ry="16" fill="#9cc35a" stroke="#5f9a3c"/><ellipse cx="116" cy="148" rx="3" ry="4" fill="#f4f1e4"/><ellipse cx="124" cy="152" rx="3" ry="4" fill="#f4f1e4"/>
+    <path d="M120 134 V86" stroke="#9cc35a" stroke-width="5"/><path d="M110 84 q10 -10 20 0 q-10 6 -20 0 z" fill="#7fb24a"/>`
+    + lab(176, 74, 18, 'Лепесток (венчик)') + lab(146, 92, 50, 'Пыльник — в нём|созревает пыльца') + lab(141, 124, 84, 'Тычиночная нить')
+    + lab(126, 84, 114, 'Рыльце пестика') + lab(122, 112, 142, 'Столбик') + lab(134, 150, 174, 'Завязь с семязачатками —|из неё разовьётся плод')
+    + lab(170, 142, 208, 'Чашелистик') + lab(124, 180, 238, 'Цветоложе') + lab(122, 220, 264, 'Цветоножка');
+};
+
+
+// плоды на кусте: форма зависит от культуры, g — спелость 0…1
+function fruitIcon(type, x, y, r, g) {
+  const c = (a, b) => mix(a, b, g);
+  switch (type) {
+    case 'tykvina': return `<path d="M${f1(x)} ${f1(y - 4)} v6" stroke="#4f8a2e" stroke-width="2"/><ellipse cx="${f1(x)}" cy="${f1(y + r)}" rx="${f1(r * 0.36)}" ry="${f1(r * 1.05)}" fill="${c('#8cc05a', '#3f7a2a')}"/>` + [0, 1, 2, 3].map(i => `<circle cx="${f1(x + (i % 2 ? 2 : -2))}" cy="${f1(y + r * 0.3 + i * r * 0.4)}" r="1.2" fill="#d6ecb0"/>`).join('');
+    case 'drupe': return `<path d="M${f1(x)} ${f1(y - 6)} Q${f1(x - r * 0.4)} ${f1(y)} ${f1(x - r * 0.5)} ${f1(y + r * 0.6)} M${f1(x)} ${f1(y - 6)} Q${f1(x + r * 0.3)} ${f1(y + r * 0.2)} ${f1(x + r * 0.5)} ${f1(y + r * 0.75)}" stroke="#5a7a2a" stroke-width="1.6" fill="none"/>`
+      + `<circle cx="${f1(x - r * 0.5)}" cy="${f1(y + r * 0.95)}" r="${f1(r * 0.42)}" fill="${c('#9cc35a', '#a3122a')}"/><circle cx="${f1(x + r * 0.5)}" cy="${f1(y + r * 1.1)}" r="${f1(r * 0.42)}" fill="${c('#9cc35a', '#a3122a')}"/>`;
+    case 'apple': return `<circle cx="${f1(x)}" cy="${f1(y + r * 0.7)}" r="${f1(r * 0.75)}" fill="${c('#a8cc62', '#cf3b2e')}"/><path d="M${f1(x)} ${f1(y)} v-6" stroke="#6b4a2a" stroke-width="2"/><path d="M${f1(x)} ${f1(y - 4)} q8 -6 12 0 q-6 4 -12 0 z" fill="#4f8a2e"/>`;
+    case 'berry': return `<circle cx="${f1(x)}" cy="${f1(y + r * 0.6)}" r="${f1(r * 0.7)}" fill="${c('#8cc05a', '#e0402a')}"/><path d="M${f1(x - 6)} ${f1(y - 2)} l6 4 l6 -4 M${f1(x)} ${f1(y + 2)} v-7" stroke="#3e7a2c" stroke-width="2" fill="none"/>`;
+    case 'achene': { let o = ''; if (g < 0.6) for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2; o += `<ellipse cx="${f1(x + Math.cos(a) * r * 1.35)}" cy="${f1(y + Math.sin(a) * r * 1.35)}" rx="${f1(r * 0.45)}" ry="${f1(r * 0.17)}" transform="rotate(${f1(a * 180 / Math.PI)} ${f1(x + Math.cos(a) * r * 1.35)} ${f1(y + Math.sin(a) * r * 1.35)})" fill="#f2b51e" opacity="${(1 - g * 1.5).toFixed(2)}"/>`; }
+      o += `<circle cx="${f1(x)}" cy="${f1(y)}" r="${f1(r * 1.05)}" fill="${c('#6b7a3a', '#4a3020')}"/>`;
+      for (let k = 0; k < 18; k++) { const a = k * 2.4, rr = Math.sqrt(k / 18) * r * 0.95; o += `<ellipse cx="${f1(x + Math.cos(a) * rr)}" cy="${f1(y + Math.sin(a) * rr)}" rx="1.4" ry="2" fill="${c('#8a9a4a', '#2a2a2a')}"/>`; }
+      return o; }
+    case 'caryopsis': { let o = `<path d="M${f1(x)} ${f1(y + 4)} V${f1(y - r * 1.9)}" stroke="${c('#8cb050', '#c9a24a')}" stroke-width="1.6"/>`;
+      for (let k = 0; k < 6; k++) { const yy = y - k * r * 0.32; for (const sd of [-1, 1]) o += `<ellipse cx="${f1(x + sd * 3)}" cy="${f1(yy)}" rx="2.6" ry="4.4" transform="rotate(${sd * 20} ${f1(x + sd * 3)} ${f1(yy)})" fill="${c('#9cc35a', '#dcb64e')}"/><path d="M${f1(x + sd * 4)} ${f1(yy - 3)} l${sd * 5} -10" stroke="${c('#a8c870', '#d9bc6a')}" stroke-width=".8"/>`; }
+      return o; }
+    case 'multinut': return `<path d="M${f1(x - 7)} ${f1(y)} l7 4 l7 -4 l-3 6 h-8 z" fill="#4f8a2e"/><path d="M${f1(x)} ${f1(y + r * 1.5)} C${f1(x - r)} ${f1(y + r)} ${f1(x - r * 0.7)} ${f1(y + 4)} ${f1(x)} ${f1(y + 4)} C${f1(x + r * 0.7)} ${f1(y + 4)} ${f1(x + r)} ${f1(y + r)} ${f1(x)} ${f1(y + r * 1.5)} Z" fill="${c('#e6efcc', '#d8293a')}"/>`
+      + [0, 1, 2, 3, 4, 5].map(i => `<circle cx="${f1(x + ((i % 3) - 1) * r * 0.32)}" cy="${f1(y + r * 0.45 + Math.floor(i / 3) * r * 0.4)}" r="1.2" fill="#e9c44a"/>`).join('');
+    case 'multidrupe': { let o = ''; for (let k = 0; k < 9; k++) o += `<circle cx="${f1(x + ((k % 3) - 1) * r * 0.32)}" cy="${f1(y + r * 0.35 + Math.floor(k / 3) * r * 0.3)}" r="${f1(r * 0.2)}" fill="${c('#d2e2a6', '#c4203a')}"/>`; return o; }
+    case 'legume': return `<path d="M${f1(x)} ${f1(y)} C${f1(x + r * 0.6)} ${f1(y + r * 0.6)} ${f1(x + r * 0.6)} ${f1(y + r * 1.8)} ${f1(x + r * 0.1)} ${f1(y + r * 2.2)} C${f1(x - r * 0.2)} ${f1(y + r * 1.6)} ${f1(x - r * 0.1)} ${f1(y + r * 0.6)} ${f1(x)} ${f1(y)} Z" fill="${c('#8bc35a', '#c9b46a')}"/>`;
+    case 'silique': return `<path d="M${f1(x)} ${f1(y)} Q${f1(x + 4)} ${f1(y + r)} ${f1(x + 2)} ${f1(y + r * 2.2)}" stroke="${c('#9cc35a', '#c9b46a')}" stroke-width="4" stroke-linecap="round" fill="none"/>`;
+    case 'capsule': return `<circle cx="${f1(x)}" cy="${f1(y)}" r="${f1(r * 0.62)}" fill="${c('#a7b884', '#9a8f6a')}"/><ellipse cx="${f1(x)}" cy="${f1(y - r * 0.6)}" rx="${f1(r * 0.5)}" ry="${f1(r * 0.14)}" fill="${c('#8a9a6a', '#6f6650')}"/>`;
+  }
+  return '';
+}
 const DRAW = { angio: drawAngio, gymno: drawPine, fern: drawFern, moss: drawMoss, lycopod: drawLycopod, algae: drawAlgae };
 function drawScene() {
   const s = S, e = env(s);
@@ -1433,7 +1631,7 @@ function render() {
   if (!S) return;
   const s = S, SP = SPc(), e = env(s), st = stageOf(s);
   $('clock').textContent = fmtTime(s.hour, !LESSON && MODE === 'real');
-  $('who').innerHTML = `${SP.group}: <b>${SP.name}</b>`;
+  $('who').innerHTML = `${SP.group}: <b>${s.sp === 'angio' ? (s.stageIdx >= 3 || !s.cropRandom ? cropOf(s).name : 'неизвестно, что вырастет') : SP.name}</b>`;
   const pill = $('stagePill'); pill.textContent = s.dead ? 'Погибло' : SP.stages[st][0]; pill.classList.toggle('bad', !!s.dead);
   const lvl = levelOf(s.xp), loX = LEVELS[lvl - 1], hiX = LEVELS[lvl];
   $('lvlNum').textContent = 'Ур. ' + lvl; $('lvlName').textContent = LEVEL_NAMES[lvl - 1];
@@ -1466,6 +1664,9 @@ function render() {
   $('aRepro').querySelector('.lbl').textContent = SP.repro.label;
   $('aIodine').disabled = over;
   if (!living) $('live6').disabled = $('live24').disabled = over;
+  $('aFlower').hidden = !(s.sp === 'angio' && (st === 4 || (st === 5 && s.fruit < 0.15)) && !s.dead);
+  $('bCut').hidden = !(s.done && (s.sp === 'angio' || s.sp === 'gymno'));
+  $('bCut').textContent = s.sp === 'gymno' ? 'Разрезать шишку' : 'Разрезать плод';
   setLocked($('aFeed'), !has(s, 'feed'), over);
   setLocked($('aLamp'), !has(s, 'lamp'), over); $('aLamp').setAttribute('aria-pressed', s.lamp);
   setLocked($('aShade'), !has(s, 'shade'), over); $('aShade').setAttribute('aria-pressed', s.shade);
@@ -1590,6 +1791,49 @@ $('cures').addEventListener('click', ev => {
 
 $('factOk').onclick = () => { S.fact = null; render(); save(); };
 
+// ---------- разрезы: цветок, плод, шишка ----------
+let cutKind = null;
+function cutQuestion(kind) {
+  if (kind === 'flower') return { q: 'Из какой части цветка разовьётся плод?', right: 'Из завязи пестика', opts: ['Из пыльника', 'Из завязи пестика', 'Из лепестка', 'Из чашелистика'], xp: 10,
+    text: () => 'Верно! После оплодотворения завязь разрастается в плод, а семязачатки превращаются в семена. ' + cropOf(S).note, hint: 'Посмотри на подпись, где сказано про семязачатки.' };
+  if (kind === 'cone') return { q: 'Почему шишка сосны — не плод?', right: 'У голосеменных нет цветков и завязи, семена лежат открыто', opts: ['Шишка слишком твёрдая', 'У голосеменных нет цветков и завязи, семена лежат открыто', 'В шишке нет семян'], xp: 15,
+    text: () => 'Шишка сосны — не плод: у голосеменных нет цветков и завязи. Семена лежат открыто на семенных чешуях, по два на каждой. Шишка созревает около полутора-двух лет, а в сухую погоду чешуи раскрываются, и семена с крылышками улетают.', hint: 'Подумай, из какой части цветка образуется плод — и есть ли она у сосны.' };
+  const F = FRUITS[cropOf(S).type], types = Object.keys(FRUITS);
+  let h = 0; for (const c of S.crop || 'x') h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const others = types.filter(t => t !== cropOf(S).type); const pick = [];
+  while (pick.length < 3) { h = (h * 1103515245 + 12345) >>> 0; const t = others[h % others.length]; if (!pick.includes(t)) pick.push(t); }
+  const opts = [...pick.map(t => FRUITS[t].name)]; opts.splice(h % 4, 0, F.name);
+  return { q: 'Какой это тип плода?', right: F.name, opts, xp: 15, text: () => F.text, hint: F.hint };
+}
+function openCut(kind) {
+  cutKind = kind;
+  const crop = S.sp === 'angio' ? cropOf(S) : null;
+  $('cutTitle').textContent = kind === 'flower' ? `Цветок в разрезе: ${crop.name.toLowerCase()}` : kind === 'cone' ? 'Шишка сосны в разрезе' : `Плод в разрезе: ${crop.name.toLowerCase()}`;
+  $('cutPic').innerHTML = kind === 'flower' ? FLOWER(crop.type === 'caryopsis' ? null : crop.petal) : kind === 'cone' ? CONE() : CUT[crop.type]();
+  const Q = cutQuestion(kind), done = S.cool['cut_' + kind];
+  $('cutQ').textContent = Q.q;
+  $('cutOpts').innerHTML = Q.opts.map((o, i) => `<button class="btn" id="cutopt-${i}" data-ans="${o === Q.right ? 1 : 0}">${o}</button>`).join('');
+  $('cutMsg').textContent = '';
+  $('cutQuiz').hidden = !!done; $('cutText').hidden = !done; $('cutText').textContent = done ? Q.text() : '';
+  $('cutModal').hidden = false; $('cutClose').focus();
+}
+$('cutOpts').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-ans]'); if (!b) return;
+  const Q = cutQuestion(cutKind);
+  if (b.dataset.ans === '1') {
+    if (!S.cool['cut_' + cutKind]) { S.cool['cut_' + cutKind] = S.hour; addXP(S, Q.xp); }
+    note(S, null, `${Q.q} ${Q.right}. ${Q.text()}`, 'good');
+    $('cutQuiz').hidden = true; $('cutText').hidden = false; $('cutText').textContent = Q.text();
+    render(); save();
+  } else $('cutMsg').textContent = `Нет, это не так. Подсказка: ${Q.hint}`;
+});
+const closeCut = () => { $('cutModal').hidden = true; cutKind = null; };
+$('cutClose').onclick = closeCut;
+$('cutModal').addEventListener('click', ev => { if (ev.target === $('cutModal')) closeCut(); });
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !$('cutModal').hidden) closeCut(); });
+$('aFlower').onclick = () => openCut('flower');
+$('bCut').onclick = () => openCut(S.sp === 'gymno' ? 'cone' : 'fruit');
+
 let speed = 1, acc = 0;
 document.querySelectorAll('.speed button').forEach(b => b.onclick = () => {
   speed = +b.dataset.speed; document.querySelectorAll('.speed button').forEach(x => x.setAttribute('aria-pressed', x === b));
@@ -1677,6 +1921,7 @@ $('gardenTabs').addEventListener('click', ev => { const b = ev.target.closest('[
 $('addPlant').onclick = () => openSettings(false, true);
 
 // ---------- настройки ----------
+$('crop').insertAdjacentHTML('beforeend', CROP_KEYS.map(k => `<option value="${k}">${CROPS[k].name}</option>`).join(''));
 $('species').innerHTML = SP_ORDER.map((k, i) => {
   const v = SPECIES[k];
   return `<label class="sp-card"><input type="radio" name="sp" id="sp-${k}" value="${k}">
@@ -1687,6 +1932,7 @@ function syncChoice() {
   const sp = chosen(), P = G && G.plants[sp];
   $('plant').querySelector('.lbl').textContent = P ? 'Открыть это растение' : 'Посадить';
   $('replant').hidden = !P;
+  $('cropSet').hidden = sp !== 'angio';
   disarm();
 }
 $('species').addEventListener('change', syncChoice);
@@ -1730,15 +1976,15 @@ $('replant').onclick = () => {
   if (!P.dead && !P.done && !arm($('replant'), 'replant', 'Это растение пропадёт. Нажми ещё раз', 'Посадить заново')) return;
   plant(sp);
 };
-function plant(sp) {
-  fresh(sp);
+function plant(sp, crop) {
+  fresh(sp, crop !== undefined ? crop : sp === 'angio' ? $('crop').value : null);
   closeSettings(); showGame(true); renderBlocks(); render(); renderGarden(); save();
 }
 $('reset').onclick = () => {
   if (!arm($('reset'), 'reset', 'Точно? Нажми ещё раз — всё удалится', 'Сбросить весь прогресс')) return;
   G = null; S = null; save(); showGame(false); renderGarden(); openSettings(true);
 };
-$('bRestart').onclick = () => plant(S.sp);
+$('bRestart').onclick = () => plant(S.sp, S.sp === 'angio' ? (S.cropRandom ? 'random' : S.crop) : null);
 $('bChoose').onclick = () => openSettings(false, true);
 function showGame(on) { $('game').hidden = !on; $('journal').hidden = !on; $('openSettings').hidden = !on; }
 
