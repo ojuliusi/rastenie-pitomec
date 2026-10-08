@@ -84,7 +84,10 @@ svg .maskify [stroke]:not([stroke="none"]) { stroke: #fff; stroke-width: 5px; }
 @keyframes pop { 0% { transform: scale(1); } 30% { transform: scale(1.25); box-shadow: 0 0 0 6px color-mix(in srgb, var(--sun) 35%, transparent); } 100% { transform: scale(1); } }
 .scene-wrap { position: relative; }
 .fact { position: absolute; left: 12px; right: 12px; top: 12px; z-index: 2; background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--sun); border-radius: 12px; padding: 12px 14px; display: grid; gap: 6px; box-shadow: 0 10px 28px rgba(0,0,0,.2); animation: factIn .35s ease-out; }
-.fact.reveal { border-left-color: var(--leaf); }
+.fact.reveal, .fact.good { border-left-color: var(--leaf); }
+.fact.good .fact-k { color: var(--leaf); }
+.fact.warn { border-left-color: var(--danger); }
+.fact.warn .fact-k { color: var(--danger); }
 .fact .fact-k { font: 500 11px var(--f-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--sun); }
 .fact.reveal .fact-k { color: var(--leaf); }
 .fact b { font: 600 16px var(--f-body); }
@@ -887,6 +890,12 @@ const FACTS = {
   bloom: ['В воде живут не только водоросли, но и древние бактерии, которые тоже умеют фотосинтезировать.',
     'Цианобактериям больше 3 миллиардов лет. Именно их фотосинтез наполнил атмосферу Земли кислородом. Но при тепле и избытке солей они захватывают водоём и вытесняют водоросли.'],
 };
+// Очередь всплывающих плашек (помимо фактов о болезнях)
+function popup(s, k, title, text, tone) {
+  s.popups = s.popups || [];
+  s.popups.push({ k, title, text, tone });
+  if (s.popups.length > 4) s.popups.shift();
+}
 function newState(sp = 'angio') {
   return { sp, hour: 6, biomass: 0.6, moisture: sp === 'algae' ? 90 : 60, minerals: 50, starch: 6, hp: 100, rootHP: 100,
     turgor: 0.9, chl: 0.85, lightHist: 0.5, soggy: 0, lean: 0, loc: SPECIES[sp].start, lamp: false, shade: false,
@@ -996,6 +1005,11 @@ function step(s) {
 
   if (gate && s.biomass >= gate.cap)
     note(s, 'gate' + gate.stage, `Растение готово к стадии «${SP.stages[gate.stage][0]}», но дальше расти не будет, пока не пройден ещё один блок курса (пройдено ${gate.passed} из ${gate.total}).`, 'warn', 24);
+  if (gate && s.biomass >= gate.cap && !s.cool['gatePop' + gate.stage]) {
+    s.cool['gatePop' + gate.stage] = s.hour;
+    popup(s, 'Нужен блок курса', `Растение готово к стадии «${SP.stages[gate.stage][0]}»`,
+      `Оно подросло, но дальше расти не будет, пока ты не пройдёшь ещё один блок курса. Пройдено ${gate.passed} из ${gate.total}. Блоки — в разделе «Блоки курса» справа.`, 'warn');
+  }
 
   // здоровье
   const harm = [];
@@ -1767,8 +1781,13 @@ function render() {
   $('banner').hidden = !over;
   if (s.dead) { $('bTitle').textContent = 'Растение погибло'; $('bText').textContent = s.dead + ' Попробуй ещё раз и следи за приборами.'; }
   else if (s.done) { $('bTitle').textContent = 'Цикл завершён!'; $('bText').textContent = `${SP.stages[6][1]} На это ушло ${Math.floor(s.hour / 24) + 1} дн.`; }
-  const fc = s.fact && FACTS[s.fact.id];
-  $('fact').hidden = !fc;
+  const fc = s.fact && FACTS[s.fact.id], pq = !fc && s.popups && s.popups[0];
+  $('fact').hidden = !fc && !pq;
+  $('fact').classList.remove('good', 'warn');
+  if (pq) {
+    $('fact').classList.remove('reveal'); $('fact').classList.add(pq.tone || 'good');
+    $('factK').textContent = pq.k; $('factTitle').textContent = pq.title; $('factText').textContent = pq.text;
+  }
   if (fc) {
     const D = DISEASES[s.fact.id];
     $('fact').classList.toggle('reveal', s.fact.kind === 1);
@@ -1872,7 +1891,7 @@ $('cures').addEventListener('click', ev => {
   render(); renderGarden(); save();
 });
 
-$('factOk').onclick = () => { S.fact = null; render(); save(); };
+$('factOk').onclick = () => { if (S.fact) S.fact = null; else if (S.popups) S.popups.shift(); render(); save(); };
 
 // ---------- разрезы: цветок, плод, шишка ----------
 let cutKind = null;
@@ -1961,8 +1980,21 @@ $('blocks').addEventListener('submit', ev => {
     $(`fs-${id}-${i}`).classList.toggle('wrong', !right);
   });
   if (ok === blk.qs.length) {
+    const gateBefore = growthGate(S);
     unlockedSet(S)[id] = true;
     addXP(S, 30);
+    {
+      const SPx = SPc(), where = {
+        feed: `${SPx.feed} — кнопка в разделе «Вода и питание»`,
+        lamp: 'Фитолампа — в разделе «Свет и размножение». Она досвечивает растение, даже ночью и зимой',
+        shade: 'Притенение — в разделе «Свет и размножение». Оно спасает от жары и прямого солнца',
+        repro: `«${SPx.repro.label}» — в разделе «Свет и размножение». Кнопка заработает, когда растение дойдёт до стадии «${SPx.stages[4][0]}»`,
+      };
+      let text = 'Открыто: ' + blk.unlocks.map(a => where[a]).join('. ') + '.';
+      const gateAfter = growthGate(S);
+      if (gateBefore && S.biomass >= gateBefore.cap) text += (!gateAfter || S.biomass < gateAfter.cap) ? ' Растение снова может расти!' : ' Чтобы растение росло дальше, нужен ещё один блок.';
+      popup(S, 'Блок пройден · +30 опыта', `«${blk.title}» пройден!`, text, 'good');
+    }
     note(S, null, `Блок «${blk.title}» пройден. ${blk.gives}.`, 'good');
     renderBlocks(); render(); save();
   } else {
