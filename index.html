@@ -71,6 +71,9 @@ svg .maskify [stroke]:not([stroke="none"]) { stroke: #fff; stroke-width: 5px; }
 .sick p { margin: 0; font-size: 14px; }
 .sick .row-label { color: var(--danger); font-weight: 600; margin: 0; }
 .sick .look { font-style: italic; }
+.sick .diag-msg { color: var(--danger); font-size: 13px; margin-top: 6px; }
+.sick .diag-msg:empty { display: none; }
+.sick #diagWhy { font-weight: 500; }
 #scene .spark { animation: twinkle 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 @keyframes twinkle { 0%, 100% { opacity: 0; transform: scale(.4); } 50% { opacity: .95; transform: scale(1); } }
 .lvl { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 3px 10px 3px 4px; border-radius: 99px; border: 1px solid var(--line); }
@@ -337,7 +340,10 @@ footer { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-co
             <p id="sickSym"></p>
             <div class="row"><button class="btn" id="aLoupe"><span class="dot" style="background:var(--muted)"></span>Осмотреть под лупой</button></div>
             <p class="look" id="sickLook" hidden></p>
-            <div><div class="row-label">Чем лечить?</div><div class="row" id="cures"></div></div>
+            <div id="diag" hidden><div class="row-label" id="diagQ">Кто вызвал болезнь?</div><div class="row" id="agents"></div><p class="diag-msg" id="diagMsg"></p></div>
+            <p id="diagWhy" hidden></p>
+            <div id="cureBox" hidden><div class="row-label">Чем лечить?</div><div class="row" id="cures"></div></div>
+            <p class="locked-note" id="cureLock">Сначала осмотри растение и определи, кто вызвал болезнь.</p>
           </div>
           <p class="locked-note" id="lockNote"></p>
         </div>
@@ -700,72 +706,85 @@ const CURES = {
   dry: ['Подсушить почву, присыпать золой', 'грибов, живущих в сырой почве'],
   changewater: ['Сменить часть воды', 'того, что размножается в воде'],
 };
+const AGENTS = { fungus: 'Гриб', insect: 'Насекомые', mite: 'Клещи', bacteria: 'Бактерии', virus: 'Вирус', cyano: 'Цианобактерии' };
 const DISEASES = {
   // Эти болезни приходят «просто так»: споры грибов приносит воздух, вирусы — насекомые и руки. Ошибки ухода не нужны.
-  mosaic: { name: 'Мозаичная болезнь', kind: 'вирусное заболевание', sp: ['angio', 'fern'], virus: true, bg: 0.0012,
+  mosaic: { name: 'Мозаичная болезнь', kind: 'вирусное заболевание', sp: ['angio', 'fern'], virus: true, bg: 0.003,
     when: () => false,
     symptom: 'Листья стали пёстрыми: светло-жёлтые пятна чередуются с зелёными, как мозаика. Молодые листья мельче и сморщены.',
-    look: 'Под лупой никого не видно: ни грибницы, ни насекомых. Вирусы в тысячи раз мельче клетки, их можно разглядеть только в электронный микроскоп. Пёстрая мозаика — признак вирусной болезни. Вирус разносят тля и грязные инструменты.',
+    agent: 'virus', see: 'Под лупой никого не видно: ни грибницы, ни спор, ни насекомых. А листья продолжают пестреть.',
+    why: 'Это вирус. Вирусы в тысячи раз мельче клетки, их можно разглядеть только в электронный микроскоп. Пёстрая мозаика — признак вирусной болезни. Вирус разносят тля и грязные инструменты.',
+    ask: 'Что же это, если нет ни грибницы, ни насекомых?',
     cure: ['cutleaves'], hurts: 'chl',
     cured: 'Больные листья удалены, и болезнь дальше не пошла. Лекарств от вирусов растений нет: поражённые части убирают, инструменты моют, а переносчиков вроде тли уничтожают.' },
-  rust: { name: 'Ржавчина', kind: 'грибковое заболевание', sp: ['angio', 'fern', 'gymno'], bg: 0.0012,
+  rust: { name: 'Ржавчина', kind: 'грибковое заболевание', sp: ['angio', 'fern', 'gymno'], bg: 0.003,
     when: (s, e) => s.moisture > 80,
     symptom: 'На листьях появились рыжие бугорки, похожие на ржавчину. Если потереть, остаётся рыжая пыль.',
-    look: 'Рыжая пыль — это споры гриба. Ветер разносит их от растения к растению, поэтому ржавчина может прийти даже при хорошем уходе.',
+    agent: 'fungus', see: 'Рыжая пыль под лупой — это множество крошечных круглых клеточек-спор.',
+    why: 'Это гриб. Рыжая пыль — его споры. Ветер разносит их от растения к растению, поэтому ржавчина может прийти даже при хорошем уходе.',
     cure: ['fungicide', 'cutleaves'], hurts: 'chl',
     cured: 'Гриб остановлен. Споры ржавчины переносит ветер, поэтому осматривай листья почаще: чем раньше заметишь, тем легче лечить.' },
-  spot: { name: 'Грибковая пятнистость', kind: 'грибковое заболевание', sp: ['moss', 'lycopod'], bg: 0.0025,
+  spot: { name: 'Грибковая пятнистость', kind: 'грибковое заболевание', sp: ['moss', 'lycopod'], bg: 0.005,
     when: (s, e) => s.moisture > 90,
     symptom: 'На растении появились бурые пятна с тёмной каймой, часть веточек побурела.',
-    look: 'В бурых пятнах видны крошечные тёмные точки — это спороношение гриба. Споры попадают на растение с пылью и воздухом.',
+    agent: 'fungus', see: 'В бурых пятнах видны крошечные тёмные точки, из них высыпается мелкая пыль.',
+    why: 'Это гриб: тёмные точки — его спороношение, пыль — споры. Споры попадают на растение с пылью и воздухом.',
     cure: ['fungicide', 'cutleaves'], hurts: 'chl',
     cured: 'Больные участки убраны, гриб остановлен. Споры грибов есть в воздухе всегда, а заболевает обычно ослабленное растение.' },
-  chytrid: { name: 'Грибок-паразит водорослей', kind: 'грибковое заболевание (хитридиевый гриб)', sp: ['algae'], bg: 0.0012,
+  chytrid: { name: 'Грибок-паразит водорослей', kind: 'грибковое заболевание (хитридиевый гриб)', sp: ['algae'], bg: 0.003,
     when: (s, e) => e.temp > 26.5,
     symptom: 'Часть нитей побледнела, на клетках появились тёмные бугорки.',
-    look: 'Под микроскопом на клетках сидят шарики хитридиевого гриба. Его подвижные споры плавают в воде и заражают клетку за клеткой.',
+    agent: 'fungus', see: 'Под микроскопом на клетках сидят шарики, а в воде плавают крошечные споры со жгутиком.',
+    why: 'Это хитридиевый гриб — паразит водорослей. Его подвижные споры плавают в воде и заражают клетку за клеткой.',
     cure: ['cutleaves', 'changewater'], hurts: 'chl',
     cured: 'Больные нити убраны, гриб дальше не идёт. Споры гриба плавают в воде, поэтому заражённую воду лучше менять.' },
   mildew: { name: 'Мучнистая роса', kind: 'грибковое заболевание', sp: ['angio'],
     when: (s, e) => s.moisture > 78 && e.temp > 16 && e.temp < 27 && s.lightHist < 0.45,
     symptom: 'На листьях появился белый налёт, похожий на муку. Если провести пальцем, он стирается.',
-    look: 'Под лупой видны тонкие белые нити — это грибница. Гриб питается соком растения, листья желтеют.',
+    agent: 'fungus', see: 'Под лупой налёт оказался сплетением тонких белых нитей.',
+    why: 'Это гриб: белые нити — его грибница. Гриб питается соком растения, и листья желтеют.',
     cure: ['fungicide', 'cutleaves'], hurts: 'chl',
     cured: 'Гриб остановлен. Мучнистой росе нравятся сырость и полутень, поэтому не переливай растение и давай ему больше света.' },
-  aphid: { name: 'Тля', kind: 'насекомые-вредители', sp: ['angio', 'fern'], bg: 0.0015, bgMin: 5,
+  aphid: { name: 'Тля', kind: 'насекомые-вредители', sp: ['angio', 'fern'], bg: 0.003, bgMin: 5,
     when: (s, e) => s.minerals > 70 && e.temp > 21,
     symptom: 'Молодые листья скрутились и стали липкими.',
-    look: 'На нижней стороне листьев сидят колонии мелких зелёных насекомых. Они прокалывают растение хоботком и высасывают сок с сахарами.',
+    agent: 'insect', see: 'На нижней стороне листьев сидят колонии мелких зелёных существ: у каждого шесть ног и хоботок.',
+    why: 'Это тля — насекомые. Они прокалывают растение хоботком и высасывают сок с сахарами.',
     cure: ['soap', 'ladybug'], hurts: 'starch',
     cured: 'Тля уничтожена. Тлю привлекает избыток азота: сочные мягкие побеги после перекорма удобрениями. Божьи коровки — её естественные враги.' },
   mite: { name: 'Паутинный клещ', kind: 'клещи-вредители', sp: ['angio', 'fern', 'gymno'],
     when: (s, e) => e.temp > 27 && s.moisture < 40,
     symptom: 'Листья покрылись мелкими светлыми точками, между ними появилась тонкая паутинка.',
-    look: 'Под лупой видны крошечные паукообразные клещи. Они высасывают клетки, а размножаются в сухом горячем воздухе.',
+    agent: 'mite', see: 'Под лупой видны крошечные существа с восемью ногами, они бегают по паутинке.',
+    why: 'Это паутинный клещ. Восемь ног — значит, не насекомое, а паукообразное. Клещи высасывают клетки и размножаются в сухом горячем воздухе.',
     cure: ['mist', 'soap'], hurts: 'chl',
     cured: 'Клещ отступил. Клещи не любят влажный воздух, поэтому в жару опрыскивай растение и не пересушивай почву.' },
   blackleg: { name: 'Чёрная ножка', kind: 'болезнь всходов (почвенные грибы и оомицеты)', sp: ['angio', 'gymno'], young: true,
     when: (s, e) => s.moisture > 85,
     symptom: 'Стебелёк у самой земли потемнел и стал тонким, как ниточка. Росток заваливается.',
-    look: 'Основание стебля поражено почвенными организмами: грибами и похожими на них оомицетами. Они живут в сырой почве и опасны для молодых всходов.',
+    agent: 'fungus', see: 'Основание стебелька потемнело и размякло, а в сырой почве рядом видны тонкие белёсые нити.',
+    why: 'Это почвенные грибы и похожие на них оомицеты. Они живут в сырой почве и опасны для молодых всходов.',
     cure: ['dry'], hurts: 'root',
     cured: 'Почва подсохла, зола подсушила стебелёк, и возбудитель отступил. Всходы нельзя переливать.' },
   shutte: { name: 'Шютте', kind: 'грибковое заболевание хвои', sp: ['gymno'],
     when: (s, e) => s.moisture > 75 && s.lightHist < 0.4,
     symptom: 'На хвое появились бурые пятна, хвоинки начали осыпаться.',
-    look: 'На побуревшей хвое видны мелкие чёрные точки — плодовые тела гриба. Он развивается в сырости и тени.',
+    agent: 'fungus', see: 'На побуревшей хвое видны мелкие чёрные точки-бугорки.',
+    why: 'Это гриб: чёрные точки — его плодовые тела. Он развивается в сырости и тени.',
     cure: ['fungicide', 'cutleaves'], hurts: 'chl',
     cured: 'Больную хвою убрали, гриб остановлен. Сосна любит солнце и сухую почву.' },
   mould: { name: 'Плесень', kind: 'плесневые грибы', sp: ['moss', 'lycopod', 'fern'],
     when: (s, e) => s.moisture > 90 && e.temp > 19,
     symptom: 'Часть растения покрылась серым пушистым налётом и начала подгнивать.',
-    look: 'Серый пушок — это грибница плесневых грибов с массой спор. Плесень разрастается, когда долго сыро и тепло, а воздух не движется.',
+    agent: 'fungus', see: 'Серый пушок под лупой — это густые тонкие нити, а на их концах гроздья пылинок.',
+    why: 'Это плесневые грибы: нити — грибница, пылинки — споры. Плесень разрастается, когда долго сыро и тепло.',
     cure: ['dry', 'fungicide'], hurts: 'root',
     cured: 'Плесень остановлена. Даже влаголюбивым растениям вредно, когда вода стоит в горшке.' },
   bloom: { name: 'Цветение воды', kind: 'не болезнь, а конкуренция: цианобактерии вытесняют водоросль', sp: ['algae'], label: 'Беда в банке',
     when: (s, e) => e.temp > 25 && s.minerals > 62,
     symptom: 'Вода помутнела и стала сине-зелёной, появился неприятный запах.',
-    look: 'Под микроскопом — масса цианобактерий. Спирогира сама не заболела: соседи бурно размножаются в тёплой воде с избытком солей, затеняют её и отнимают ресурсы.',
+    agent: 'cyano', see: 'Под микроскопом вода кишит мельчайшими сине-зелёными клетками без ядра.',
+    why: 'Это цианобактерии. Спирогира сама не заболела: соседи бурно размножаются в тёплой воде с избытком солей, затеняют её и отнимают ресурсы.',
     cure: ['changewater'], hurts: 'chl',
     cured: 'Свежая вода разбавила соли, и цианобактерии отступили. Не перегревай банку и не пересаливай воду.' },
 };
@@ -867,7 +886,7 @@ function step(s) {
     for (const id in DISEASES) {
       const D = DISEASES[id];
       if (!D.sp.includes(s.sp) || (D.young && stageOf(s) > 1)) continue;
-      const chance = (D.when(s, e) ? 0.008 : 0) + (D.bg && s.biomass > (D.bgMin || 2) ? D.bg : 0);
+      const chance = (D.when(s, e) ? 0.015 : 0) + (D.bg && s.biomass > (D.bgMin || 2) ? D.bg : 0);
       if (chance && Math.random() < chance * (1 + (100 - s.hp) / 50)) {
         s.disease = { id, sev: 0.05, looked: false };
         s.fact = { id, kind: 0 };
@@ -1464,8 +1483,17 @@ function render() {
     const D = DISEASES[s.disease.id];
     $('sickLabel').textContent = D.label || 'Растение заболело';
     $('sickSym').textContent = D.symptom + (s.disease.sev >= 0.6 ? ' Болезнь зашла далеко!' : '');
-    $('sickLook').hidden = !s.disease.looked;
-    $('sickLook').textContent = s.disease.looked ? D.look : '';
+    const dz = s.disease;
+    $('sickLook').hidden = !dz.looked;
+    $('sickLook').textContent = dz.looked ? D.see : '';
+    $('aLoupe').hidden = !!dz.looked;
+    $('diag').hidden = !dz.looked || !!dz.diag;
+    $('diagQ').textContent = D.ask || 'Кто вызвал болезнь?';
+    $('diagMsg').textContent = dz.diagMsg || '';
+    const ag = s.sp === 'algae' ? ['fungus', 'bacteria', 'virus', 'cyano'] : ['fungus', 'insect', 'mite', 'bacteria', 'virus'];
+    if ($('agents').dataset.sig !== s.sp) { $('agents').innerHTML = ag.map(k => `<button class="btn" id="agent-${k}" data-agent="${k}">${AGENTS[k]}</button>`).join(''); $('agents').dataset.sig = s.sp; }
+    $('diagWhy').hidden = !dz.diag; $('diagWhy').textContent = dz.diag ? D.why : '';
+    $('cureBox').hidden = !dz.diag; $('cureLock').hidden = !!dz.diag;
     const opts = s.sp === 'algae' ? ['changewater', 'cutleaves', 'fungicide', 'soap'] : ['fungicide', 'cutleaves', 'soap', 'ladybug', 'mist', 'dry'];
     const html = opts.map(k => `<button class="btn" id="cure-${k}" data-cure="${k}">${CURES[k][0]}</button>`).join('');
     if ($('cures').dataset.sig !== s.sp) { $('cures').innerHTML = html; $('cures').dataset.sig = s.sp; }
@@ -1513,11 +1541,26 @@ $('aIodine').onclick = () => {
 $('aLoupe').onclick = () => {
   if (!S.disease) return;
   const D = DISEASES[S.disease.id];
-  if (!S.disease.looked) { S.disease.looked = true; note(S, null, 'Осмотр под лупой: ' + D.look, 'act'); }
+  if (!S.disease.looked) { S.disease.looked = true; note(S, null, 'Осмотр под лупой: ' + D.see, 'act'); }
   render(); save();
 };
+$('agents').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-agent]'); if (!b || !S.disease || S.disease.diag) return;
+  const k = b.dataset.agent, D = DISEASES[S.disease.id];
+  if (k === D.agent) {
+    S.disease.diag = true; S.disease.diagMsg = '';
+    note(S, null, 'Верный диагноз! ' + D.why, 'good');
+    addXP(S, 10);
+  } else {
+    const before = S.hp; S.hp = Math.max(5, S.hp - 4);
+    const lost = Math.round(before - S.hp);
+    S.disease.diagMsg = `Нет, это не ${AGENTS[k].toLowerCase()}.` + (lost ? ` Время ушло, и растению стало хуже: −${lost} здоровья.` : '') + ' Перечитай, что видно под лупой.';
+    note(S, null, `Неверный диагноз «${AGENTS[k]}».` + (lost ? ` −${lost} здоровья.` : ''), 'warn');
+  }
+  render(); renderGarden(); save();
+});
 $('cures').addEventListener('click', ev => {
-  const b = ev.target.closest('[data-cure]'); if (!b || !S.disease) return;
+  const b = ev.target.closest('[data-cure]'); if (!b || !S.disease || !S.disease.diag) return;
   const k = b.dataset.cure, D = DISEASES[S.disease.id];
   if (D.cure.includes(k)) {
     note(S, null, `Диагноз: ${D.name.toLowerCase()} (${D.kind}). «${CURES[k][0]}» помогло! ${D.cured}`, 'good');
