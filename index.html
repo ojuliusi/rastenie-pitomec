@@ -2465,8 +2465,10 @@ function buildEnv(T) {
   const U = 2.2; g.userData.props = [];
   const prop = (name, x, y, z, rot = 0, k = 1, fallback) => g.userData.props.push({ name, x, y, z, rot, k, fallback });
   if (s.loc === 'balcony') {
-    for (let i = 0; i < 14; i++) box(0.36, 0.04, 6, i % 2 ? '#a07650' : '#b08560', -2.5 + i * 0.37, -0.02, 0.5);
-    if (SEASON === 'winter') { const sn = new T.Mesh(new T.PlaneGeometry(6, 4), M('#eef3f6')); sn.rotation.x = -Math.PI / 2; sn.position.set(0, 0.005, -0.4); g.add(sn); }
+    box(5.4, 0.05, 7.6, '#8a6444', 0, -0.06, 2.6); // сплошной пол под досками — без щелей
+    for (let i = 0; i < 14; i++) box(0.36, 0.04, 7.4, i % 2 ? '#a07650' : '#b08560', -2.5 + i * 0.37, -0.02, 2.6);
+    if (SEASON === 'winter') { const sn = new T.Mesh(new T.PlaneGeometry(5.2, 7.4), M('#eef3f6')); sn.rotation.x = -Math.PI / 2; sn.position.set(0, 0.005, 2.6); g.add(sn); }
+    g.userData.bounds = [-2.4, 2.4, 0.2, 2.75, -0.9, 6.0];
     for (let x = -2.4; x <= 2.4; x += 0.3) box(0.035, 1.1, 0.035, '#3f444d', x, 0.55, -1.1);
     box(5, 0.08, 0.14, '#8a5a3a', 0, 1.12, -1.1);
     if (SEASON === 'winter') box(5, 0.05, 0.16, '#f4f8fa', 0, 1.18, -1.1);
@@ -2501,6 +2503,7 @@ function buildEnv(T) {
     box(3.2, 0.05, 0.05, '#8a7a6a', 0, y + h / 2 + 0.25, wz + 0.15);
     books(-1.6, 0, wz + 0.42, 6, 0.12, 1, false);
     shell(-2.9, 2.9, -1.5, 3.4, wz - 0.1, 7, '#f3e6c8', '#d9a774', '#fbf4e6');
+    g.userData.bounds = [-2.7, 2.7, -1.3, 3.2, wz + 1.0, 6.8];
     prop('succulent', 1.2, 0, wz + 0.42, 0, 1.2, () => plantPot(1.25, 0, wz + 0.4, 0.8, '#5f8f3a', '#e9e2d0'));
     prop('clock', 0.95, 0, wz + 1.0, -0.4, 1.1, () => mug(0.95, 0, wz + 1.0));
   } else if (s.loc === 'room') {
@@ -2515,6 +2518,7 @@ function buildEnv(T) {
     prop('cabinet', -2.6, fy, -2.8, 0.3, 1);
     books(-3.05, fy + 1.18 * U, -2.85, 7, 0.3, 0.85, false);
     shell(-4.4, 4.4, fy, fy + 6.2, -3.45, 8, '#f3e6c8', null, '#fbf4e6');
+    g.userData.bounds = [-4.2, 4.2, fy + 0.3, fy + 6.0, -3.2, 7.8];
     prop('clock', -2.1, fy + 1.18 * U, -2.65, 0.6, 1);
     prop('houseplant', 2.6, fy, -2.6, 0, 1.2);
     prop('picture', 0.4, fy + 1.6 * U, -3.33, 0, 1);
@@ -2529,6 +2533,7 @@ function buildEnv(T) {
     const fl = new T.Mesh(new T.PlaneGeometry(10, 10), M('#6a5444')); fl.rotation.x = -Math.PI / 2; fl.position.y = fy; g.add(fl);
     box(10, 6, 0.1, '#5f5a52', 0, 1.8, -1.0); box(0.1, 6, 6, '#4f4a44', -1.3, 1.8, 1.5);
     shell(-1.3, 3.6, fy, fy + 5.4, -1.0, 7, '#57524a', null, '#4a463f');
+    g.userData.bounds = [-1.1, 3.4, fy + 0.3, fy + 5.2, -0.8, 6.8];
     prop('side_table', 0, fy, -0.15, 0, 1, () => box(1.0, -fy, 0.8, '#5a4636', 0, fy / 2, -0.2));
     prop('rocking', 1.6, fy, 0.3, -0.7, 1.05, () => { const arm = new T.Group(); arm.position.set(1.4, fy, 0.1); arm.rotation.y = -0.5; g.add(arm); box(0.9, 0.4, 0.8, '#6a4a5a', 0, 0.2, 0, arm); box(0.9, 0.8, 0.2, '#6a4a5a', 0, 0.6, -0.35, arm); });
     prop('box', -0.85, fy, 0.75, 0.3, 1, () => box(0.5, 0.4, 0.4, '#8a6a4a', -0.75, fy + 0.2, 0.6));
@@ -2568,7 +2573,7 @@ function init3D() {
   const hemi = new T.HemisphereLight(0xf4f8ff, 0x6b5a40, 0.8), sun = new T.DirectionalLight(0xfff4e0, 1), lamp = new T.PointLight(0xffd9a0, 0, 6), amb = new T.AmbientLight(0x6070a0, 0.15);
   scene.add(hemi, sun, sun.target, lamp, amb); lamp.position.set(0, 2.1, 0);
   const controls = new T.OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true; controls.minDistance = 0.8; controls.maxDistance = 7; controls.maxPolarAngle = Math.PI * 0.55; controls.enablePan = false;
+  controls.enableDamping = true; controls.minDistance = 0.8; controls.maxDistance = 7; controls.minPolarAngle = Math.PI * 0.15; controls.maxPolarAngle = Math.PI * 0.55; controls.minAzimuthAngle = -1.15; controls.maxAzimuthAngle = 1.15; controls.enablePan = false;
   camera.position.set(1.4, 1.5, 2.6); controls.target.set(0, 0.8, 0);
   controls.addEventListener('start', () => { m3.touched = Date.now(); });
   m3 = { renderer, scene, camera, controls, hemi, sun, lamp, amb, plant: null, env: null, running: false };
@@ -2578,7 +2583,11 @@ function init3D() {
     if (!m3.running) return;
     const bub = m3.plant && m3.plant.userData.bub;
     if (bub) bub.children.forEach((b, i) => { b.position.y += 0.003 + (i % 3) * 0.001; if (b.position.y > 0.85) b.position.y = 0.02; });
-    controls.update(); (outline || renderer).render(scene, camera); requestAnimationFrame(loop);
+    controls.update();
+    // камера не уходит за стены, пол и потолок
+    const bd = m3.env && m3.env.userData.bounds;
+    if (bd) { const p = camera.position; p.set(clamp(p.x, bd[0], bd[1]), clamp(p.y, bd[2], bd[3]), clamp(p.z, bd[4], bd[5])); camera.lookAt(controls.target); }
+    (outline || renderer).render(scene, camera); requestAnimationFrame(loop);
   };
   m3.start = () => { if (!m3.running) { m3.running = true; loop(); } };
   m3.stop = () => { m3.running = false; };
