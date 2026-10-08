@@ -3360,11 +3360,20 @@ function buildEnv(T) {
     prop('sofa', 0.4, fy, -2.75, 0, 1, null, { tint: '#cfcac0' }); // светло-серая ткань
     prop('pouf', -1.35, fy, -1.7, 0.3, 0.9, null, { tint: '#e0b04a' }); // горчичный пуф
     prop('armchair', 2.5, fy, -0.6, -1.0, 1, null, { tint: { modern_arm_chair_01_pillow: '#e2d6c0' } }); // деревянный каркас, светлые подушки
-    prop('cabinet', -2.6, fy, -2.8, 0.3, 1, null, { fitH: 1.18 * U }); // стеллаж-ячейки из сосны, книги и часы стоят сверху
-    books(-3.05, fy + 1.18 * U, -2.85, 7, 0.3, 0.85, false);
+    { // открытый стеллаж из светлой сосны: на полках книги, цветок и ваза, сверху часы
+      const sx = -2.6, sz = -2.75, r = 0.3, W = 1.7, D = 0.5, H = 2.9, wood = '#e4c495';
+      const at = (lx, lz) => [sx + lx * Math.cos(r) + lz * Math.sin(r), sz - lx * Math.sin(r) + lz * Math.cos(r)];
+      const part = (w, h, d, lx, ly, lz) => { const [x, z] = at(lx, lz); const b = box(w, h, d, wood, x, fy + ly, z); b.rotation.y = r; return b; };
+      part(0.06, H, D, -W / 2, H / 2, 0); part(0.06, H, D, W / 2, H / 2, 0); part(W, H, 0.03, 0, H / 2, -D / 2 + 0.015);
+      const shelves = [0.05, 0.75, 1.45, 2.15, H - 0.03]; shelves.forEach(y => part(W, 0.05, D, 0, y, 0));
+      // ряды книг (на одной полке — стопка лёжа), цветок и белая ваза
+      [[0.08, 8, false], [0.78, 6, true], [1.48, 7, false], [2.18, 4, false]].forEach(([y, n, stack], i) => { const [x, z] = at(-W / 2 + 0.08, 0.05); books(x, fy + y, z, n, r, 0.8, stack); });
+      { const [x, z] = at(W / 2 - 0.3, 0.02); plantPot(x, fy + 2.18, z, 0.9, '#5f9a4a', '#f3efe6'); }
+      { const [x, z] = at(W / 2 - 0.35, 0.02); const v = cyl(0.07, 0.1, 0.3, '#f6f3ec', x, fy + 1.48 + 0.15, z); }
+    }
     shell(-4.4, 4.4, fy, fy + 6.2, -3.45, 8, '#f3e6c8', null, '#fbf4e6');
     g.userData.bounds = [-4.2, 4.2, fy + 0.3, fy + 6.0, -3.2, 7.8];
-    prop('clock', -2.1, fy + 1.18 * U, -2.65, 0.6, 1);
+    prop('clock', -2.3, fy + 2.9, -2.65, 0.6, 1);
     prop('houseplant', 2.6, fy, -2.6, 0, 1.2);
     prop('picture', 0.4, fy + 1.6 * U, -3.33, 0, 1);
     cyl(0.02, 0.02, 1.8 * U * 0.8, '#3a3a3a', -3.1, fy + 0.9 * U * 0.8, -1.2);
