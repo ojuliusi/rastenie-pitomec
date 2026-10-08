@@ -392,6 +392,23 @@ header #openSettings { flex: none; }
   .panes { padding: 10px; }
   #settings { inset: 6px; }
 }
+
+/* ===== Туториал: затемнение с «окошком» вокруг нужной части экрана и карточка с пояснением ===== */
+.tour { position: fixed; inset: 0; z-index: 60; }
+.tour-hole { position: fixed; border-radius: 22px; box-shadow: 0 0 0 9999px rgba(30, 24, 18, .62); outline: 3px solid var(--sun); outline-offset: 2px; transition: all .3s ease; pointer-events: none; }
+.tour-hole.none { left: 50% !important; top: 50% !important; width: 0 !important; height: 0 !important; outline: 0; }
+.tour-card { position: fixed; width: min(380px, calc(100vw - 24px)); background: var(--panel); color: var(--ink); border: 3px solid var(--outline); border-radius: 22px; box-shadow: 0 6px 0 var(--outline), 0 24px 60px rgba(0,0,0,.35); padding: 16px 18px; display: grid; gap: 8px; transition: left .3s ease, top .3s ease; animation: factIn .3s ease-out; }
+.tour-card b { font: 700 19px/1.25 var(--f-display); }
+.tour-card p { margin: 0; font-size: 15px; line-height: 1.45; }
+.tour-k { font: 800 11px var(--f-body); text-transform: uppercase; letter-spacing: .08em; color: var(--leaf); }
+.tour-nav { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.tour-nav .link { margin-right: auto; font-size: 13px; }
+.tour-dots { display: none; }
+.tour-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+.tour-dots i.on { background: var(--leaf); }
+#helpBtn { flex: none; width: 42px; padding-inline: 0; justify-content: center; font: 900 18px var(--f-body); }
+@media (max-width: 860px) { #helpBtn { width: 38px; } }
+@media (prefers-reduced-motion: reduce) { .tour-hole, .tour-card { transition: none; animation: none; } }
 </style>
 
 <div class="wrap">
@@ -404,6 +421,7 @@ header #openSettings { flex: none; }
     <div class="tabs" id="gardenTabs" role="tablist"></div>
     <button class="btn" id="addPlant" aria-label="Посадить ещё">+<span> Посадить ещё</span></button>
     </nav>
+    <button class="btn" id="helpBtn" title="Как играть" aria-label="Как играть">?</button>
     <button class="btn" id="openSettings" aria-expanded="false" aria-controls="settings">
       <svg class="gear" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M9.4 1l.3 1.8c.5.2.9.4 1.3.7l1.7-.7 1.4 2.4-1.4 1.1c.1.5.1 1 0 1.5l1.4 1.1-1.4 2.4-1.7-.7c-.4.3-.8.5-1.3.7L9.4 15H6.6l-.3-1.8c-.5-.2-.9-.4-1.3-.7l-1.7.7-1.4-2.4 1.4-1.1a4 4 0 0 1 0-1.5L1.9 7.1l1.4-2.4 1.7.7c.4-.3.8-.5 1.3-.7L6.6 1h2.8zM8 5.6a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8z"/></svg>
       Настройки
@@ -583,6 +601,21 @@ header #openSettings { flex: none; }
         <h2 id="hLog">Дневник наблюдений</h2>
         <ul class="log" id="log"></ul>
       </section>
+      </div>
+    </div>
+  </div>
+
+  <div class="tour" id="tour" hidden>
+    <div class="tour-hole" id="tourHole"></div>
+    <div class="tour-card" id="tourCard" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+      <span class="tour-k" id="tourK"></span>
+      <b id="tourTitle"></b>
+      <p id="tourText"></p>
+      <div class="tour-nav">
+        <button class="link" id="tourSkip">Пропустить</button>
+        <span class="tour-dots" id="tourDots"></span>
+        <button class="btn" id="tourBack">Назад</button>
+        <button class="btn primary" id="tourNext"><span class="dot"></span>Дальше</button>
       </div>
     </div>
   </div>
@@ -3402,6 +3435,7 @@ $('replant').onclick = () => {
 function plant(sp, crop) {
   fresh(sp, crop !== undefined ? crop : sp === 'angio' ? $('crop').value : null);
   closeSettings(); showGame(true); renderBlocks(); render(); renderGarden(); save();
+  if (!tourDone('game')) setTimeout(() => startTour('game'), 500);
 }
 $('reset').onclick = () => {
   if (!arm($('reset'), 'reset', 'Точно? Нажми ещё раз — всё удалится', 'Сбросить весь прогресс')) return;
@@ -3410,6 +3444,83 @@ $('reset').onclick = () => {
 $('bRestart').onclick = () => plant(S.sp, S.sp === 'angio' ? (S.cropRandom ? 'random' : S.crop) : null);
 $('bChoose').onclick = () => openSettings(false, true);
 function showGame(on) { $('game').hidden = !on; $('openSettings').hidden = !on; }
+
+// ---------- Туториал ----------
+// Приветствие при первом заходе (поверх выбора растения) и экскурсия по экрану после посадки первого растения.
+const TOUR_WELCOME = [
+  { k: 'Добро пожаловать', t: 'Растение-питомец 🌱', x: 'Здесь ты вырастишь настоящее растение — от семени или споры до плодов и семян. Оно живёт по законам биологии: без света не образует крахмал, от лишних удобрений у него горят корни, а в жару оно испаряет больше воды.' },
+  { k: 'Как выиграть', t: 'Доведи растение до размножения', x: 'Ухаживай за ним, следи за приборами и проходи блоки курса: каждый блок открывает новые инструменты. Без пройденных блоков растение не вырастет до конца.' },
+  { k: 'С чего начать', t: 'Выбери растение', x: 'Сначала выбери группу: водоросли, мхи, плауны, папоротники, голосеменные или цветковые. У каждой своя биология. Впиши своё имя — так учитель увидит твои успехи.', target: '#species' },
+];
+const TOUR_GAME = [
+  { k: 'Твоё растение', t: 'Это сцена', x: 'Здесь живёт твоё растение. Крути сцену мышкой или пальцем, приближай колёсиком или щипком. Кнопка «Разрез» показывает корни в почве.', target: '.scene-wrap' },
+  { k: 'Состояние', t: 'Здоровье, корни и тургор', x: 'Тургор — давление воды в клетках: когда он падает, растение вянет. Если здоровье дойдёт до нуля, растение погибнет.', target: '.vitals' },
+  { k: 'Время', t: 'Как идёт время', x: 'В режиме «по занятиям» растение ждёт тебя между уроками. Поухаживай за ним и нажми «Прожить сутки» — тогда пройдёт день его жизни. Наверху видно время, время года и стадию роста.', target: () => $('dayBtns').hidden ? '.stage-top' : '#dayBtns' },
+  { k: 'Приборы', t: 'Следи за приборами', x: 'Свет, температура, влажность почвы, соли и испарение. Светлая полоса на шкале — норма, чёрная метка — сейчас.', target: '.pane-gauges', pane: 'care' },
+  { k: 'Уход', t: 'Ухаживай за растением', x: 'Поливай и переставляй горшок: на подоконнике светло, в углу темно, на балконе жарко. Подкормка, фитолампа, притенение и размножение закрыты замочком — их открывают блоки курса. Когда корням станет тесно, здесь появится кнопка пересадки.', target: '[data-pane="care"][aria-labelledby="hAct"] .actions', pane: 'care' },
+  { k: 'Блоки курса', t: 'Проходи блоки', x: 'В каждом блоке 5 вопросов, и они каждый раз разные. За ошибку растение теряет здоровье и может заболеть — тогда появится вопрос и про болезнь.', target: '#pt-blocks' },
+  { k: 'Дневник', t: 'Читай дневник', x: 'Растение «рассказывает», что с ним происходит: мало света, пересохла почва, заболело. Там же подсказки, что делать. Красная точка на вкладке — что-то важное.', target: '#pt-log' },
+  { k: 'Болезни', t: 'Если растение заболело', x: 'Осмотри его под лупой, определи, кто вызвал болезнь — гриб, насекомые, клещ или вирус, — и выбери лечение. Всё это появится во вкладке «Уход и приборы».', target: '#pt-care' },
+  { k: 'Сад', t: 'Несколько растений', x: 'Кнопкой «+» можно посадить растения других групп и растить их параллельно.', target: '#garden' },
+  { k: 'Готово', t: 'Удачи!', x: 'Имя, время года, тема и выбор растения — в «Настройках». Этот туториал всегда можно открыть снова кнопкой «?».', target: '#helpBtn' },
+];
+let tour = null;
+const tourDone = k => { try { return localStorage.getItem('pp-tour-' + k) === '1'; } catch (e) { return false; } };
+function startTour(kind) {
+  tour = { kind, steps: kind === 'welcome' ? TOUR_WELCOME : TOUR_GAME, i: 0 };
+  $('tour').hidden = false; showTourStep(); $('tourNext').focus();
+}
+function endTour() {
+  if (!tour) return;
+  try { localStorage.setItem('pp-tour-' + tour.kind, '1'); } catch (e) {}
+  tour = null; $('tour').hidden = true;
+}
+function tourTarget(st) { const sel = typeof st.target === 'function' ? st.target() : st.target; const el = sel && document.querySelector(sel); return el && el.offsetParent !== null ? el : null; }
+function showTourStep() {
+  const st = tour.steps[tour.i];
+  if (st.pane) showPane(st.pane);
+  $('tourK').textContent = `${st.k} · ${tour.i + 1} из ${tour.steps.length}`;
+  $('tourTitle').textContent = st.t; $('tourText').textContent = st.x;
+  $('tourBack').hidden = tour.i === 0;
+  const last = tour.i === tour.steps.length - 1;
+  $('tourNext').lastChild.textContent = last ? (tour.kind === 'welcome' ? 'Выбрать растение' : 'Начать игру') : 'Дальше';
+  $('tourSkip').hidden = last;
+  $('tourDots').innerHTML = tour.steps.map((_, j) => `<i class="${j === tour.i ? 'on' : ''}"></i>`).join('');
+  placeTour();
+}
+function placeTour() {
+  if (!tour) return;
+  const el = tourTarget(tour.steps[tour.i]), hole = $('tourHole'), card = $('tourCard'), vw = innerWidth, vh = innerHeight, pad = 6;
+  if (el) el.scrollIntoView({ block: 'nearest' });
+  const cw = card.offsetWidth, ch = card.offsetHeight;
+  if (!el) { hole.classList.add('none'); card.style.left = (vw - cw) / 2 + 'px'; card.style.top = Math.max(12, (vh - ch) / 2) + 'px'; return; }
+  hole.classList.remove('none');
+  const r = el.getBoundingClientRect(), top = Math.max(4, r.top - pad), bottom = Math.min(vh - 4, r.bottom + pad);
+  Object.assign(hole.style, { left: Math.max(4, r.left - pad) + 'px', top: top + 'px', width: Math.min(vw - 8, r.width + pad * 2) + 'px', height: (bottom - top) + 'px' });
+  // карточку ставим туда, где больше места: снизу, сверху, справа или слева от выделенного
+  let x, y;
+  if (vh - bottom >= ch + 14) { y = bottom + 12; x = r.left + r.width / 2 - cw / 2; }
+  else if (top >= ch + 14) { y = top - ch - 12; x = r.left + r.width / 2 - cw / 2; }
+  else if (vw - r.right >= cw + 14) { x = r.right + 12; y = r.top + r.height / 2 - ch / 2; }
+  else if (r.left >= cw + 14) { x = r.left - cw - 12; y = r.top + r.height / 2 - ch / 2; }
+  else { x = (vw - cw) / 2; y = vh - ch - 12; }
+  card.style.left = clamp(x, 12, vw - cw - 12) + 'px'; card.style.top = clamp(y, 12, vh - ch - 12) + 'px';
+}
+$('tourNext').onclick = () => {
+  if (tour.i < tour.steps.length - 1) { tour.i++; showTourStep(); return; }
+  const kind = tour.kind; endTour();
+  if (kind === 'game' && G) showPane('care');
+};
+$('tourBack').onclick = () => { if (tour.i > 0) { tour.i--; showTourStep(); } };
+$('tourSkip').onclick = endTour;
+$('helpBtn').onclick = () => startTour(G ? 'game' : 'welcome');
+window.addEventListener('resize', () => placeTour());
+document.addEventListener('keydown', ev => {
+  if (!tour) return;
+  if (ev.key === 'Escape') endTour();
+  else if (ev.key === 'ArrowRight') $('tourNext').click();
+  else if (ev.key === 'ArrowLeft') $('tourBack').click();
+});
 
 // ---------- вкладки панели: Уход, Приборы, Блоки, Дневник ----------
 let pane = 'care', seenLog = '';
@@ -3560,8 +3671,8 @@ function start(data) {
   window.claude?.hot?.snapshot?.(() => ({ G }));
   applyMode();
   setView(VIEW);
-  if (!G) { showGame(false); openSettings(true); }
-  else { showGame(true); renderBlocks(); }
+  if (!G) { showGame(false); openSettings(true); if (!tourDone('welcome')) setTimeout(() => startTour('welcome'), 300); }
+  else { showGame(true); renderBlocks(); if (!tourDone('game')) setTimeout(() => startTour('game'), 900); }
   showPane(pane);
   renderGarden();
   if (!LESSON) {
