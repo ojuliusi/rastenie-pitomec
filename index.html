@@ -320,14 +320,82 @@ footer { background: color-mix(in srgb, var(--panel) 80%, transparent); border: 
 .log li.good { background: var(--leaf-soft) !important; }
 .sp-card:has(input:checked) { background: var(--leaf-soft) !important; }
 @media (prefers-reduced-motion: reduce) { .btn, .speed button, .tab { transition: none; } }
+
+/* ===== Раскладка «всё на одном экране»: шапка, слева сцена, справа панель с вкладками. Страница не листается, листается только содержимое вкладки ===== */
+html, body { height: 100%; }
+body { overflow: hidden; margin: 0; }
+.wrap { height: 100dvh; display: flex; flex-direction: column; padding-block: 10px 16px; max-width: 1400px; }
+header { flex: none; align-items: center; flex-wrap: nowrap; margin-bottom: 10px; gap: 12px; }
+header > div { flex: none; }
+header h1 { font-size: clamp(16px, 2.2vw, 24px); padding: 5px 12px 7px; box-shadow: 0 3px 0 var(--outline); }
+header .garden { flex: 1 1 auto; min-width: 0; margin: 0; flex-wrap: nowrap; overflow-x: auto; padding: 4px 2px 8px; scrollbar-width: thin; }
+header .garden > .row-label { display: none; }
+header .garden .tabs { flex-wrap: nowrap; }
+header .garden .tab, header .garden #addPlant { flex: none; }
+header #openSettings { flex: none; }
+#settings { position: fixed; z-index: 40; inset: 10px max(10px, calc((100vw - 980px) / 2)); overflow-y: auto; margin: 0; box-shadow: 0 10px 0 var(--outline), 0 30px 80px rgba(0,0,0,.35); }
+#settings .sub { margin: 0 0 8px; }
+#settings footer { margin-top: 4px; }
+.game { flex: 1 1 auto; min-height: 0; grid-template-columns: minmax(0, 1.25fr) minmax(340px, 1fr); grid-template-rows: minmax(0, 1fr); align-items: stretch; gap: 14px; }
+.game[hidden] { display: none; }
+.stage { display: flex; flex-direction: column; min-height: 0; }
+.stage-top { flex: none; padding: 8px 12px; gap: 6px; }
+.scene-wrap { flex: 1 1 auto; min-height: 0; }
+.scene3d { aspect-ratio: auto; height: 100%; }
+#scene { width: 100%; height: 100%; aspect-ratio: auto; }
+.vitals { flex: none; padding: 8px 12px; gap: 10px; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+.vital label { font-size: 13px; }
+.stage .xpnote { flex: none; margin: 0; padding: 0 12px 8px; font-size: 12.5px; }
+.stage .view-note { display: none; }
+.panel { display: flex; flex-direction: column; min-height: 0; padding: 0; overflow: hidden; }
+.ptabs { flex: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 8px; border-bottom: 3px dashed var(--line); }
+.ptabs button { position: relative; font: 800 14px var(--f-body); color: var(--ink); background: color-mix(in srgb, var(--bg) 55%, transparent); border: 2.5px solid transparent; border-radius: 14px; padding: 8px 4px; cursor: pointer; }
+.ptabs button[aria-selected="true"] { background: var(--wood); border-color: var(--outline); box-shadow: 0 3px 0 var(--outline); }
+.ptabs button i { position: absolute; top: 4px; right: 6px; width: 9px; height: 9px; border-radius: 50%; background: var(--danger); border: 2px solid var(--panel); display: none; }
+.ptabs button.alert i { display: block; }
+.ptabs button:focus-visible { outline: 3px solid var(--leaf); outline-offset: 2px; }
+.panes { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 12px 14px 16px; overscroll-behavior: contain; }
+.pane > h2 { margin-top: 0; }
+.pane[data-pane="care"] > h2, .pane[data-pane="gauges"] > h2, .pane[data-pane="log"] > h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.journal { margin: 0; }
+.log { max-height: none; }
+@media (max-width: 860px) {
+  .wrap { padding-block: 6px 12px; padding-inline: 8px; }
+  header { margin-bottom: 6px; gap: 8px; }
+  header h1 { display: none; }
+  header #openSettings { padding: 8px 10px; font-size: 0; gap: 0; }
+  header #openSettings .gear { width: 18px; height: 18px; }
+  .game { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 55fr) minmax(0, 45fr); gap: 8px; }
+  .stage-top { padding: 6px 8px; }
+  .stage-top .pill, .stage-top .lvl, .stage-top .btn, .stage-top .speed button { font-size: 12px; }
+  .stage-top .who, .stage-top #lvlName { display: none; }
+  #addPlant span { display: none; }
+  #addPlant { padding: 8px 14px; font-size: 18px; }
+  header .garden .tab { max-width: 62vw; }
+  .stage-top .pill, .stage-top .lvl { padding: 3px 9px; }
+  .stage-top .btn { padding: 6px 10px; min-height: 0; }
+  .stage-top .speed button { padding: 5px 9px; }
+  .stage-top .xpbar { width: 40px; }
+  .stage-top .clock { font-size: 13px; }
+  .vitals { padding: 6px 8px; gap: 8px; }
+  .stage .xpnote { display: none; }
+  .ptabs { padding: 6px; gap: 4px; }
+  .ptabs button { font-size: 13px; padding: 6px 2px; }
+  .panes { padding: 10px; }
+  #settings { inset: 6px; }
+}
 </style>
 
 <div class="wrap">
   <header>
     <div>
       <h1>Растение-<span>питомец</span></h1>
-      <p class="sub">Вырасти растение и доведи его до размножения. Оно отвечает на свет, воду, жару и удобрения так же, как настоящее. Следи за приборами и читай дневник наблюдений.</p>
     </div>
+    <nav class="garden" id="garden" aria-label="Мои растения" hidden>
+    <span class="row-label">Мои растения</span>
+    <div class="tabs" id="gardenTabs" role="tablist"></div>
+    <button class="btn" id="addPlant" aria-label="Посадить ещё">+<span> Посадить ещё</span></button>
+    </nav>
     <button class="btn" id="openSettings" aria-expanded="false" aria-controls="settings">
       <svg class="gear" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M9.4 1l.3 1.8c.5.2.9.4 1.3.7l1.7-.7 1.4 2.4-1.4 1.1c.1.5.1 1 0 1.5l1.4 1.1-1.4 2.4-1.7-.7c-.4.3-.8.5-1.3.7L9.4 15H6.6l-.3-1.8c-.5-.2-.9-.4-1.3-.7l-1.7.7-1.4-2.4 1.4-1.1a4 4 0 0 1 0-1.5L1.9 7.1l1.4-2.4 1.7.7c.4-.3.8-.5 1.3-.7L6.6 1h2.8zM8 5.6a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8z"/></svg>
       Настройки
@@ -338,6 +406,7 @@ footer { background: color-mix(in srgb, var(--panel) 80%, transparent); border: 
     <div class="head">
       <div>
         <h2 id="hSet">Выбор растения</h2>
+        <p class="sub">Вырасти растение и доведи его до размножения. Оно отвечает на свет, воду, жару и удобрения так же, как настоящее. Следи за приборами и читай дневник наблюдений.</p>
         <p class="lead" id="setLead">У каждой группы своя биология: кому-то нужна тень и сырость, кому-то солнце; одни размножаются семенами, другие спорами.</p>
       </div>
       <button class="btn" id="closeSettings">Закрыть</button>
@@ -382,16 +451,14 @@ footer { background: color-mix(in srgb, var(--panel) 80%, transparent); border: 
       <p>Сброс удаляет растение, дневник и все пройденные блоки курса. Отменить его нельзя.</p>
       <button class="btn danger" id="reset">Сбросить весь прогресс</button>
     </div>
+    <footer>
+    <span id="modeNote">Режим урока: 1 секунда = 1 час жизни растения.</span>
+    <button class="link" id="teacher">Учителю: открыть все блоки</button>
+    </footer>
   </section>
 
-  <nav class="garden" id="garden" aria-label="Мои растения" hidden>
-    <span class="row-label">Мои растения</span>
-    <div class="tabs" id="gardenTabs" role="tablist"></div>
-    <button class="btn" id="addPlant">+ Посадить ещё</button>
-  </nav>
 
   <div class="game" id="game">
-    <div class="col">
       <section class="card stage over" aria-label="Растение">
         <div class="stage-top">
           <span class="clock" id="clock">День 1 · 06:00</span>
@@ -441,20 +508,15 @@ footer { background: color-mix(in srgb, var(--panel) 80%, transparent); border: 
         </div>
       </section>
 
-      <section class="card" aria-labelledby="hInstr">
-        <h2 id="hInstr">Приборы</h2>
-        <div class="gauges">
-          <div class="gauge" id="gLight"><div class="k">Освещённость</div><div class="v"><span>0</span><small>лк</small></div><div class="scale"><div class="ok"></div><div class="mark"></div></div><div class="hint"></div></div>
-          <div class="gauge" id="gTemp"><div class="k">Температура воздуха</div><div class="v"><span>0</span><small>°C</small></div><div class="scale"><div class="ok"></div><div class="mark"></div></div><div class="hint"></div></div>
-          <div class="gauge" id="gWet"><div class="k">Влажность почвы</div><div class="v"><span>0</span><small>%</small></div><div class="scale"><div class="ok"></div><div class="mark"></div></div><div class="hint"></div></div>
-          <div class="gauge" id="gEc"><div class="k">Соли в почве (EC)</div><div class="v"><span>0</span><small>мСм/см</small></div><div class="scale"><div class="ok"></div><div class="mark"></div></div><div class="hint">норма 0,6–2,6</div></div>
-          <div class="gauge" id="gTr"><div class="k">Испарение</div><div class="v"><span>0</span><small>мл/ч</small></div><div class="scale"><div class="mark"></div></div><div class="hint">зависит от света, жары и площади листьев</div></div>
-        </div>
-      </section>
-    </div>
-
-    <div class="col">
-      <section class="card" aria-labelledby="hAct">
+    <div class="card panel" id="panel">
+      <div class="ptabs" role="tablist" aria-label="Разделы">
+        <button role="tab" id="pt-care" data-pane="care" aria-selected="true">Уход<i></i></button>
+        <button role="tab" id="pt-gauges" data-pane="gauges" aria-selected="false">Приборы<i></i></button>
+        <button role="tab" id="pt-blocks" data-pane="blocks" aria-selected="false">Блоки<i></i></button>
+        <button role="tab" id="pt-log" data-pane="log" aria-selected="false">Дневник<i></i></button>
+      </div>
+      <div class="panes">
+      <section class="pane" data-pane="care" aria-labelledby="hAct">
         <h2 id="hAct">Уход</h2>
         <div class="actions">
           <div>
@@ -495,18 +557,27 @@ footer { background: color-mix(in srgb, var(--panel) 80%, transparent); border: 
           <p class="locked-note" id="lockNote"></p>
         </div>
       </section>
-
-      <section class="card" aria-labelledby="hBlocks">
+      <section class="pane" data-pane="blocks" aria-labelledby="hBlocks" hidden>
         <h2 id="hBlocks">Блоки курса</h2>
         <div class="blocks" id="blocks"></div>
       </section>
+      <section class="pane" data-pane="gauges" aria-labelledby="hInstr" hidden>
+        <h2 id="hInstr">Приборы</h2>
+        <div class="gauges">
+          <div class="gauge" id="gLight"><div class="k">Освещённость</div><div class="v"><span>0</span><small>лк</small></div><div class="scale"><div class="ok"></div><div class="mark"></div></div><div class="hint"></div></div>
+          <div class="gauge" id="gTemp"><div class="k">Температура воздуха</div><div class="v"><span>0</span><small>°C</small></div><div class="scale"><div class="ok"></div><div class="mark"></div></div><div class="hint"></div></div>
+          <div class="gauge" id="gWet"><div class="k">Влажность почвы</div><div class="v"><span>0</span><small>%</small></div><div class="scale"><div class="ok"></div><div class="mark"></div></div><div class="hint"></div></div>
+          <div class="gauge" id="gEc"><div class="k">Соли в почве (EC)</div><div class="v"><span>0</span><small>мСм/см</small></div><div class="scale"><div class="ok"></div><div class="mark"></div></div><div class="hint">норма 0,6–2,6</div></div>
+          <div class="gauge" id="gTr"><div class="k">Испарение</div><div class="v"><span>0</span><small>мл/ч</small></div><div class="scale"><div class="mark"></div></div><div class="hint">зависит от света, жары и площади листьев</div></div>
+        </div>
+      </section>
+      <section class="pane journal" data-pane="log" id="journal" hidden aria-labelledby="hLog">
+        <h2 id="hLog">Дневник наблюдений</h2>
+        <ul class="log" id="log"></ul>
+      </section>
+      </div>
     </div>
   </div>
-
-  <section class="card journal" id="journal" aria-labelledby="hLog">
-    <h2 id="hLog">Дневник наблюдений</h2>
-    <ul class="log" id="log"></ul>
-  </section>
 
   <div class="modal" id="cutModal" hidden>
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="cutTitle">
@@ -521,10 +592,6 @@ footer { background: color-mix(in srgb, var(--panel) 80%, transparent); border: 
     </div>
   </div>
 
-  <footer>
-    <span id="modeNote">Режим урока: 1 секунда = 1 час жизни растения.</span>
-    <button class="link" id="teacher">Учителю: открыть все блоки</button>
-  </footer>
 </div>
 
 <script>
@@ -2240,6 +2307,7 @@ function render() {
   if (s.iodine) { $('iodine').hidden = false; $('iodLeaf').setAttribute('fill', s.iodine.color); $('iodText').textContent = s.iodine.text; }
   else $('iodine').hidden = true;
   drawScene();
+  paneBadges();
 }
 
 // места
@@ -2975,7 +3043,7 @@ function frame3D(obj, fresh) {
 }
 function setView(v, note) {
   VIEW = v; try { localStorage.setItem('pp-view', v); } catch (e) {}
-  $('scene').hidden = v !== '2d'; $('scene3d').hidden = v !== '3d';
+  $('scene').toggleAttribute('hidden', v !== '2d'); $('scene3d').hidden = v !== '3d'; // у SVG нет свойства hidden, только атрибут
   document.querySelectorAll('#viewSw button').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === v));
   $('viewNote').textContent = note || (v === '3d' ? 'Крути сцену мышкой или пальцем, колёсиком или щипком приближай.' : 'Разрез: видно корни, почву и признаки болезней вблизи.');
   if (v === '3d') update3D(); else if (m3) m3.stop();
@@ -3191,7 +3259,37 @@ $('reset').onclick = () => {
 };
 $('bRestart').onclick = () => plant(S.sp, S.sp === 'angio' ? (S.cropRandom ? 'random' : S.crop) : null);
 $('bChoose').onclick = () => openSettings(false, true);
-function showGame(on) { $('game').hidden = !on; $('journal').hidden = !on; $('openSettings').hidden = !on; }
+function showGame(on) { $('game').hidden = !on; $('openSettings').hidden = !on; }
+
+// ---------- вкладки панели: Уход, Приборы, Блоки, Дневник ----------
+let pane = 'care', seenLog = '';
+const logKey = () => S && S.log[0] ? S.log[0].h + S.log[0].text : '';
+try { pane = localStorage.getItem('pp-pane') || 'care'; } catch (e) {}
+function showPane(k) {
+  pane = k;
+  document.querySelectorAll('.ptabs [data-pane]').forEach(b => b.setAttribute('aria-selected', b.dataset.pane === k));
+  document.querySelectorAll('.panes > .pane').forEach(p => p.hidden = p.dataset.pane !== k);
+  $('panel').querySelector('.panes').scrollTop = 0;
+  if (k === 'log') seenLog = logKey();
+  try { localStorage.setItem('pp-pane', k); } catch (e) {}
+  paneBadges();
+}
+// красная точка на вкладке, где ждёт что-то важное
+function paneBadges() {
+  if (!S) return;
+  const set = (k, on) => $('pt-' + k).classList.toggle('alert', !!on && pane !== k);
+  set('care', S.disease || S.turgor < 0.35 || S.dead);
+  set('blocks', growthGate(S) && S.biomass >= growthGate(S).cap);
+  if (pane === 'log') seenLog = logKey();
+  set('log', S.log[0] && S.log[0].kind === 'warn' && logKey() !== seenLog);
+  set('gauges', false);
+}
+document.querySelector('.ptabs').addEventListener('click', ev => { const b = ev.target.closest('[data-pane]'); if (b) showPane(b.dataset.pane); });
+document.querySelector('.ptabs').addEventListener('keydown', ev => {
+  if (ev.key !== 'ArrowRight' && ev.key !== 'ArrowLeft') return;
+  const ks = ['care', 'gauges', 'blocks', 'log'], i = (ks.indexOf(pane) + (ev.key === 'ArrowRight' ? 1 : 3)) % 4;
+  showPane(ks[i]); $('pt-' + ks[i]).focus();
+});
 
 // ---------- время ----------
 function summary(P, before, label) {
@@ -3314,6 +3412,7 @@ function start(data) {
   setView(VIEW);
   if (!G) { showGame(false); openSettings(true); }
   else { showGame(true); renderBlocks(); }
+  showPane(pane);
   renderGarden();
   if (!LESSON) {
     catchUp(true);
