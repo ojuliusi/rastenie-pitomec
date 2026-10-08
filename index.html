@@ -3358,7 +3358,8 @@ function buildEnv(T) {
       box(5.4, 0.18, 7.5, '#efe6d6', 0, 3.0, 2.6);
       box(5.4, 3.2, 0.12, '#e9d8c0', 0, 1.5, 6.3);
     }
-    prop('outdoor_set', 1.55, 0, -0.1, -0.5, 0.75, () => { chair(1.35, 0, -0.2, -0.6, '#b08560'); cyl(0.25, 0.25, 0.04, '#8a5a3a', -1.3, 0.55, -0.3); });
+    prop('side_table', 1.5, 0, -0.25, -0.3, 0.95, () => { chair(1.35, 0, -0.2, -0.6, '#b08560'); cyl(0.25, 0.25, 0.04, '#8a5a3a', -1.3, 0.55, -0.3); }); // минималистичный столик из светлого дуба
+    prop('stool', 0.85, 0, 0.5, 0.6, 0.6); prop('stool', 2.25, 0, 0.45, -0.9, 0.6); // складные деревянные табуреты
     prop('planter', -1.45, 0, -0.75, 0.2, 1, () => plantPot(-0.95, 0, -0.75, 1.4, '#4f8a2e', '#c4502a', 0xe86a8a));
     prop('houseplant', 0.9, 0, -0.85, 0, 0.9, () => plantPot(0.85, 0, -0.85, 1.1, '#6aa84f', '#f3e6c8'));
     prop('lantern', -0.75, 0, 0.35, 0, 1.2);
@@ -3424,14 +3425,14 @@ function buildEnv(T) {
   } else {
     // тёмный угол: горшок на тумбе, кресло-качалка, коробки
     const fy = -0.55 * U;
-    const fl = new T.Mesh(new T.PlaneGeometry(10, 10), M('#6a5444')); fl.rotation.x = -Math.PI / 2; fl.position.y = fy; g.add(fl);
-    box(10, 6, 0.1, '#5f5a52', 0, 1.8, -1.0); box(0.1, 6, 6, '#4f4a44', -1.3, 1.8, 1.5);
-    shell(-1.3, 3.6, fy, fy + 5.4, -1.0, 7, '#57524a', null, '#4a463f');
+    const fl = new T.Mesh(new T.PlaneGeometry(10, 10), M('#8a7356')); fl.rotation.x = -Math.PI / 2; fl.position.y = fy; g.add(fl);
+    const rug = new T.Mesh(new T.CircleGeometry(1.1, 40), M('#bdb3a4')); rug.rotation.x = -Math.PI / 2; rug.position.set(0.8, fy + 0.01, 0.6); g.add(rug);
+    box(10, 6, 0.1, '#6e665c', 0, 1.8, -1.0); box(0.1, 6, 6, '#625a50', -1.3, 1.8, 1.5);
+    shell(-1.3, 3.6, fy, fy + 5.4, -1.0, 7, '#665e54', null, '#5a534a');
     g.userData.bounds = [-1.1, 3.4, fy + 0.3, fy + 5.2, -0.8, 6.8];
     prop('side_table', 0, fy, -0.15, 0, 1, () => box(1.0, -fy, 0.8, '#5a4636', 0, fy / 2, -0.2), { fitH: -fy }); // тумба из светлого дуба вровень с горшком
-    prop('rocking', 1.6, fy, 0.3, -0.7, 1.05, () => { const arm = new T.Group(); arm.position.set(1.4, fy, 0.1); arm.rotation.y = -0.5; g.add(arm); box(0.9, 0.4, 0.8, '#6a4a5a', 0, 0.2, 0, arm); box(0.9, 0.8, 0.2, '#6a4a5a', 0, 0.6, -0.35, arm); });
-    prop('box', -0.85, fy, 0.75, 0.3, 1, () => box(0.5, 0.4, 0.4, '#8a6a4a', -0.75, fy + 0.2, 0.6));
-    prop('box', -0.9, fy + 0.34 * U, 0.7, -0.4, 0.8);
+    prop('lounge', 2.2, fy, 0.1, -0.9, 0.75); // кресло в стиле середины века (датский дизайн)
+    prop('pouf', -0.75, fy, 0.75, 0.3, 0.8, () => box(0.5, 0.4, 0.4, '#8a6a4a', -0.75, fy + 0.2, 0.6), { tint: '#9fb59a' }); // шалфейный пуф
   }
   if (s.shade && !L.win) { const n = new T.Mesh(new T.PlaneGeometry(4, 3), new T.MeshStandardMaterial({ color: '#2f4a33', transparent: true, opacity: 0.45, side: T.DoubleSide })); n.rotation.x = Math.PI / 2; n.position.y = 2.4; g.add(n); }
   if (s.lamp) { // фитолампа на шнуре; если растение выше, она поднимается (см. update3D)
