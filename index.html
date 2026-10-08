@@ -423,6 +423,7 @@ header #openSettings { flex: none; }
 .skin svg { width: 100%; max-width: 110px; height: auto; }
 .skin b { font: 800 13.5px var(--f-body); }
 .skin small { font-size: 11.5px; color: var(--muted); text-align: center; line-height: 1.25; }
+.decor-ico { font-size: 44px; line-height: 1.1; padding: 6px 0; }
 .skin.on { border-color: var(--leaf); box-shadow: 0 3px 0 var(--leaf); background: var(--leaf-soft); }
 .skin[aria-disabled="true"] { cursor: help; }
 .skin[data-tip]:hover::after { content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%); width: max-content; max-width: 200px; padding: 6px 10px; border-radius: 10px; background: var(--ink); color: var(--panel); font: 700 12px/1.3 var(--f-body); z-index: 5; pointer-events: none; }
@@ -621,12 +622,9 @@ header #openSettings { flex: none; }
             <svg viewBox="0 0 72 60" width="72" height="60" aria-hidden="true"><path id="iodLeaf" d="M6 30 Q36 -4 66 30 Q36 64 6 30 Z" fill="#d4a63a" stroke="rgba(0,0,0,.25)"/><path d="M8 30 H64" stroke="rgba(0,0,0,.25)" fill="none"/></svg>
             <p id="iodText"></p>
           </div>
-          <div id="decorRow" hidden>
-            <div class="row-label">Украшения <small class="exp-hint">нажми, чтобы убрать или вернуть</small></div>
-            <div class="row" id="decorChips"></div>
-          </div>
+
           <div>
-            <div class="row-label row-label-flex"><span id="locLabel">Куда поставить горшок</span><button class="btn" id="aSkins"><span class="dot" style="background:linear-gradient(90deg,#e8737a,#f6d36b,#6fa8dc)"></span>Раскраски горшка</button></div>
+            <div class="row-label row-label-flex"><span id="locLabel">Куда поставить горшок</span><span class="row"><button class="btn" id="aDecor"><span class="dot" style="background:#ee86aa"></span>Украшения</button><button class="btn" id="aSkins"><span class="dot" style="background:linear-gradient(90deg,#e8737a,#f6d36b,#6fa8dc)"></span>Раскраски горшка</button></span></div>
             <div class="locs" id="locs"></div>
           </div>
           <div>
@@ -675,6 +673,14 @@ header #openSettings { flex: none; }
         <button class="btn" id="tourBack">Назад</button>
         <button class="btn primary" id="tourNext"><span class="dot"></span>Дальше</button>
       </div>
+    </div>
+  </div>
+
+  <div class="modal" id="decorModal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="decorTitle">
+      <div class="head"><h2 id="decorTitle">Украшения</h2><span class="exp-hint" id="decorCount"></span><button class="btn" id="decorClose">Закрыть</button></div>
+      <p class="exp-hint" style="margin:0">За каждый новый опыт — украшение. Нажми на открытое, чтобы поставить его или убрать.</p>
+      <div class="skin-grid" id="decorGrid"></div>
     </div>
   </div>
 
@@ -1912,7 +1918,7 @@ function decor2D(where) {
     if (decorOn('ladybug')) o += `<g transform="translate(146 287)"><ellipse rx="8" ry="6" fill="#d9332a" stroke="#4a1a14"/><path d="M0 -6 L0 6" stroke="#4a1a14"/><circle cx="-8" cy="0" r="3.5" fill="#2a1a14"/><circle cx="-3" cy="-2" r="1.4" fill="#2a1a14"/><circle cx="3" cy="2" r="1.4" fill="#2a1a14"/><circle cx="4" cy="-3" r="1.2" fill="#2a1a14"/></g>`;
   } else {
     if (decorOn('gnome')) o += `<g transform="translate(300 408)"><ellipse cx="0" cy="0" rx="18" ry="4" fill="rgba(0,0,0,.18)"/><path d="M-13 0 L-11 -26 L11 -26 L13 0 Z" fill="#3d7fc0"/><circle cx="0" cy="-32" r="9" fill="#f2c8a0"/><path d="M-9 -30 Q0 -12 9 -30 Q0 -22 -9 -30 Z" fill="#fff"/><path d="M-11 -36 L0 -62 L11 -36 Z" fill="#d9332a"/><circle cx="-3" cy="-34" r="1.2" fill="#3a2a1e"/><circle cx="3" cy="-34" r="1.2" fill="#3a2a1e"/></g>`;
-    if (decorOn('butterfly')) o += `<g class="bfly" transform="translate(268 150)"><path d="M0 0 C-18 -20 -26 -2 -14 6 C-22 12 -12 22 0 4 Z" fill="#f2b45a" stroke="#a8641a"/><path d="M0 0 C18 -20 26 -2 14 6 C22 12 12 22 0 4 Z" fill="#f2b45a" stroke="#a8641a"/><circle cx="-12" cy="-4" r="2.5" fill="#fff"/><circle cx="12" cy="-4" r="2.5" fill="#fff"/><path d="M0 -6 L0 8" stroke="#3a2a1e" stroke-width="2.5" stroke-linecap="round"/></g>`;
+    if (decorOn('butterfly')) o += `<g class="bfly" transform="translate(${S.sp === 'algae' ? '262 140' : '268 150'})"><path d="M0 0 C-18 -20 -26 -2 -14 6 C-22 12 -12 22 0 4 Z" fill="#f2b45a" stroke="#a8641a"/><path d="M0 0 C18 -20 26 -2 14 6 C22 12 12 22 0 4 Z" fill="#f2b45a" stroke="#a8641a"/><circle cx="-12" cy="-4" r="2.5" fill="#fff"/><circle cx="12" cy="-4" r="2.5" fill="#fff"/><path d="M0 -6 L0 8" stroke="#3a2a1e" stroke-width="2.5" stroke-linecap="round"/></g>`;
   }
   return o;
 }
@@ -2792,7 +2798,7 @@ function decor3D(T, root, pot, plant) {
     const m = new T.Mesh(new T.SphereGeometry(0.035, 10, 8), M(c)); m.scale.set(1, 0.5, 0.8); const a = i * 2.4, r = (0.16 + (i % 3) * 0.06) * (jar ? 1 : k);
     m.position.set(Math.cos(a) * r, jar ? 0.04 : top + 0.012, Math.sin(a) * r); root.add(m); });
   if (decorOn('bow')) { // пышный зелёный бант-розетка из атласной ленты: два слоя петель, узелок и два хвостика
-    const y = jar ? 0.55 : 0.4 * k, z = rAt(jar ? 0.62 : 0.4) + 0.012, g = new T.Group(); g.position.set(0, y, z);
+    const y = jar ? 0.75 : 0.4 * k, z = jar ? 0.5 : rAt(0.4) + 0.012, g = new T.Group(); g.position.set(0, y, z);
     const satin = new T.MeshStandardMaterial({ color: '#2f9e55', roughness: 0.35, side: T.DoubleSide }), satin2 = new T.MeshStandardMaterial({ color: '#4cbf6e', roughness: 0.3, side: T.DoubleSide });
     // лента: полоса вдоль кривой, ширина — вдоль заданной оси
     const strip = (curve, w, axisOf, mat, n = 40) => { const pos = [], idx = [];
@@ -2842,7 +2848,9 @@ function decor3D(T, root, pot, plant) {
     const ws = new T.Shape(); ws.moveTo(0, 0); ws.bezierCurveTo(0.02, 0.07, 0.09, 0.07, 0.08, 0.02); ws.bezierCurveTo(0.09, -0.03, 0.04, -0.06, 0, 0);
     const wg = new T.ShapeGeometry(ws), wl = new T.Mesh(wg, wm), wr = new T.Mesh(wg, wm); wr.scale.x = -1; g.add(wl, wr);
     const bd = new T.Mesh(new T.CapsuleGeometry(0.007, 0.05, 4, 6), M('#3a2a1e')); bd.rotation.z = Math.PI / 2; bd.rotation.y = Math.PI / 2; g.add(bd);
-    g.position.set(bb.max.x * 0.7 + 0.12, bb.min.y + (bb.max.y - bb.min.y) * 0.7, 0.18); g.rotation.x = -0.6; root.add(g); root.userData.wings = [wl, wr]; }
+    if (jar) { g.position.set(0.3, 1.13, 0.28); g.rotation.x = -1.2; } // на краю банки, а не в воде
+    else { g.position.set(bb.max.x * 0.7 + 0.12, bb.min.y + (bb.max.y - bb.min.y) * 0.7, 0.18); g.rotation.x = -0.6; }
+    root.add(g); root.userData.wings = [wl, wr]; }
 }
 function makePot(T, lvl, jar) {
   const g = new T.Group();
@@ -3293,7 +3301,8 @@ function buildEnv(T) {
     face.position.set(0, R + 0.03, 0.042); c.add(face);
     g.userData.clockFace = { cv, tex, h: -1 };
   };
-  const prop = (name, x, y, z, rot = 0, k = 1, fallback) => g.userData.props.push({ name, x, y, z, rot, k, fallback });
+  // o.fitH — подогнать высоту модели (например, столешница вровень с горшком), o.tint — перекрасить обивку: цвет или {материал: цвет}
+  const prop = (name, x, y, z, rot = 0, k = 1, fallback, o = {}) => g.userData.props.push({ name, x, y, z, rot, k, fallback, o });
   if (s.loc === 'balcony') {
     box(5.4, 0.05, 7.6, '#8a6444', 0, -0.06, 2.6); // сплошной пол под досками — без щелей
     for (let i = 0; i < 14; i++) box(0.36, 0.04, 7.4, i % 2 ? '#a07650' : '#b08560', -2.5 + i * 0.37, -0.02, 2.6);
@@ -3339,13 +3348,19 @@ function buildEnv(T) {
   } else if (s.loc === 'room') {
     // горшок стоит на круглом столе посреди комнаты; вокруг диван, кресло, шкаф, картина, торшер
     const fy = -1.01 * U * 0.95;
-    const fl = new T.Mesh(new T.PlaneGeometry(14, 14), M('#d9a774')); fl.rotation.x = -Math.PI / 2; fl.position.y = fy; g.add(fl);
-    const rug = new T.Mesh(new T.CircleGeometry(1.9, 40), M('#e59a8a')); rug.rotation.x = -Math.PI / 2; rug.position.set(0, fy + 0.01, 0.2); g.add(rug);
+    const fl = new T.Mesh(new T.PlaneGeometry(14, 14), M('#e3cba3')); fl.rotation.x = -Math.PI / 2; fl.position.y = fy; g.add(fl);
+    const rug = new T.Mesh(new T.CircleGeometry(1.9, 40), M('#ece6da')); rug.rotation.x = -Math.PI / 2; rug.position.set(0, fy + 0.01, 0.2); g.add(rug);
+    for (const r of [1.55, 1.25]) { const ring = new T.Mesh(new T.RingGeometry(r - 0.05, r, 48), M('#c9bfae')); ring.rotation.x = -Math.PI / 2; ring.position.set(0, fy + 0.015, 0.2); g.add(ring); }
     box(14, 8, 0.1, '#f3e6c8', 0, fy + 4, -3.4);
-    prop('table', 0, fy, 0, 0, 0.95, () => { box(2.2, 0.07, 1.3, '#a8805a', 0, -0.035, 0); for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(0.07, -fy, 0.07, '#8a6544', a * 1.0, fy / 2, b * 0.55); });
-    prop('sofa', 0.4, fy, -2.75, 0, 1);
-    prop('armchair', 2.5, fy, -0.6, -1.0, 1);
-    prop('cabinet', -2.6, fy, -2.8, 0.3, 1);
+    { // круглый стол из светлого дуба на расставленных конических ножках — классика скандинавского дизайна
+      const top = new T.Mesh(new T.CylinderGeometry(1.15, 1.15, 0.07, 48), M('#dcbf93', 0.6)); top.position.y = -0.035; g.add(top);
+      for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4, leg = new T.Mesh(new T.CylinderGeometry(0.05, 0.025, -fy * 1.03, 12), M('#c9a874', 0.6));
+        leg.position.set(Math.cos(a) * 0.72, fy / 2, Math.sin(a) * 0.72); leg.rotation.set(Math.sin(a) * 0.12, 0, -Math.cos(a) * 0.12); g.add(leg); }
+    }
+    prop('sofa', 0.4, fy, -2.75, 0, 1, null, { tint: '#cfcac0' }); // светло-серая ткань
+    prop('pouf', -1.35, fy, -1.7, 0.3, 0.9, null, { tint: '#e0b04a' }); // горчичный пуф
+    prop('armchair', 2.5, fy, -0.6, -1.0, 1, null, { tint: { modern_arm_chair_01_pillow: '#e2d6c0' } }); // деревянный каркас, светлые подушки
+    prop('cabinet', -2.6, fy, -2.8, 0.3, 1, null, { fitH: 1.18 * U }); // стеллаж-ячейки из сосны, книги и часы стоят сверху
     books(-3.05, fy + 1.18 * U, -2.85, 7, 0.3, 0.85, false);
     shell(-4.4, 4.4, fy, fy + 6.2, -3.45, 8, '#f3e6c8', null, '#fbf4e6');
     g.userData.bounds = [-4.2, 4.2, fy + 0.3, fy + 6.0, -3.2, 7.8];
@@ -3364,7 +3379,7 @@ function buildEnv(T) {
     box(10, 6, 0.1, '#5f5a52', 0, 1.8, -1.0); box(0.1, 6, 6, '#4f4a44', -1.3, 1.8, 1.5);
     shell(-1.3, 3.6, fy, fy + 5.4, -1.0, 7, '#57524a', null, '#4a463f');
     g.userData.bounds = [-1.1, 3.4, fy + 0.3, fy + 5.2, -0.8, 6.8];
-    prop('side_table', 0, fy, -0.15, 0, 1, () => box(1.0, -fy, 0.8, '#5a4636', 0, fy / 2, -0.2));
+    prop('side_table', 0, fy, -0.15, 0, 1, () => box(1.0, -fy, 0.8, '#5a4636', 0, fy / 2, -0.2), { fitH: -fy }); // тумба из светлого дуба вровень с горшком
     prop('rocking', 1.6, fy, 0.3, -0.7, 1.05, () => { const arm = new T.Group(); arm.position.set(1.4, fy, 0.1); arm.rotation.y = -0.5; g.add(arm); box(0.9, 0.4, 0.8, '#6a4a5a', 0, 0.2, 0, arm); box(0.9, 0.8, 0.2, '#6a4a5a', 0, 0.6, -0.35, arm); });
     prop('box', -0.85, fy, 0.75, 0.3, 1, () => box(0.5, 0.4, 0.4, '#8a6a4a', -0.75, fy + 0.2, 0.6));
     prop('box', -0.9, fy + 0.34 * U, 0.7, -0.4, 0.8);
@@ -3468,7 +3483,10 @@ async function update3D() {
     for (const pr of env3.userData.props) {
       loadModel(`models/room/${pr.name}.glb`).then(obj => {
         if (m3.env !== env3) return;
-        obj.scale.setScalar(2.2 * pr.k); obj.position.set(pr.x, pr.y, pr.z); obj.rotation.y = pr.rot; env3.add(toonify(obj));
+        obj.scale.setScalar(2.2 * pr.k); obj.rotation.y = pr.rot;
+        if (pr.o.fitH) obj.scale.multiplyScalar(pr.o.fitH / new T.Box3().setFromObject(obj).getSize(new T.Vector3()).y);
+        if (pr.o.tint) obj.traverse(m => { if (!m.isMesh) return; const c = typeof pr.o.tint === 'string' ? pr.o.tint : pr.o.tint[m.material.name]; if (c) { m.material = m.material.clone(); m.material.map = null; m.material.color.set(c); } });
+        obj.position.set(pr.x, pr.y, pr.z); env3.add(toonify(obj));
       }).catch(() => { if (m3.env === env3 && pr.fallback) { pr.fallback(); toonify(env3); } });
     }
   }
@@ -4057,11 +4075,7 @@ $('expClose').onclick = closeExp;
 $('expModal').addEventListener('click', ev => { if (ev.target === $('expModal')) closeExp(); });
 document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !$('expModal').hidden) closeExp(); });
 $('expBtns').addEventListener('click', ev => { const b = ev.target.closest('[data-exp]'); if (b) openExp(b.dataset.exp); });
-$('decorChips').addEventListener('click', ev => {
-  const b = ev.target.closest('[data-decor]'); if (!b) return;
-  G.decorHide = G.decorHide || {}; G.decorHide[b.dataset.decor] = !G.decorHide[b.dataset.decor];
-  render(); save();
-});
+
 function renderExps(s, over) {
   const run = s.exp, done = s.expDone || {};
   const html = Object.entries(EXPS).filter(([, X]) => X.avail(s)).map(([id, X]) => {
@@ -4071,11 +4085,28 @@ function renderExps(s, over) {
   }).join('');
   if ($('expBtns').dataset.sig !== html) { $('expBtns').innerHTML = html; $('expBtns').dataset.sig = html; }
   if (run && run.ready && !run.told) { run.told = true; popup(s, 'Опыт готов', `Опыт «${EXPS[run.id].name}» закончен`, 'Посмотри результат: вкладка «Уход и приборы», раздел «Опыты».', 'good'); }
-  const have = Object.keys(DECOR).filter(k => G.decor && G.decor[k]);
-  $('decorRow').hidden = !have.length;
-  const chips = have.map(k => `<button class="btn chip-decor" data-decor="${k}" aria-pressed="${!(G.decorHide || {})[k]}">${DECOR[k].icon} ${DECOR[k].name}</button>`).join('');
-  if ($('decorChips').dataset.sig !== chips) { $('decorChips').innerHTML = chips; $('decorChips').dataset.sig = chips; }
 }
+// окно украшений: как у раскрасок — открытые можно надеть или снять, закрытые подсказывают, какой опыт их даёт
+const DECOR_FROM = () => Object.assign({ pebbles: 'Проба йодом на крахмал' }, ...Object.values(EXPS).map(X => ({ [X.reward]: X.name })));
+function openDecor() {
+  const from = DECOR_FROM(), hide = G.decorHide || {};
+  $('decorGrid').innerHTML = Object.entries(DECOR).map(([k, D]) => {
+    const have = G.decor && G.decor[k], on = have && !hide[k];
+    return `<button class="skin decor-card${on ? ' on' : ''}" data-decor="${k}" ${have ? '' : `aria-disabled="true" data-tip="Проведи опыт «${from[k]}»"`}>
+      <span class="decor-ico" style="${have ? '' : 'filter:grayscale(1);opacity:.35'}">${D.icon}</span><b>${D.name}</b>
+      <small>${have ? (on ? 'стоит у растения' : 'убрано') : `Опыт «${from[k]}»`}</small></button>`;
+  }).join('');
+  $('decorCount').textContent = `Собрано ${Object.keys(DECOR).filter(k => G.decor && G.decor[k]).length} из ${Object.keys(DECOR).length}`;
+  $('decorModal').hidden = false; $('decorClose').focus();
+}
+$('aDecor').onclick = openDecor;
+$('decorClose').onclick = () => { $('decorModal').hidden = true; };
+$('decorModal').addEventListener('click', ev => {
+  if (ev.target === $('decorModal')) { $('decorModal').hidden = true; return; }
+  const b = ev.target.closest('[data-decor]'); if (!b || b.getAttribute('aria-disabled') === 'true') return;
+  G.decorHide = G.decorHide || {}; G.decorHide[b.dataset.decor] = !G.decorHide[b.dataset.decor]; save(); render(); openDecor();
+});
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !$('decorModal').hidden) $('decorModal').hidden = true; });
 
 // ---------- Туториал ----------
 // Приветствие при первом заходе (поверх выбора растения) и экскурсия по экрану после посадки первого растения.
