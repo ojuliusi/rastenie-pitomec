@@ -640,13 +640,38 @@ const CURES = {
   changewater: ['Сменить часть воды', 'того, что размножается в воде'],
 };
 const DISEASES = {
+  // Эти болезни приходят «просто так»: споры грибов приносит воздух, вирусы — насекомые и руки. Ошибки ухода не нужны.
+  mosaic: { name: 'Мозаичная болезнь', kind: 'вирусное заболевание', sp: ['angio', 'fern'], virus: true, bg: 0.0012,
+    when: () => false,
+    symptom: 'Листья стали пёстрыми: светло-жёлтые пятна чередуются с зелёными, как мозаика. Молодые листья мельче и сморщены.',
+    look: 'Под лупой никого не видно: ни грибницы, ни насекомых. Вирусы в тысячи раз мельче клетки, их можно разглядеть только в электронный микроскоп. Пёстрая мозаика — признак вирусной болезни. Вирус разносят тля и грязные инструменты.',
+    cure: ['cutleaves'], hurts: 'chl',
+    cured: 'Больные листья удалены, и болезнь дальше не пошла. Лекарств от вирусов растений нет: поражённые части убирают, инструменты моют, а переносчиков вроде тли уничтожают.' },
+  rust: { name: 'Ржавчина', kind: 'грибковое заболевание', sp: ['angio', 'fern', 'gymno'], bg: 0.0012,
+    when: (s, e) => s.moisture > 80,
+    symptom: 'На листьях появились рыжие бугорки, похожие на ржавчину. Если потереть, остаётся рыжая пыль.',
+    look: 'Рыжая пыль — это споры гриба. Ветер разносит их от растения к растению, поэтому ржавчина может прийти даже при хорошем уходе.',
+    cure: ['fungicide', 'cutleaves'], hurts: 'chl',
+    cured: 'Гриб остановлен. Споры ржавчины переносит ветер, поэтому осматривай листья почаще: чем раньше заметишь, тем легче лечить.' },
+  spot: { name: 'Грибковая пятнистость', kind: 'грибковое заболевание', sp: ['moss', 'lycopod'], bg: 0.0025,
+    when: (s, e) => s.moisture > 90,
+    symptom: 'На растении появились бурые пятна с тёмной каймой, часть веточек побурела.',
+    look: 'В бурых пятнах видны крошечные тёмные точки — это спороношение гриба. Споры попадают на растение с пылью и воздухом.',
+    cure: ['fungicide', 'cutleaves'], hurts: 'chl',
+    cured: 'Больные участки убраны, гриб остановлен. Споры грибов есть в воздухе всегда, а заболевает обычно ослабленное растение.' },
+  chytrid: { name: 'Грибок-паразит водорослей', kind: 'грибковое заболевание (хитридиевый гриб)', sp: ['algae'], bg: 0.0012,
+    when: (s, e) => e.temp > 26.5,
+    symptom: 'Часть нитей побледнела, на клетках появились тёмные бугорки.',
+    look: 'Под микроскопом на клетках сидят шарики хитридиевого гриба. Его подвижные споры плавают в воде и заражают клетку за клеткой.',
+    cure: ['cutleaves', 'changewater'], hurts: 'chl',
+    cured: 'Больные нити убраны, гриб дальше не идёт. Споры гриба плавают в воде, поэтому заражённую воду лучше менять.' },
   mildew: { name: 'Мучнистая роса', kind: 'грибковое заболевание', sp: ['angio'],
     when: (s, e) => s.moisture > 78 && e.temp > 16 && e.temp < 27 && s.lightHist < 0.45,
     symptom: 'На листьях появился белый налёт, похожий на муку. Если провести пальцем, он стирается.',
     look: 'Под лупой видны тонкие белые нити — это грибница. Гриб питается соком растения, листья желтеют.',
     cure: ['fungicide', 'cutleaves'], hurts: 'chl',
     cured: 'Гриб остановлен. Мучнистой росе нравятся сырость и полутень, поэтому не переливай растение и давай ему больше света.' },
-  aphid: { name: 'Тля', kind: 'насекомые-вредители', sp: ['angio', 'fern'], bg: 0.0015,
+  aphid: { name: 'Тля', kind: 'насекомые-вредители', sp: ['angio', 'fern'], bg: 0.0015, bgMin: 5,
     when: (s, e) => s.minerals > 70 && e.temp > 21,
     symptom: 'Молодые листья скрутились и стали липкими.',
     look: 'На нижней стороне листьев сидят колонии мелких зелёных насекомых. Они прокалывают растение хоботком и высасывают сок с сахарами.',
@@ -756,7 +781,7 @@ function step(s) {
     for (const id in DISEASES) {
       const D = DISEASES[id];
       if (!D.sp.includes(s.sp) || (D.young && stageOf(s) > 1)) continue;
-      const chance = (D.when(s, e) ? 0.008 : 0) + (D.bg && s.biomass > 5 ? D.bg : 0);
+      const chance = (D.when(s, e) ? 0.008 : 0) + (D.bg && s.biomass > (D.bgMin || 2) ? D.bg : 0);
       if (chance && Math.random() < chance * (1 + (100 - s.hp) / 50)) {
         s.disease = { id, sev: 0.05, looked: false };
         note(s, null, 'Что-то не так! ' + D.symptom + ' Осмотри растение и выбери лечение.', 'warn');
@@ -1231,11 +1256,12 @@ function diseaseLayer(s, plant) {
   const d = s.disease, a = (0.35 + 0.65 * d.sev).toFixed(2);
   if (d.id === 'bloom') { const lv = 404 - 236 * s.moisture / 100; return `<rect x="128" y="${f1(lv)}" width="144" height="${f1(406 - lv)}" rx="12" fill="#2f8f88" opacity="${(d.sev * 0.6).toFixed(2)}"/>`; }
   if (d.id === 'blackleg') return `<rect x="196.5" y="276" width="7" height="26" rx="3" fill="#24170e" opacity="${a}"/>`;
-  const [c, r, step] = { mildew: ['#f6f5ee', 2.2, 8], aphid: ['#c4e05a', 2.3, 10], mite: ['#f1e7a2', 1.1, 6], shutte: ['#7a4518', 1.9, 9], mould: ['#c4c4bb', 3, 9] }[d.id];
-  let web = '';
+  const [c, r, step] = { mildew: ['#f6f5ee', 2.2, 8], aphid: ['#c4e05a', 2.3, 10], mite: ['#f1e7a2', 1.1, 6], shutte: ['#7a4518', 1.9, 9], mould: ['#c4c4bb', 3, 9], mosaic: ['#e8d75a', 3.6, 11], rust: ['#e0782a', 2.4, 9], spot: ['#4a3218', 2.6, 11], chytrid: ['#3a2a1a', 1.8, 8] }[d.id];
+  let web = '', src = plant;
+  if (s.sp === 'algae') { const m = plant.match(/<g clip-path="url\(#waterClip\)">[\s\S]*?<\/g>/); src = m ? m[0] : ''; }
   if (d.id === 'mite') for (let k = 0; k < 5; k++) { const x = 160 + k * 18, y = 150 + (k * 37) % 110; web += `M${x} ${y} l22 -14 M${x} ${y} l14 18 M${x + 10} ${y - 6} l6 16 `; }
   return `<defs><pattern id="dz" width="${step}" height="${step}" patternUnits="userSpaceOnUse"><circle cx="${step / 3}" cy="${step / 3}" r="${r}" fill="${c}"/><circle cx="${step * 0.8}" cy="${step * 0.78}" r="${r * 0.7}" fill="${c}"/></pattern>
-    <mask id="plantMask" maskUnits="userSpaceOnUse" x="0" y="0" width="400" height="300"><g class="maskify">${plant.replace(/<defs>[\s\S]*?<\/defs>/g, '').replace(/ id="[^"]*"/g, '')}</g></mask></defs>
+    <mask id="plantMask" maskUnits="userSpaceOnUse" x="0" y="0" width="400" height="300"><g class="maskify">${src.replace(/<defs>[\s\S]*?<\/defs>/g, '').replace(/ id="[^"]*"/g, '')}</g></mask></defs>
     <rect width="400" height="300" fill="url(#dz)" mask="url(#plantMask)" opacity="${a}"/>` + (web ? `<path d="${web}" stroke="#ffffff" stroke-width=".6" opacity="${(d.sev * 0.8).toFixed(2)}" fill="none"/>` : '');
 }
 function sparkles(lvl, st) {
@@ -1343,7 +1369,7 @@ function render() {
     $('sickSym').textContent = D.symptom + (s.disease.sev >= 0.6 ? ' Болезнь зашла далеко!' : '');
     $('sickLook').hidden = !s.disease.looked;
     $('sickLook').textContent = s.disease.looked ? D.look : '';
-    const opts = s.sp === 'algae' ? ['changewater', 'fungicide', 'soap', 'dry'] : ['fungicide', 'cutleaves', 'soap', 'ladybug', 'mist', 'dry'];
+    const opts = s.sp === 'algae' ? ['changewater', 'cutleaves', 'fungicide', 'soap'] : ['fungicide', 'cutleaves', 'soap', 'ladybug', 'mist', 'dry'];
     const html = opts.map(k => `<button class="btn" id="cure-${k}" data-cure="${k}">${CURES[k][0]}</button>`).join('');
     if ($('cures').dataset.sig !== s.sp) { $('cures').innerHTML = html; $('cures').dataset.sig = s.sp; }
   }
@@ -1401,7 +1427,8 @@ $('cures').addEventListener('click', ev => {
     S.disease = null; S.cool.cured = S.hour;
     addXP(S, 25);
   } else {
-    note(S, null, `«${CURES[k][0]}» не помогает: это средство против ${CURES[k][1]}. Присмотрись к признакам ещё раз.`, 'warn');
+    note(S, null, D.virus ? `«${CURES[k][0]}» не помогает: вирусы — не клетки, и средства против ${CURES[k][1]} на них не действуют. Присмотрись к признакам ещё раз.`
+      : `«${CURES[k][0]}» не помогает: это средство против ${CURES[k][1]}. Присмотрись к признакам ещё раз.`, 'warn');
   }
   render(); renderGarden(); save();
 });
