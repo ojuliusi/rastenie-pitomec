@@ -2367,8 +2367,9 @@ function init3D() {
   const controls = new T.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true; controls.minDistance = 0.8; controls.maxDistance = 7; controls.maxPolarAngle = Math.PI * 0.55; controls.enablePan = false;
   camera.position.set(1.4, 1.5, 2.6); controls.target.set(0, 0.8, 0);
+  controls.addEventListener('start', () => { m3.touched = Date.now(); });
   m3 = { renderer, scene, camera, controls, hemi, sun, lamp, amb, plant: null, env: null, running: false };
-  const resize = () => { const w = box.clientWidth || 400, h = box.clientHeight || 440; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
+  const resize = () => { const w = box.clientWidth || 400, h = box.clientHeight || 440; if (renderer.domElement.width === Math.round(w * renderer.getPixelRatio()) && Math.abs(camera.aspect - w / h) < 1e-3) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
   m3.resize = resize; resize(); window.addEventListener('resize', resize);
   const loop = () => {
     if (!m3.running) return;
@@ -2408,13 +2409,23 @@ async function update3D() {
     const plant = await buildPlant3D(T);
     if (m3.plant) m3.scene.remove(m3.plant);
     m3.plant = plant; m3.scene.add(plant);
-    const bb = new T.Box3().setFromObject(plant), c = bb.getCenter(new T.Vector3()), r = bb.getSize(new T.Vector3()).length();
-    if (m3sp !== s.sp + s.crop) { m3sp = s.sp + s.crop; m3.controls.target.copy(c); m3.camera.position.set(c.x + r * 0.55, c.y + r * 0.3, c.z + r * 1.35 + 1.0); }
-    else m3.controls.target.lerp(c, 0.5);
+    frame3D(plant, m3sp !== s.sp + s.crop); m3sp = s.sp + s.crop;
     m3busy = false;
     if (sig !== m3sig) update3D();
   }
   m3.resize(); m3.start();
+}
+// кадрирование: растение целиком в кадре; если ученик недавно сам крутил камеру — только сдвигаем центр
+function frame3D(obj, fresh) {
+  const T = THREE, sph = new T.Box3().setFromObject(obj).getBoundingSphere(new T.Sphere());
+  const cam = m3.camera, vf = cam.fov * Math.PI / 180, hf = 2 * Math.atan(Math.tan(vf / 2) * cam.aspect);
+  const dist = sph.radius / Math.sin(Math.min(vf, hf) / 2) * 1.08;
+  const touched = Date.now() - (m3.touched || 0) < 20000;
+  const dir = fresh ? new T.Vector3(0.42, 0.28, 1).normalize() : cam.position.clone().sub(m3.controls.target).normalize();
+  m3.controls.target.copy(sph.center);
+  if (!touched || fresh) cam.position.copy(sph.center).add(dir.multiplyScalar(dist));
+  m3.controls.maxDistance = Math.max(7, dist * 2.2);
+  m3.controls.update();
 }
 function setView(v, note) {
   VIEW = v; try { localStorage.setItem('pp-view', v); } catch (e) {}
