@@ -1896,11 +1896,12 @@ function drawBackground(s, e) {
   return o;
 }
 const potTier = lvl => lvl >= 9 ? 4 : lvl >= 7 ? 3 : lvl >= 5 ? 2 : lvl >= 3 ? 1 : 0;
-function drawPot(s, lvl = 1, K = skinOf(s, lvl)) {
+function drawPot(s, lvl = 1, K = skinOf(s, lvl), preview = false) {
   let o = '';
   if (K.saucer) o += `<ellipse cx="200" cy="411" rx="${K.metal ? 78 : 70}" ry="6" fill="${K.saucer}"/>`;
   o += `<path d="M138 296 L262 296 L252 410 L148 410 Z" fill="${K.body}"/>` + potPattern2D(K) + `<rect x="132" y="290" width="136" height="14" rx="3" fill="${K.rim}"/>`;
   if (K.metal) for (let x = 142; x <= 258; x += 16) o += `<path d="M${x} 292 l4 5 l-4 5 l-4 -5 z" fill="#fff4c2"/>`;
+  if (preview) return o + `<ellipse cx="200" cy="297" rx="60" ry="4" fill="#6b4a30"/>`; // в превью раскраски почву не режем
   o += `<path d="M150 302 L250 302 L242 404 L158 404 Z" fill="${mix('#b88d5e', '#3d2818', s.moisture / 100)}"/>`;
   if (s.moisture > 88) o += `<path d="M152 380 L248 380 L242 404 L158 404 Z" fill="#3b6fa0" opacity=".45"/>`;
   if (s.minerals > 70) for (let i = 0; i < Math.round((s.minerals - 70) / 2); i++) o += `<rect x="${154 + (i * 37) % 92}" y="${303 + (i * 13) % 6}" width="3" height="2" fill="#f4f1e8"/>`;
@@ -3779,14 +3780,14 @@ const POT_SKINS = {
   leafy: { name: 'С листочками', body: '#9fd3b8', rim: '#c4e8d4', pat: 'leaves', pc: '#3f7a2a', need: { blocks: 1 } },
   stripes: { name: 'Полосатый', body: '#f6d36b', rim: '#fff3c4', pat: 'stripes', pc: '#fffaf0', need: { cured: 1 } },
   frost: { name: 'Морозный узор', body: '#cfe3f2', rim: '#eef6fb', pat: 'snow', pc: '#5f8fb8', need: { repot: 1 } },
-  space: { name: 'Космос', body: '#2a2f5a', rim: '#4a4f8a', pat: 'stars', pc: '#f6d36b', need: { done: 1 } },
-  rainbow: { name: 'Радужный', body: '#fafafa', rim: '#ffffff', pat: 'rainbow', need: { decor: 1 } },
+  space: { name: 'Космос', body: '#2a2f5a', rim: '#4a4f8a', pat: 'stars', pc: '#f6d36b', need: { expAll: 1 } },
+  rainbow: { name: 'Радужный', body: '#fafafa', rim: '#ffffff', pat: 'rainbow', need: { done: 1 } },
 };
 const TIER_SKIN = ['clay', 'dots', 'sea', 'cobalt', 'royal'];
 const NEED_TEXT = {
   lvl: n => `Вырасти растение до ${n} уровня`, exp: n => `Проведи ${n} разных опыта`, blocks: () => 'Пройди все блоки курса у любого растения',
   cured: () => 'Вылечи растение от болезни', repot: () => 'Пересади растение в горшок побольше', done: () => 'Вырасти растение до семян (замкни цикл)',
-  decor: () => 'Собери все украшения за опыты',
+  decor: () => 'Собери все украшения за опыты', expAll: () => 'Проведи все опыты: йод и ещё 6',
 };
 function skinOpen(key) {
   const n = POT_SKINS[key].need; if (!n || !G) return true;
@@ -3798,6 +3799,7 @@ function skinOpen(key) {
   if (n.repot) return P.some(p => (p.pot || 1) >= 2);
   if (n.done) return P.some(p => p.done);
   if (n.decor) return Object.keys(DECOR).every(k => G.decor && G.decor[k]);
+  if (n.expAll) { const done = new Set(P.flatMap(p => Object.keys(p.expDone || {}))); return Object.keys(EXPS).every(k => done.has(k)) && P.some(p => p.cool && p.cool.iodXP !== undefined); }
   return false;
 }
 // выбранная раскраска; «авто» — как раньше, по уровню растения
@@ -3849,10 +3851,10 @@ function potTexture(T, K) {
 function openSkins() {
   const cur = (G && G.potSkin) || 'auto';
   const card = (key, K, open) => `<button class="skin${cur === key ? ' on' : ''}" data-skin="${key}" ${open ? '' : `aria-disabled="true" data-tip="${NEED_TEXT[Object.keys(K.need)[0]](Object.values(K.need)[0])}"`}>
-    <svg viewBox="126 284 148 132" aria-hidden="true">${open ? '' : '<g opacity=".35">'}${drawPot({ moisture: 55, minerals: 40 }, 1, K)}${open ? '' : '</g>'}${open ? '' : '<path d="M192 330 h16 v14 h-16 z M195 330 v-5 a5 5 0 0 1 10 0 v5" fill="none" stroke="#4a3a2e" stroke-width="3"/>'}</svg>
+    <svg viewBox="126 284 148 132" aria-hidden="true">${open ? '' : '<g opacity=".35">'}${drawPot({ moisture: 55, minerals: 40 }, 1, K, true)}${open ? '' : '</g>'}${open ? '' : '<path d="M192 330 h16 v14 h-16 z M195 330 v-5 a5 5 0 0 1 10 0 v5" fill="none" stroke="#4a3a2e" stroke-width="3"/>'}</svg>
     <b>${K.name}</b><small>${open ? (cur === key ? 'надето' : 'открыто') : NEED_TEXT[Object.keys(K.need)[0]](Object.values(K.need)[0])}</small></button>`;
   const autoK = POT_SKINS[TIER_SKIN[potTier(levelOf(S.xp))]];
-  $('skinGrid').innerHTML = `<button class="skin${cur === 'auto' ? ' on' : ''}" data-skin="auto"><svg viewBox="126 284 148 132" aria-hidden="true">${drawPot({ moisture: 55, minerals: 40 }, 1, autoK)}</svg><b>Авто</b><small>меняется с уровнем</small></button>`
+  $('skinGrid').innerHTML = `<button class="skin${cur === 'auto' ? ' on' : ''}" data-skin="auto"><svg viewBox="126 284 148 132" aria-hidden="true">${drawPot({ moisture: 55, minerals: 40 }, 1, autoK, true)}</svg><b>Авто</b><small>меняется с уровнем</small></button>`
     + Object.entries(POT_SKINS).map(([k, K]) => card(k, K, skinOpen(k))).join('');
   const n = Object.keys(POT_SKINS).filter(skinOpen).length;
   $('skinCount').textContent = `Открыто ${n} из ${Object.keys(POT_SKINS).length}`;
