@@ -404,6 +404,17 @@ header #openSettings { flex: none; }
   font: 700 12.5px/1.35 var(--f-body); text-align: center; white-space: normal; pointer-events: none; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
 .btn[data-tip]:is([aria-disabled="true"], :disabled):hover::before, .btn[data-tip].tip-show::before {
   content: ''; position: absolute; left: 50%; bottom: calc(100% + 3px); transform: translateX(-50%); border: 6px solid transparent; border-top-color: var(--ink); border-bottom: 0; z-index: 30; pointer-events: none; }
+/* ===== Раскраски горшка ===== */
+.row-label-flex { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.row-label-flex .btn { text-transform: none; letter-spacing: 0; font-size: 13px; padding: 5px 12px; }
+.skin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+.skin { position: relative; display: grid; justify-items: center; gap: 2px; padding: 8px; border: 2.5px solid var(--line); border-radius: 18px; background: color-mix(in srgb, var(--bg) 50%, var(--panel)); color: var(--ink); cursor: pointer; font: inherit; }
+.skin svg { width: 100%; max-width: 110px; height: auto; }
+.skin b { font: 800 13.5px var(--f-body); }
+.skin small { font-size: 11.5px; color: var(--muted); text-align: center; line-height: 1.25; }
+.skin.on { border-color: var(--leaf); box-shadow: 0 3px 0 var(--leaf); background: var(--leaf-soft); }
+.skin[aria-disabled="true"] { cursor: help; }
+.skin[data-tip]:hover::after { content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%); width: max-content; max-width: 200px; padding: 6px 10px; border-radius: 10px; background: var(--ink); color: var(--panel); font: 700 12px/1.3 var(--f-body); z-index: 5; pointer-events: none; }
 /* ===== Опыты и украшения ===== */
 .exp-hint { font: 600 11.5px var(--f-body); color: var(--muted); text-transform: none; letter-spacing: 0; margin-left: 6px; }
 .exps-more { display: contents; }
@@ -604,7 +615,7 @@ header #openSettings { flex: none; }
             <div class="row" id="decorChips"></div>
           </div>
           <div>
-            <div class="row-label" id="locLabel">Куда поставить горшок</div>
+            <div class="row-label row-label-flex"><span id="locLabel">Куда поставить горшок</span><button class="btn" id="aSkins"><span class="dot" style="background:linear-gradient(90deg,#e8737a,#f6d36b,#6fa8dc)"></span>Раскраски горшка</button></div>
             <div class="locs" id="locs"></div>
           </div>
           <div>
@@ -653,6 +664,13 @@ header #openSettings { flex: none; }
         <button class="btn" id="tourBack">Назад</button>
         <button class="btn primary" id="tourNext"><span class="dot"></span>Дальше</button>
       </div>
+    </div>
+  </div>
+
+  <div class="modal" id="skinModal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="skinTitle">
+      <div class="head"><h2 id="skinTitle">Раскраски горшка</h2><span class="exp-hint" id="skinCount"></span><button class="btn" id="skinClose">Закрыть</button></div>
+      <div class="skin-grid" id="skinGrid"></div>
     </div>
   </div>
 
@@ -1732,7 +1750,7 @@ function load() {
       for (const k in g.plants || {}) if (SPECIES[k]) plants[k] = revive(g.plants[k], unlocked);
       const active = plants[g.active] ? g.active : Object.keys(plants)[0];
       if (active) MODE = g.mode || 'lessons';
-      return active ? { active, plants, unlocked, mode: MODE, season: g.season || 'auto', student: g.student || null, decor: g.decor || {}, decorHide: g.decorHide || {} } : null;
+      return active ? { active, plants, unlocked, mode: MODE, season: g.season || 'auto', student: g.student || null, decor: g.decor || {}, decorHide: g.decorHide || {}, potSkin: g.potSkin || 'auto', stats: g.stats || {}, skinSeen: g.skinSeen || {} } : null;
     }
     r = localStorage.getItem(OLD_KEY); // растение из прошлой версии игры
     if (r) {
@@ -1748,7 +1766,7 @@ function save() {
     if (!G) { localStorage.removeItem(KEY); localStorage.removeItem(OLD_KEY); return; }
     const plants = {};
     for (const k in G.plants) { const { unlocked, ...rest } = G.plants[k]; plants[k] = rest; }
-    localStorage.setItem(KEY, JSON.stringify({ active: G.active, unlocked: G.unlocked, mode: MODE, season: G.season, student: G.student, decor: G.decor || {}, decorHide: G.decorHide || {}, plants }));
+    localStorage.setItem(KEY, JSON.stringify({ active: G.active, unlocked: G.unlocked, mode: MODE, season: G.season, student: G.student, decor: G.decor || {}, decorHide: G.decorHide || {}, potSkin: G.potSkin || 'auto', stats: G.stats || {}, skinSeen: G.skinSeen || {}, plants }));
     pushProgress(false);
   } catch (e) {}
 }
@@ -1861,15 +1879,11 @@ function drawBackground(s, e) {
   return o;
 }
 const potTier = lvl => lvl >= 9 ? 4 : lvl >= 7 ? 3 : lvl >= 5 ? 2 : lvl >= 3 ? 1 : 0;
-function drawPot(s, lvl = 1) {
-  const t = potTier(lvl);
-  const body = ['#b0603a', '#b0603a', '#3d7f8e', '#2e5f7a', '#c9962a'][t], rim = ['#c26d43', '#c26d43', '#4f98a8', '#d4a93a', '#ecc75a'][t];
+function drawPot(s, lvl = 1, K = skinOf(s, lvl)) {
   let o = '';
-  if (t >= 2) o += `<ellipse cx="200" cy="411" rx="${t >= 4 ? 78 : 70}" ry="6" fill="${t >= 3 ? '#b8892a' : '#2f6f7c'}"/>`;
-  o += `<path d="M138 296 L262 296 L252 410 L148 410 Z" fill="${body}"/><rect x="132" y="290" width="136" height="14" rx="3" fill="${rim}"/>`;
-  if (t === 1) for (let x = 140; x <= 260; x += 12) o += `<circle cx="${x}" cy="297" r="2.2" fill="#f3e6c8"/>`;
-  if (t >= 2) o += `<path d="M134 297 ${Array.from({ length: 11 }, (_, i) => `q6 ${i % 2 ? 4 : -4} 12 0`).join(' ')}" stroke="${t >= 3 ? '#7a4f12' : '#e9f4f2'}" stroke-width="1.6" fill="none"/>`;
-  if (t >= 4) for (let x = 142; x <= 258; x += 16) o += `<path d="M${x} 292 l4 5 l-4 5 l-4 -5 z" fill="#fff4c2"/>`;
+  if (K.saucer) o += `<ellipse cx="200" cy="411" rx="${K.metal ? 78 : 70}" ry="6" fill="${K.saucer}"/>`;
+  o += `<path d="M138 296 L262 296 L252 410 L148 410 Z" fill="${K.body}"/>` + potPattern2D(K) + `<rect x="132" y="290" width="136" height="14" rx="3" fill="${K.rim}"/>`;
+  if (K.metal) for (let x = 142; x <= 258; x += 16) o += `<path d="M${x} 292 l4 5 l-4 5 l-4 -5 z" fill="#fff4c2"/>`;
   o += `<path d="M150 302 L250 302 L242 404 L158 404 Z" fill="${mix('#b88d5e', '#3d2818', s.moisture / 100)}"/>`;
   if (s.moisture > 88) o += `<path d="M152 380 L248 380 L242 404 L158 404 Z" fill="#3b6fa0" opacity=".45"/>`;
   if (s.minerals > 70) for (let i = 0; i < Math.round((s.minerals - 70) / 2); i++) o += `<rect x="${154 + (i * 37) % 92}" y="${303 + (i * 13) % 6}" width="3" height="2" fill="#f4f1e8"/>`;
@@ -2473,7 +2487,7 @@ function render() {
   $('aFeed').querySelector('.lbl').textContent = SP.feed;
   $('aRepro').querySelector('.lbl').textContent = SP.repro.label;
   $('aIodine').disabled = over;
-  renderExps(s, over);
+  renderExps(s, over); checkSkins();
   $('aRepot').hidden = !potSoon(s) || over;
   $('aRepot').classList.toggle('primary', rootbound(s));
   $('aRepot').querySelector('.lbl').textContent = `Пересадить в горшок побольше (сейчас ${POTS[s.pot || 1].name})`;
@@ -2609,7 +2623,7 @@ $('cures').addEventListener('click', ev => {
   if (D.cure.includes(k)) {
     note(S, null, `Диагноз: ${D.name.toLowerCase()} (${D.kind}). «${CURES[k][0]}» помогло! ${D.cured}`, 'good');
     S.fact = { id: S.disease.id, kind: 1 };
-    S.disease = null; S.cool.cured = S.hour;
+    S.disease = null; S.cool.cured = S.hour; G.stats = G.stats || {}; G.stats.cured = (G.stats.cured || 0) + 1;
     addXP(S, 25);
   } else {
     note(S, null, D.virus ? `«${CURES[k][0]}» не помогает: вирусы — не клетки, и средства против ${CURES[k][1]} на них не действуют. Присмотрись к признакам ещё раз.`
@@ -2808,10 +2822,10 @@ function makePot(T, lvl, jar) {
     const water = new T.Mesh(new T.CylinderGeometry(0.4, 0.4, 0.9 * Math.max(0.1, S.moisture / 100), 40), new T.MeshStandardMaterial({ color: 0x9cc9b0, transparent: true, opacity: 0.45 }));
     water.position.y = 0.45 * Math.max(0.1, S.moisture / 100); g.add(water); g.userData.top = 0.02; return g;
   }
-  const t = potTier(lvl), body = [0xb0603a, 0xb0603a, 0x3d7f8e, 0x2e5f7a, 0xc9962a][t], rim = [0xc26d43, 0xc26d43, 0x4f98a8, 0xd4a93a, 0xecc75a][t];
+  const K = skinOf(S, lvl);
   const pts = [[0.0, 0], [0.32, 0], [0.42, 0.62], [0.47, 0.62], [0.47, 0.7], [0.4, 0.7], [0.36, 0.1], [0, 0.1]].map(([x, y]) => new T.Vector2(x, y));
-  const pot = new T.Mesh(new T.LatheGeometry(pts, 48), new T.MeshStandardMaterial({ color: body, roughness: 0.85 }));
-  const rimM = new T.Mesh(new T.TorusGeometry(0.445, 0.04, 12, 48), new T.MeshStandardMaterial({ color: rim, roughness: 0.6, metalness: t >= 3 ? 0.6 : 0 }));
+  const pot = new T.Mesh(new T.LatheGeometry(pts, 48), new T.MeshStandardMaterial({ map: potTexture(T, K), roughness: 0.85 }));
+  const rimM = new T.Mesh(new T.TorusGeometry(0.445, 0.04, 12, 48), new T.MeshStandardMaterial({ color: K.rim, roughness: 0.6, metalness: K.metal ? 0.6 : 0 }));
   rimM.rotation.x = Math.PI / 2; rimM.position.y = 0.69;
   const soil = new T.Mesh(new T.CircleGeometry(0.4, 40), new T.MeshStandardMaterial({ color: new T.Color(mix('#b88d5e', '#3d2818', S.moisture / 100)), roughness: 1 }));
   soil.rotation.x = -Math.PI / 2; soil.position.y = 0.62;
@@ -3017,9 +3031,41 @@ function angio3D(T, col, st, k) {
     for (let j = 0; j < 12; j++) { const m = new T.Mesh(sph(0.012, 8), M(st >= 5 ? cc('#9cc35a', '#dcb64e') : '#9cc35a')); m.scale.set(1, 1.8, 0.8); m.position.set(j % 2 ? 0.012 : -0.012, 0.02 + j * 0.016, 0); f.add(m);
       const awn = new T.Mesh(new T.CylinderGeometry(0.0012, 0.0012, 0.08, 3), M(st >= 5 ? cc('#a8c870', '#d9bc6a') : '#a8c870')); awn.position.set((j % 2 ? 0.02 : -0.02), 0.06 + j * 0.016, 0); awn.rotation.z = (j % 2 ? -0.3 : 0.3); f.add(awn); }
   } else if (crop.type === 'capsule') {
-    if (st >= 5 && S.fruit >= 0.15) { const c = new T.Mesh(sph(0.04), M(cc('#a7b884', '#9a8f6a'))); c.position.y = 0.04; f.add(c); const d = new T.Mesh(new T.CylinderGeometry(0.03, 0.03, 0.006, 16), M(cc('#8a9a6a', '#6f6650'))); d.position.y = 0.08; f.add(d); }
-    else if (st === 3) { const b = new T.Mesh(sph(0.025), green); b.scale.set(1, 1.4, 1); b.position.y = 0.03; f.add(b); }
-    else { for (let j = 0; j < 4; j++) { const p = new T.Mesh(sph(0.045, 12), petalM); p.scale.set(1, 0.2, 0.9); const a = j / 4 * Math.PI * 2; p.position.set(Math.cos(a) * 0.03, 0.04, Math.sin(a) * 0.03); p.rotation.set(0.5 * Math.sin(a), -a, 0.5 * Math.cos(a)); f.add(p); } const c = new T.Mesh(sph(0.012, 8), M('#2a2a2a')); c.position.y = 0.045; f.add(c); }
+    // мак: кивающий бутон → крупная чаша из 4 мятых лепестков с чёрными пятнами у основания → коробочка с диском-звёздочкой
+    const fs = 0.9 + k * 0.5;
+    const capsule = (r, col, discCol) => { // коробочка-урна и сидячее рыльце-диск с лучами
+      const prof = [[0, 0], [0.55, 0.05], [0.95, 0.35], [1, 0.7], [0.75, 1], [0.6, 1.05], [0, 1.05]].map(([x, y]) => new T.Vector2(x * r, y * r * 1.5));
+      const body = new T.Mesh(new T.LatheGeometry(prof, 24), M(col)); f.add(body);
+      const disc = new T.Mesh(new T.CylinderGeometry(r * 0.8, r * 0.75, r * 0.12, 24), M(discCol)); disc.position.y = r * 1.6; f.add(disc);
+      for (let q = 0; q < 9; q++) { const ray = new T.Mesh(new T.BoxGeometry(r * 0.7, r * 0.06, r * 0.1), M('#3a2a3a')); const a = q / 9 * Math.PI * 2; ray.position.set(Math.cos(a) * r * 0.38, r * 1.67, Math.sin(a) * r * 0.38); ray.rotation.y = -a; f.add(ray); }
+    };
+    if (st >= 5 && S.fruit >= 0.15) capsule(0.035 * fs, cc('#a9be8a', '#a39570'), cc('#7d8c6a', '#6b5f4a'));
+    else if (st === 3) { // бутон поникает на изогнутой цветоножке, волосистый, в двух чашелистиках
+      const hook = new T.QuadraticBezierCurve3(new T.Vector3(0, 0, 0), new T.Vector3(0, 0.06, 0), new T.Vector3(0.04, 0.02, 0));
+      f.add(new T.Mesh(new T.TubeGeometry(hook, 10, 0.004, 5), stemM));
+      const b = new T.Mesh(sph(0.026 * fs, 14), M('#7fa070')); b.scale.set(0.85, 1.35, 0.85); b.position.set(0.045, -0.015, 0); b.rotation.z = 0.5; f.add(b);
+      for (const sd of [-1, 1]) { const sep = new T.Mesh(sph(0.027 * fs, 12), M('#6e9360')); sep.scale.set(0.5, 1.3, 0.9); sep.position.set(0.045 + sd * 0.008, -0.015, 0); sep.rotation.z = 0.5; f.add(sep); }
+    } else {
+      const R = 0.1 * fs, red = new T.MeshStandardMaterial({ color: '#c4140b', roughness: 0.55, side: T.DoubleSide });
+      const blot = new T.MeshStandardMaterial({ color: '#1e1418', roughness: 0.7, side: T.DoubleSide });
+      const cup = new T.Group(); cup.position.y = R * 0.6; cup.scale.set(1.25, 0.6, 1.25); f.add(cup); // широкая неглубокая чаша
+      for (let j = 0; j < 4; j++) { // два наружных и два внутренних лепестка, края слегка волнистые
+        const inner = j % 2, r = R * (inner ? 0.9 : 1), a0 = j * Math.PI / 2 + (inner ? 0.1 : 0) - 0.95;
+        const geo = new T.SphereGeometry(r, 18, 10, a0, 1.9, Math.PI * 0.42, Math.PI * 0.5), pos = geo.attributes.position, v = new T.Vector3();
+        for (let q = 0; q < pos.count; q++) { v.fromBufferAttribute(pos, q); const w = 1 + 0.06 * Math.sin(Math.atan2(v.z, v.x) * 9 + j) * clamp((v.y + r) / r, 0, 1); pos.setXYZ(q, v.x * w, v.y, v.z * w); }
+        geo.computeVertexNormals(); cup.add(new T.Mesh(geo, red));
+        const bg = new T.SphereGeometry(r * 0.985, 10, 4, a0 + 0.45, 1.0, Math.PI * 0.8, Math.PI * 0.12); cup.add(new T.Mesh(bg, blot)); // чёрное пятно у основания
+      }
+      const cr = R * 0.24; // коробочка-завязь в центре и кольцо тёмных тычинок
+      const ov = new T.Group(); ov.position.y = R * 0.08; f.add(ov);
+      const prof = [[0, 0], [0.7, 0.1], [1, 0.5], [0.85, 1], [0, 1]].map(([x, y]) => new T.Vector2(x * cr, y * cr * 1.4));
+      ov.add(new T.Mesh(new T.LatheGeometry(prof, 18), M('#a9c48c')));
+      const disc = new T.Mesh(new T.CylinderGeometry(cr * 0.95, cr * 0.9, cr * 0.15, 18), M('#4a3060')); disc.position.y = cr * 1.45; ov.add(disc);
+      const fil = new T.MeshStandardMaterial({ color: '#2a2030', roughness: 0.8 }), anth = M('#3a2a48');
+      for (let q = 0; q < 40; q++) { const a = q * 2.4, rr = cr * (1.25 + (q % 3) * 0.22), h = cr * (0.6 + (q % 4) * 0.12);
+        const fl = new T.Mesh(new T.CylinderGeometry(0.0012, 0.0012, h, 3), fil); fl.position.set(Math.cos(a) * rr, h / 2, Math.sin(a) * rr); fl.rotation.set(Math.sin(a) * 0.3, 0, -Math.cos(a) * 0.3); ov.add(fl);
+        const an = new T.Mesh(new T.SphereGeometry(0.0045, 6, 4), anth); an.scale.set(1, 1.5, 1); an.position.set(Math.cos(a) * (rr + h * 0.15), h, Math.sin(a) * (rr + h * 0.15)); ov.add(an); }
+    }
   } else { // стручки капусты на верхушечной кисти
     for (let j = 0; j < 6; j++) { const y = j * 0.03, a = j * 2.4;
       if (st >= 5 && S.fruit >= 0.15) { const m = new T.Mesh(new T.CapsuleGeometry(0.005, 0.07, 4, 6), M(cc('#9cc35a', '#c9b46a'))); m.position.set(Math.cos(a) * 0.03, y + 0.03, Math.sin(a) * 0.03); m.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5); f.add(m); }
@@ -3406,7 +3452,7 @@ async function update3D() {
   m3.amb.intensity = e.dl > 0 ? 0.12 : 0.22;
   m3.lamp.intensity = s.lamp ? 1.8 : 0;
   const dz = s.disease ? s.disease.id + Math.round(s.disease.sev * 4) : '';
-  const sig = [Object.keys(DECOR).filter(decorOn).join(','), G.student && G.student.name, s.frost, s.pot, potSoon(s), rootbound(s), s.sp, s.crop, Math.round(s.biomass * 2), stageOf(s), Math.round(s.fruit * 8), Math.round(s.turgor * 5), Math.round(s.hp / 12), dz, levelOf(s.xp), !!s.dead, s.sp === 'algae' ? Math.round(s.moisture / 12) + '/' + (s.lastP > 0.25) : '', Math.round(s.moisture / 25), Math.round(s.chl * 5)].join('|');
+  const sig = [skinOf(s, levelOf(s.xp)).name, Object.keys(DECOR).filter(decorOn).join(','), G.student && G.student.name, s.frost, s.pot, potSoon(s), rootbound(s), s.sp, s.crop, Math.round(s.biomass * 2), stageOf(s), Math.round(s.fruit * 8), Math.round(s.turgor * 5), Math.round(s.hp / 12), dz, levelOf(s.xp), !!s.dead, s.sp === 'algae' ? Math.round(s.moisture / 12) + '/' + (s.lastP > 0.25) : '', Math.round(s.moisture / 25), Math.round(s.chl * 5)].join('|');
   if (sig !== m3sig && !m3busy) {
     m3busy = true; m3sig = sig;
     const plant = toonify(await buildPlant3D(T));
@@ -3659,6 +3705,115 @@ document.addEventListener('click', ev => {
   document.querySelectorAll('.btn.tip-show').forEach(x => x.classList.remove('tip-show'));
   b.classList.add('tip-show'); clearTimeout(b._tipT); b._tipT = setTimeout(() => b.classList.remove('tip-show'), 2800);
 }, true);
+// ---------- Раскраски горшка ----------
+// Коллекция раскрасок: часть открывается уровнем растения, часть — достижениями (опыты, блоки, лечение, пересадка, урожай).
+const POT_SKINS = {
+  clay: { name: 'Глиняный', body: '#b0603a', rim: '#c26d43' },
+  dots: { name: 'В горошек', body: '#b0603a', rim: '#c26d43', pat: 'dots', pc: '#f3e6c8', need: { lvl: 3 } },
+  sea: { name: 'Морской', body: '#3d7f8e', rim: '#4f98a8', pat: 'waves', pc: '#e9f4f2', saucer: '#2f6f7c', need: { lvl: 5 } },
+  cobalt: { name: 'Кобальт с золотом', body: '#2e5f7a', rim: '#d4a93a', pat: 'waves', pc: '#d4a93a', saucer: '#b8892a', metal: 1, need: { lvl: 7 } },
+  royal: { name: 'Королевский', body: '#c9962a', rim: '#ecc75a', pat: 'diamonds', pc: '#fff4c2', saucer: '#b8892a', metal: 1, need: { lvl: 9 } },
+  berry: { name: 'Ягодный', body: '#e58fb6', rim: '#f3b8d2', pat: 'hearts', pc: '#fffafc', need: { exp: 3 } },
+  leafy: { name: 'С листочками', body: '#9fd3b8', rim: '#c4e8d4', pat: 'leaves', pc: '#3f7a2a', need: { blocks: 1 } },
+  stripes: { name: 'Полосатый', body: '#f6d36b', rim: '#fff3c4', pat: 'stripes', pc: '#fffaf0', need: { cured: 1 } },
+  frost: { name: 'Морозный узор', body: '#cfe3f2', rim: '#eef6fb', pat: 'snow', pc: '#5f8fb8', need: { repot: 1 } },
+  space: { name: 'Космос', body: '#2a2f5a', rim: '#4a4f8a', pat: 'stars', pc: '#f6d36b', need: { done: 1 } },
+  rainbow: { name: 'Радужный', body: '#fafafa', rim: '#ffffff', pat: 'rainbow', need: { decor: 1 } },
+};
+const TIER_SKIN = ['clay', 'dots', 'sea', 'cobalt', 'royal'];
+const NEED_TEXT = {
+  lvl: n => `Вырасти растение до ${n} уровня`, exp: n => `Проведи ${n} разных опыта`, blocks: () => 'Пройди все блоки курса у любого растения',
+  cured: () => 'Вылечи растение от болезни', repot: () => 'Пересади растение в горшок побольше', done: () => 'Вырасти растение до семян (замкни цикл)',
+  decor: () => 'Собери все украшения за опыты',
+};
+function skinOpen(key) {
+  const n = POT_SKINS[key].need; if (!n || !G) return true;
+  const P = Object.values(G.plants);
+  if (n.lvl) return P.some(p => levelOf(p.xp) >= n.lvl);
+  if (n.exp) return new Set(P.flatMap(p => Object.keys(p.expDone || {}))).size >= n.exp;
+  if (n.blocks) return P.some(p => BLOCKS[p.sp].every(b => (G.unlocked[p.sp] || {})[b.id]));
+  if (n.cured) return (G.stats && G.stats.cured) > 0;
+  if (n.repot) return P.some(p => (p.pot || 1) >= 2);
+  if (n.done) return P.some(p => p.done);
+  if (n.decor) return Object.keys(DECOR).every(k => G.decor && G.decor[k]);
+  return false;
+}
+// выбранная раскраска; «авто» — как раньше, по уровню растения
+const skinOf = (s, lvl) => POT_SKINS[G && G.potSkin && G.potSkin !== 'auto' && skinOpen(G.potSkin) ? G.potSkin : TIER_SKIN[potTier(lvl)]];
+// узор на стенке горшка в «Разрезе» (стенка: M138 296 L262 296 L252 410 L148 410)
+let patSeq = 0;
+function potPattern2D(K) {
+  if (!K.pat) return '';
+  const id = 'pp' + (++patSeq), c = K.pc;
+  let o = `<clipPath id="${id}"><path d="M138 304 L262 304 L252 410 L148 410 Z"/></clipPath><g clip-path="url(#${id})">`;
+  const grid = fn => { for (let y = 312, r = 0; y < 410; y += 18, r++) for (let x = 140 + (r % 2) * 9; x < 262; x += 18) o += fn(x, y); };
+  if (K.pat === 'dots') grid((x, y) => `<circle cx="${x}" cy="${y}" r="3" fill="${c}"/>`);
+  if (K.pat === 'waves') for (let y = 318; y < 410; y += 22) o += `<path d="M134 ${y} ${Array.from({ length: 11 }, (_, i) => `q6 ${i % 2 ? 4 : -4} 12 0`).join(' ')}" stroke="${c}" stroke-width="2" fill="none"/>`;
+  if (K.pat === 'diamonds') grid((x, y) => `<path d="M${x} ${y - 6} l5 6 l-5 6 l-5 -6 z" fill="${c}"/>`);
+  if (K.pat === 'hearts') grid((x, y) => `<path transform="translate(${x} ${y}) scale(.8)" d="M0 4 C-7 -2 -4 -8 0 -4 C4 -8 7 -2 0 4 Z" fill="${c}"/>`);
+  if (K.pat === 'leaves') grid((x, y) => `<path transform="translate(${x} ${y}) rotate(${(x + y) % 2 ? 30 : -30})" d="M-6 0 Q0 -6 6 0 Q0 6 -6 0 Z" fill="${c}"/>`);
+  if (K.pat === 'stripes') for (let x = 120; x < 280; x += 18) o += `<path d="M${x} 300 l14 0 l-20 120 l-14 0 z" fill="${c}" opacity=".85"/>`;
+  if (K.pat === 'snow') grid((x, y) => `<g stroke="${c}" stroke-width="1.4"><path d="M${x - 5} ${y} h10 M${x} ${y - 5} v10 M${x - 3.5} ${y - 3.5} l7 7 M${x + 3.5} ${y - 3.5} l-7 7"/></g>`);
+  if (K.pat === 'stars') grid((x, y) => (x + y) % 3 ? `<circle cx="${x}" cy="${y}" r="1.4" fill="#fff"/>` : `<path transform="translate(${x} ${y}) scale(.7)" d="M0 -7 L2 -2 L7 -2 L3 1 L4.5 6.5 L0 3.5 L-4.5 6.5 L-3 1 L-7 -2 L-2 -2 Z" fill="${c}"/>`);
+  if (K.pat === 'rainbow') ['#e8737a', '#f2b45a', '#f6d36b', '#8bc46a', '#6fa8dc', '#b48fd1'].forEach((col, i) => o += `<rect x="130" y="${304 + i * 18}" width="140" height="18" fill="${col}"/>`);
+  return o + '</g>';
+}
+// узор для 3D: текстура на внешней стенке горшка (у вращённого профиля стенка — полоса v от 1/7 до 2/7)
+function potTexture(T, K) {
+  const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 512; const main = cv.getContext('2d');
+  main.fillStyle = K.body; main.fillRect(0, 0, 1024, 512);
+  if (K.pat) {
+    // узор рисуем в пропорциях настоящей стенки (окружность ≈ 2,3, высота ≈ 0,63), потом вписываем в полосу стенки на текстуре
+    const pcv = document.createElement('canvas'); pcv.width = 1024; pcv.height = 280; const x = pcv.getContext('2d');
+    x.fillStyle = K.body; x.fillRect(0, 0, 1024, 280);
+    const y0 = 0, y1 = 280, H = 280, c = K.pc || '#fff';
+    x.save();
+    const grid = fn => { for (let r = 0; r < 6; r++) for (let i = 0; i < 26; i++) fn(i * 1024 / 26 + (r % 2) * 20, y0 + H * (r + 0.5) / 6); };
+    x.fillStyle = c; x.strokeStyle = c; x.lineWidth = 3;
+    if (K.pat === 'dots') grid((px, py) => { x.beginPath(); x.arc(px, py, 5, 0, 7); x.fill(); });
+    if (K.pat === 'waves') { x.lineWidth = 5; for (let r = 0; r < 5; r++) { x.beginPath(); for (let px = 0; px <= 1024; px += 4) x.lineTo(px, y0 + H * (r + 0.5) / 5 + Math.sin(px / 14) * 7); x.stroke(); } }
+    if (K.pat === 'diamonds') grid((px, py) => { x.beginPath(); x.moveTo(px, py - 9); x.lineTo(px + 7, py); x.lineTo(px, py + 9); x.lineTo(px - 7, py); x.fill(); });
+    if (K.pat === 'hearts') grid((px, py) => { x.beginPath(); x.moveTo(px, py + 7); x.bezierCurveTo(px - 12, py - 2, px - 6, py - 12, px, py - 5); x.bezierCurveTo(px + 6, py - 12, px + 12, py - 2, px, py + 7); x.fill(); });
+    if (K.pat === 'leaves') grid((px, py) => { x.save(); x.translate(px, py); x.rotate((px | 0) % 2 ? 0.5 : -0.5); x.beginPath(); x.ellipse(0, 0, 11, 5, 0, 0, 7); x.fill(); x.restore(); });
+    if (K.pat === 'stripes') for (let px = -40; px < 1060; px += 40) { x.beginPath(); x.moveTo(px, y0); x.lineTo(px + 18, y0); x.lineTo(px - 6, y1); x.lineTo(px - 24, y1); x.fill(); }
+    if (K.pat === 'snow') grid((px, py) => { for (let a = 0; a < 3; a++) { x.beginPath(); x.moveTo(px - Math.cos(a * 1.05) * 9, py - Math.sin(a * 1.05) * 9); x.lineTo(px + Math.cos(a * 1.05) * 9, py + Math.sin(a * 1.05) * 9); x.stroke(); } });
+    if (K.pat === 'stars') grid((px, py) => { x.beginPath(); x.arc(px, py, (px | 0) % 3 ? 2 : 5, 0, 7); x.fillStyle = (px | 0) % 3 ? '#fff' : c; x.fill(); });
+    if (K.pat === 'rainbow') ['#e8737a', '#f2b45a', '#f6d36b', '#8bc46a', '#6fa8dc', '#b48fd1'].forEach((col, i) => { x.fillStyle = col; x.fillRect(0, y0 + H * i / 6, 1024, H / 6 + 1); });
+    x.restore();
+    main.drawImage(pcv, 0, 512 * (1 - 2 / 7), 1024, 512 / 7);
+  }
+  const t = new T.CanvasTexture(cv); t.encoding = T.sRGBEncoding; t.anisotropy = 4; return t;
+}
+function openSkins() {
+  const cur = (G && G.potSkin) || 'auto';
+  const card = (key, K, open) => `<button class="skin${cur === key ? ' on' : ''}" data-skin="${key}" ${open ? '' : `aria-disabled="true" data-tip="${NEED_TEXT[Object.keys(K.need)[0]](Object.values(K.need)[0])}"`}>
+    <svg viewBox="126 284 148 132" aria-hidden="true">${open ? '' : '<g opacity=".35">'}${drawPot({ moisture: 55, minerals: 40 }, 1, K)}${open ? '' : '</g>'}${open ? '' : '<path d="M192 330 h16 v14 h-16 z M195 330 v-5 a5 5 0 0 1 10 0 v5" fill="none" stroke="#4a3a2e" stroke-width="3"/>'}</svg>
+    <b>${K.name}</b><small>${open ? (cur === key ? 'надето' : 'открыто') : NEED_TEXT[Object.keys(K.need)[0]](Object.values(K.need)[0])}</small></button>`;
+  const autoK = POT_SKINS[TIER_SKIN[potTier(levelOf(S.xp))]];
+  $('skinGrid').innerHTML = `<button class="skin${cur === 'auto' ? ' on' : ''}" data-skin="auto"><svg viewBox="126 284 148 132" aria-hidden="true">${drawPot({ moisture: 55, minerals: 40 }, 1, autoK)}</svg><b>Авто</b><small>меняется с уровнем</small></button>`
+    + Object.entries(POT_SKINS).map(([k, K]) => card(k, K, skinOpen(k))).join('');
+  const n = Object.keys(POT_SKINS).filter(skinOpen).length;
+  $('skinCount').textContent = `Открыто ${n} из ${Object.keys(POT_SKINS).length}`;
+  $('skinModal').hidden = false; $('skinClose').focus();
+}
+$('aSkins').onclick = openSkins;
+$('skinClose').onclick = () => { $('skinModal').hidden = true; };
+$('skinModal').addEventListener('click', ev => {
+  if (ev.target === $('skinModal')) { $('skinModal').hidden = true; return; }
+  const b = ev.target.closest('[data-skin]'); if (!b || b.getAttribute('aria-disabled') === 'true') return;
+  G.potSkin = b.dataset.skin; save(); render(); openSkins();
+});
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !$('skinModal').hidden) $('skinModal').hidden = true; });
+// новые раскраски: сообщаем, когда открылась очередная
+function checkSkins() {
+  if (!G) return;
+  // при первом запуске новой версии уже открытые раскраски считаем увиденными, без шквала плашек
+  if (!G.skinSeen || !Object.keys(G.skinSeen).length) { G.skinSeen = { _init: true }; for (const k in POT_SKINS) if (POT_SKINS[k].need && skinOpen(k)) G.skinSeen[k] = true; return; }
+  for (const [k, K] of Object.entries(POT_SKINS)) if (K.need && !G.skinSeen[k] && skinOpen(k)) {
+    G.skinSeen[k] = true;
+    if (S) popup(S, 'Новая раскраска', `Открыта раскраска горшка «${K.name}»`, 'Выбери её кнопкой «Раскраски горшка» во вкладке «Уход и приборы».', 'good');
+  }
+}
 // ---------- Опыты ----------
 // Каждый опыт: что делаем → гипотеза ученика → результат по настоящему состоянию растения → объяснение.
 // За первый проведённый опыт каждого вида — украшение для сада и интересный факт.
