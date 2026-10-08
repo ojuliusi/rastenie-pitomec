@@ -2575,6 +2575,8 @@ function render() {
     $('fact').classList.remove('reveal'); $('fact').classList.add(pq.tone || 'good');
     $('factK').textContent = pq.k; $('factTitle').textContent = pq.title; $('factText').textContent = pq.text;
   }
+  // у плашки «Нужен блок курса» кнопка сразу ведёт к вопросам
+  $('factOk').textContent = pq && !fc && pq.k === 'Нужен блок курса' ? 'К вопросам блока' : 'Понятно';
   if (fc) {
     const D = DISEASES[s.fact.id];
     $('fact').classList.toggle('reveal', s.fact.kind === 1);
@@ -2682,7 +2684,21 @@ $('cures').addEventListener('click', ev => {
   render(); renderGarden(); save();
 });
 
-$('factOk').onclick = () => { if (S.fact) S.fact = null; else if (S.popups) S.popups.shift(); render(); save(); };
+$('factOk').onclick = () => {
+  const toQuiz = !S.fact && S.popups && S.popups[0] && S.popups[0].k === 'Нужен блок курса';
+  if (S.fact) S.fact = null; else if (S.popups) S.popups.shift(); render(); save();
+  if (toQuiz) openNextQuiz();
+};
+// открыть вопросы следующего непройденного блока (сначала блоки по тканям, размножение — в конце)
+function openNextQuiz() {
+  const list = blockList(), b = list.filter(x => x.id !== 'repro').find(x => !isOpen(x.id)) || list.find(x => !isOpen(x.id));
+  if (!b) return;
+  showPane('blocks');
+  const f = $('quiz-' + b.id); if (!f) return;
+  f.hidden = false;
+  $('blk-' + b.id).scrollIntoView({ block: 'start', behavior: 'smooth' });
+  const first = f.querySelector('input'); if (first) setTimeout(() => first.focus({ preventScroll: true }), 400);
+}
 
 // ---------- строение цветка: у каждой культуры своё ----------
 const PED = `<path d="M120 272 V196" stroke="#5f9a3c" stroke-width="7"/>`;
