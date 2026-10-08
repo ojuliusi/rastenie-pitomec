@@ -282,7 +282,7 @@ h2 { display: inline-block; font: 700 13px/1.2 var(--f-display); letter-spacing:
 .btn.danger.armed { background: var(--danger); color: #fff; }
 .btn .dot { border: 2px solid var(--outline); width: 12px; height: 12px; }
 .pill { border: 2px solid var(--outline); background: var(--leaf-soft); color: var(--ink); font-weight: 800; }
-.pill.season { background: #dbeef7; color: var(--ink); }
+.pill.season { background: color-mix(in srgb, var(--water) 30%, var(--panel)); color: var(--ink); }
 .lvl { border: 2px solid var(--outline); background: #fffaf0; }
 .lvl b { background: var(--sun); border: 2px solid var(--outline); color: var(--ink); }
 .bar { height: 12px; border: 2px solid var(--outline); border-radius: 99px; background: #fffaf0; }
@@ -2434,8 +2434,28 @@ function buildEnv(T) {
     for (let i = 0; i < 7; i++) { const l = new T.Mesh(new T.SphereGeometry(0.07 * k, 8, 6), M(leaf)); l.scale.set(0.6, 1.4, 0.3); l.position.set(x + Math.cos(i * 0.9) * 0.06 * k, y + (0.24 + (i % 3) * 0.05) * k, z + Math.sin(i * 0.9) * 0.06 * k); l.rotation.set(Math.sin(i) * 0.5, i, Math.cos(i) * 0.5); g.add(l); }
     if (flower) for (let i = 0; i < 3; i++) glow(0.025 * k, flower, x + (i - 1) * 0.05 * k, y + 0.36 * k, z);
   };
-  const books = (x, y, z, n, rotY = 0) => { const grp = new T.Group(); grp.position.set(x, y, z); grp.rotation.y = rotY; g.add(grp);
-    const cols = ['#9c3b32', '#2e5f7a', '#c9962a', '#3e7a4a', '#6b4a7a', '#f3e6c8']; for (let i = 0; i < n; i++) box(0.05 + (i % 2) * 0.01, 0.26 + (i % 3) * 0.04, 0.2, cols[i % cols.length], i * 0.065, 0.14 + (i % 3) * 0.02, 0, grp); };
+  // разноцветные книжки: корешки разной высоты и толщины, последняя прислонена, рядом стопка
+  const BOOK_COLS = ['#e8737a', '#f2b45a', '#7cc3a5', '#6fa8dc', '#b48fd1', '#f6d36b', '#ef9a6a', '#8bc46a', '#5fb7c9', '#e58fb6'];
+  const books = (x, y, z, n, rotY = 0, k = 1, stack = true) => { const grp = new T.Group(); grp.position.set(x, y, z); grp.rotation.y = rotY; grp.scale.setScalar(k); g.add(grp);
+    let px = 0;
+    for (let i = 0; i < n; i++) {
+      const w = 0.07 + ((i * 37) % 5) * 0.012, h = 0.3 + ((i * 53) % 7) * 0.035, c = BOOK_COLS[(i * 3) % BOOK_COLS.length];
+      const b = box(w, h, 0.24, c, px + w / 2, h / 2, 0, grp);
+      box(w + 0.004, 0.025, 0.245, '#fff6e6', px + w / 2, h * 0.78, 0, grp); // полоска на корешке
+      if (i === n - 1) { b.rotation.z = -0.32; b.position.x += 0.06; b.position.y -= 0.02; grp.children[grp.children.length - 1].visible = false; }
+      px += w + 0.006;
+    }
+    if (stack) for (let j = 0; j < 3; j++) { const sb = box(0.34 - j * 0.03, 0.06, 0.26 - j * 0.02, BOOK_COLS[(j * 4 + 2) % BOOK_COLS.length], px + 0.3, 0.03 + j * 0.062, 0.02, grp); sb.rotation.y = (j - 1) * 0.12; }
+  };
+  // замкнутое помещение: боковые стены, пол и потолок вокруг сцены
+  const shell = (xL, xR, yF, yC, zB, zF, wall, floor, ceil) => {
+    const d = zF - zB, mz = (zB + zF) / 2;
+    const wm = new T.MeshStandardMaterial({ color: wall, roughness: 0.95, side: T.DoubleSide });
+    const lw = new T.Mesh(new T.PlaneGeometry(d, yC - yF), wm); lw.rotation.y = Math.PI / 2; lw.position.set(xL, (yF + yC) / 2, mz); g.add(lw);
+    const rw = lw.clone(); rw.position.x = xR; g.add(rw);
+    if (ceil) { const c = new T.Mesh(new T.PlaneGeometry(xR - xL, d), new T.MeshStandardMaterial({ color: ceil, roughness: 1, side: T.DoubleSide })); c.rotation.x = Math.PI / 2; c.position.set((xL + xR) / 2, yC, mz); g.add(c); }
+    if (floor) { const f = new T.Mesh(new T.PlaneGeometry(xR - xL, d), M(floor)); f.rotation.x = -Math.PI / 2; f.position.set((xL + xR) / 2, yF, mz); g.add(f); }
+  };
   const mug = (x, y, z) => { cyl(0.045, 0.04, 0.1, '#e9e2d0', x, y + 0.05, z); const h = new T.Mesh(new T.TorusGeometry(0.028, 0.008, 6, 12), M('#e9e2d0')); h.position.set(x + 0.05, y + 0.05, z); g.add(h); };
   const chair = (x, y, z, rot, c = '#8a5a3a') => { const grp = new T.Group(); grp.position.set(x, y, z); grp.rotation.y = rot; g.add(grp);
     box(0.5, 0.05, 0.5, c, 0, 0.45, 0, grp); box(0.5, 0.5, 0.05, c, 0, 0.72, -0.23, grp); for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(0.04, 0.45, 0.04, c, a * 0.22, 0.22, b * 0.22, grp); return grp; };
@@ -2451,6 +2471,12 @@ function buildEnv(T) {
     box(5, 0.08, 0.14, '#8a5a3a', 0, 1.12, -1.1);
     if (SEASON === 'winter') box(5, 0.05, 0.16, '#f4f8fa', 0, 1.18, -1.1);
     lights(-2.3, 2.3, 1.45, -1.05);
+    { // кирпичные стенки балкона по бокам, плита соседнего балкона сверху, стена дома за спиной
+      const brick = '#d99a7a';
+      for (const sx of [-2.6, 2.6]) { const w = box(0.14, 3.0, 7.5, brick, sx, 1.5, 2.6); for (let r = 0; r < 12; r++) box(0.15, 0.025, 7.5, '#f0d2bf', sx, 0.12 + r * 0.25, 2.6); }
+      box(5.4, 0.18, 7.5, '#efe6d6', 0, 3.0, 2.6);
+      box(5.4, 3.2, 0.12, '#e9d8c0', 0, 1.5, 6.3);
+    }
     prop('outdoor_set', 1.55, 0, -0.1, -0.5, 0.75, () => { chair(1.35, 0, -0.2, -0.6, '#b08560'); cyl(0.25, 0.25, 0.04, '#8a5a3a', -1.3, 0.55, -0.3); });
     prop('planter', -1.45, 0, -0.75, 0.2, 1, () => plantPot(-0.95, 0, -0.75, 1.4, '#4f8a2e', '#c4502a', 0xe86a8a));
     prop('houseplant', 0.9, 0, -0.85, 0, 0.9, () => plantPot(0.85, 0, -0.85, 1.1, '#6aa84f', '#f3e6c8'));
@@ -2473,7 +2499,8 @@ function buildEnv(T) {
     if (s.shade) { const c = new T.Mesh(new T.PlaneGeometry(w + 0.2, h + 0.2), new T.MeshStandardMaterial({ color: '#efe6cf', transparent: true, opacity: 0.8 })); c.position.set(x, y, wz + 0.12); g.add(c); }
     else for (const sd of [-1, 1]) { const c = box(0.42, h + 0.4, 0.06, '#9db89a', sd * (w / 2 + 0.28), y + 0.05, wz + 0.15); c.material.roughness = 1; }
     box(3.2, 0.05, 0.05, '#8a7a6a', 0, y + h / 2 + 0.25, wz + 0.15);
-    prop('books', -1.3, 0, wz + 0.4, 0.15, 1, () => books(-1.45, 0, wz + 0.45, 4, 0.2));
+    books(-1.6, 0, wz + 0.42, 6, 0.12, 1, false);
+    shell(-2.9, 2.9, -1.5, 3.4, wz - 0.1, 7, '#f3e6c8', '#d9a774', '#fbf4e6');
     prop('succulent', 1.2, 0, wz + 0.42, 0, 1.2, () => plantPot(1.25, 0, wz + 0.4, 0.8, '#5f8f3a', '#e9e2d0'));
     prop('clock', 0.95, 0, wz + 1.0, -0.4, 1.1, () => mug(0.95, 0, wz + 1.0));
   } else if (s.loc === 'room') {
@@ -2486,7 +2513,8 @@ function buildEnv(T) {
     prop('sofa', 0.4, fy, -2.75, 0, 1);
     prop('armchair', 2.5, fy, -0.6, -1.0, 1);
     prop('cabinet', -2.6, fy, -2.8, 0.3, 1);
-    prop('books', -2.75, fy + 1.18 * U, -2.85, 0.3, 0.9);
+    books(-3.05, fy + 1.18 * U, -2.85, 7, 0.3, 0.85, false);
+    shell(-4.4, 4.4, fy, fy + 6.2, -3.45, 8, '#f3e6c8', null, '#fbf4e6');
     prop('clock', -2.1, fy + 1.18 * U, -2.65, 0.6, 1);
     prop('houseplant', 2.6, fy, -2.6, 0, 1.2);
     prop('picture', 0.4, fy + 1.6 * U, -3.33, 0, 1);
@@ -2500,6 +2528,7 @@ function buildEnv(T) {
     const fy = -0.55 * U;
     const fl = new T.Mesh(new T.PlaneGeometry(10, 10), M('#6a5444')); fl.rotation.x = -Math.PI / 2; fl.position.y = fy; g.add(fl);
     box(10, 6, 0.1, '#5f5a52', 0, 1.8, -1.0); box(0.1, 6, 6, '#4f4a44', -1.3, 1.8, 1.5);
+    shell(-1.3, 3.6, fy, fy + 5.4, -1.0, 7, '#57524a', null, '#4a463f');
     prop('side_table', 0, fy, -0.15, 0, 1, () => box(1.0, -fy, 0.8, '#5a4636', 0, fy / 2, -0.2));
     prop('rocking', 1.6, fy, 0.3, -0.7, 1.05, () => { const arm = new T.Group(); arm.position.set(1.4, fy, 0.1); arm.rotation.y = -0.5; g.add(arm); box(0.9, 0.4, 0.8, '#6a4a5a', 0, 0.2, 0, arm); box(0.9, 0.8, 0.2, '#6a4a5a', 0, 0.6, -0.35, arm); });
     prop('box', -0.85, fy, 0.75, 0.3, 1, () => box(0.5, 0.4, 0.4, '#8a6a4a', -0.75, fy + 0.2, 0.6));
