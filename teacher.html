@@ -46,6 +46,8 @@ input { font: 500 14px var(--f-body); padding: 9px 12px; border-radius: 10px; bo
 @media (max-width: 680px) { .student { grid-template-columns: minmax(0, 1fr); } }
 .student h3 { margin: 0; font: 600 17px var(--f-body); }
 .plants { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 10px; }
+.student .del { margin-top: 10px; font-size: 13px; padding: 6px 10px; color: var(--danger); border-color: var(--danger); }
+.student .del.armed { background: var(--danger); color: #fff; }
 .plant { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 4px; min-width: 0; }
 .plant.bad { border-color: var(--danger); background: var(--danger-soft); }
 .plant .t { font-weight: 600; }
@@ -138,7 +140,7 @@ function draw() {
   $('stats').innerHTML = stats.map(([n, t]) => `<div class="stat"><b>${n}</b><span>${t}</span></div>`).join('');
   $('students').innerHTML = list.length ? list.map(s => `
     <article class="card student">
-      <div><h3>${esc(s.name)}</h3><div class="muted">Был в игре: ${ago(s.updated)}</div><div class="muted">${esc(s.season || '')}${s.mode === 'real' ? ' · реальное время' : ' · по занятиям'}</div></div>
+      <div><h3>${esc(s.name)}</h3><div class="muted">Был в игре: ${ago(s.updated)}</div><div class="muted">${esc(s.season || '')}${s.mode === 'real' ? ' · реальное время' : ' · по занятиям'}</div><button class="btn del" type="button" data-del="${esc(s.id)}">Удалить ученика</button></div>
       <div class="plants">${(s.plants || []).map(p => {
         const bad = p.status === 'погибло' || p.status === 'болеет';
         const tag = p.status === 'погибло' ? 'bad' : p.status === 'болеет' ? 'bad' : p.status === 'цикл завершён' ? 'done' : '';
@@ -154,6 +156,20 @@ function draw() {
 }
 $('login').addEventListener('submit', e => { e.preventDefault(); key = $('key').value.trim(); loadData(); });
 $('refresh').onclick = loadData;
+// удаление: первое нажатие спрашивает подтверждение, второе — удаляет строку ученика из таблицы
+let armedDel = null;
+$('students').addEventListener('click', async ev => {
+  const b = ev.target.closest('[data-del]'); if (!b) return;
+  if (armedDel !== b) { if (armedDel) { armedDel.classList.remove('armed'); armedDel.textContent = 'Удалить ученика'; } armedDel = b; b.classList.add('armed'); b.textContent = 'Точно удалить? Нажми ещё раз'; return; }
+  b.disabled = true; b.textContent = 'Удаляю…';
+  try {
+    const r = await fetch(`${SYNC_URL}?key=${encodeURIComponent(key)}&action=delete&id=${encodeURIComponent(b.dataset.del)}`);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'ошибка');
+    if (!j.deleted && j.students) throw new Error('Скрипт в таблице старый: обновите код по инструкции');
+    data = data.filter(x => x.id !== b.dataset.del); armedDel = null; draw();
+  } catch (e) { b.disabled = false; b.classList.remove('armed'); armedDel = null; b.textContent = 'Не удалось: ' + e.message; }
+});
 $('filter').addEventListener('input', draw);
 if (key && SYNC_URL) loadData();
 setInterval(() => { if (!$('board').hidden && !document.hidden) loadData(); }, 60000);
