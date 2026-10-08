@@ -1057,7 +1057,7 @@ const KEY = LESSON ? 'plant-pet-lesson-v2' : 'plant-pet-real-v2';
 const OLD_KEY = LESSON ? 'plant-pet-lesson-v1' : 'plant-pet-real-v1';
 const HOUR = 3600000;
 // Адрес таблицы учителя (Google Apps Script). Пока пусто, прогресс никуда не отправляется.
-const SYNC_URL = 'https://script.google.com/macros/s/AKfycbzUhOsNBvB2aAqKqqArNEiEG-4u88Ztw4vSSNitZQBJaHcUzFVHVE4D5vEqXNKh8Nv8/exec';
+const SYNC_URL = 'https://script.google.com/macros/s/AKfycbwQ-LF9FVbp7qBEWICOkozpDxj1sT5xLk5pz7UQbX4e938T0KRQmRL3GGdZX6CGYLRR/exec';
 let SEASON_PICK = 'auto', NAME_PENDING = '';
 const resolveSeason = () => { const pick = G ? G.season || 'auto' : SEASON_PICK; return pick === 'auto' ? seasonByMonth(new Date().getMonth()) : pick; };
 // Сад: у каждой группы может быть своё растение, все растут одновременно. S — растение, открытое сейчас.
