@@ -2342,6 +2342,39 @@ const CONE = () => {
       if (k > 0 && k < 7) o += `<ellipse cx="${f1(120 + sd * 16)}" cy="${f1(y - 3)}" rx="4" ry="2.6" fill="#4e2f16"/><path d="M${f1(120 + sd * 19)} ${f1(y - 4)} q${sd * 14} -8 ${sd * 24} -6 q${-sd * 8} 6 ${-sd * 24} 6 z" fill="#e3cf9e" opacity=".95"/>`; } }
   return o + lab(120, 220, 225, 'Ось шишки') + lab(170, 112, 50, 'Семенная чешуя') + lab(144, 116, 110, 'Семя с крылышком —|лежит открыто на чешуе') + lab(78, 106, 170, 'На каждой чешуе|по два семени');
 };
+// Коробочка кукушкина льна в продольном разрезе
+const MOSS_CAPSULE = () => {
+  let o = `<path d="M120 252 V188" stroke="#b5823a" stroke-width="6"/><path d="M110 192 Q120 178 130 192 Z" fill="#a7b06a"/>`; // ножка и шейка-апофиза
+  o += `<rect x="82" y="96" width="76" height="92" rx="12" fill="#c49a52" stroke="#7a5a2a" stroke-width="2"/>`; // стенка
+  o += `<rect x="90" y="104" width="60" height="76" rx="8" fill="#efe2b8"/>`; // полость со спорами
+  for (let i = 0; i < 70; i++) { const x = 93 + (i * 37) % 54, y = 107 + (i * 23) % 70; if (Math.abs(x - 120) > 8) o += `<circle cx="${x}" cy="${y}" r="1.8" fill="#8a6a2a"/>`; }
+  o += `<rect x="113" y="104" width="14" height="76" rx="5" fill="#b8cf86" stroke="#7f9a50"/>`; // колонка
+  o += `<path d="M86 96 L94 86 L102 96 L110 86 L118 96 L126 86 L134 96 L142 86 L150 96 L156 96" fill="#e0c88a" stroke="#7a5a2a"/>`; // зубцы перистома
+  o += `<path d="M84 92 Q120 64 156 92 Z" fill="#b08a48" stroke="#7a5a2a"/>`; // крышечка
+  o += `<path d="M92 66 Q124 18 160 58 L152 70 Q122 40 100 74 Z" fill="#c9b07a" stroke="#8a6a3a"/>`; // колпачок, слегка приподнят
+  for (let i = 0; i < 14; i++) o += `<path d="M${98 + i * 4} ${62 - Math.sin(i / 13 * Math.PI) * 26} l${-2 + (i % 3)} ${-10}" stroke="#8a6a3a" stroke-width="1.2"/>`;
+  return o + lab(150, 44, 22, 'Колпачок — волосистый,|потом слетает') + lab(140, 80, 62, 'Крышечка') + lab(148, 90, 96, 'Зубцы перистома: в сухую|погоду раскрываются')
+    + lab(156, 140, 132, 'Стенка коробочки') + lab(140, 160, 166, 'Споры — внутри|спорангия') + lab(122, 126, 198, 'Колонка — столбик|в центре') + lab(122, 232, 238, 'Ножка — тоже часть|спорофита');
+};
+// Сорус папоротника вблизи: срез через сорус на нижней стороне вайи и один спорангий крупно
+const FERN_SORUS = () => {
+  let o = `<path d="M16 40 Q60 14 110 30 Q70 46 16 40 Z" fill="#5f9a4a" stroke="#3f7a2a"/><path d="M18 38 Q62 26 108 30" stroke="#3f7a2a" fill="none"/>`;
+  for (let i = 0; i < 5; i++) o += `<circle cx="${34 + i * 15}" cy="${37 - i * 1.5}" r="3.2" fill="#8a5a2a"/>`;
+  o += `<circle cx="64" cy="34" r="9" fill="none" stroke="#4a3a2e" stroke-width="1.5"/><path d="M70 41 L104 92" stroke="#4a3a2e" stroke-dasharray="3 3"/>`; // лупа
+  o += `<rect x="20" y="92" width="200" height="18" rx="4" fill="#6aa84f" stroke="#3f7a2a"/>`; // пластинка вайи (снизу — сорус)
+  o += `<path d="M112 110 Q112 122 120 124 Q128 122 128 110 Z" fill="#7a9a4a"/>`; // плацента
+  o += `<path d="M62 132 Q120 104 178 132 Q176 138 170 136 Q120 116 70 136 Q64 138 62 132 Z" fill="#cdbf8a" stroke="#8a7a4a"/>`; // покрывальце
+  for (let i = 0; i < 9; i++) { const a = -1.1 + i * 0.275, x = 120 + Math.sin(a) * 44, y = 128 + Math.cos(a) * 34;
+    o += `<path d="M120 124 L${f1(x)} ${f1(y)}" stroke="#9a8a5a" stroke-width="1.5"/><ellipse cx="${f1(x)}" cy="${f1(y + 6)}" rx="7" ry="8.5" fill="#a8743a" stroke="#6b4423"/>`; }
+  // крупно: спорангий с кольцом, лопается и выбрасывает споры
+  o += `<path d="M196 250 L196 222" stroke="#9a8a5a" stroke-width="3"/><ellipse cx="196" cy="200" rx="22" ry="24" fill="#c08a4a" stroke="#6b4423" stroke-width="2"/>`;
+  for (let i = 0; i < 12; i++) { const a = Math.PI * (0.15 + i * 0.065); o += `<rect x="${f1(196 + Math.cos(a) * 21 - 3)}" y="${f1(200 - Math.sin(a) * 23 - 3)}" width="6" height="6" rx="1.5" fill="#5a3416"/>`; }
+  for (let i = 0; i < 10; i++) o += `<circle cx="${172 + (i * 13) % 20}" cy="${182 + (i * 7) % 26}" r="2" fill="#7a5226"/>`;
+  for (let i = 0; i < 7; i++) o += `<circle cx="${150 - i * 6}" cy="${170 - (i % 3) * 8}" r="1.8" fill="#7a5226"/>`;
+  o += `<path d="M120 150 Q150 190 172 196" stroke="#4a3a2e" stroke-dasharray="3 3" fill="none"/>`;
+  return o + lab(90, 30, 18, 'Нижняя сторона вайи:|бурые точки — сорусы') + lab(200, 100, 70, 'Пластинка вайи (срез)') + lab(170, 134, 112, 'Покрывальце —|защищает сорус')
+    + lab(152, 152, 146, 'Спорангий на ножке') + lab(212, 182, 180, 'Кольцо: высыхая,|разрывает спорангий') + lab(140, 170, 222, 'Споры разлетаются,|их уносит ветер');
+};
 const FLOWER = petal => {
   const p = petal || '#c9d6a0';
   return `<path d="M120 236 V178" stroke="#5f9a3c" stroke-width="7"/><path d="M84 178 Q120 196 156 178 Q150 160 120 160 Q90 160 84 178 Z" fill="#7fb24a"/>
@@ -2510,7 +2543,9 @@ function render() {
   $('aRepot').classList.toggle('primary', rootbound(s));
   $('aRepot').querySelector('.lbl').textContent = `Пересадить в горшок побольше (сейчас ${POTS[s.pot || 1].name})`;
   if (!living) $('live6').disabled = $('live24').disabled = over;
-  $('aFlower').hidden = !(s.sp === 'angio' && (st === 4 || (st === 5 && s.fruit < 0.15)) && !s.dead);
+  const zoom = s.dead ? null : s.sp === 'angio' && (st === 4 || (st === 5 && s.fruit < 0.15)) ? ['flower', 'Рассмотреть цветок'] : s.sp === 'moss' && st >= 5 ? ['capsule', 'Разрезать коробочку'] : s.sp === 'fern' && st >= 3 ? ['sorus', 'Рассмотреть сорус'] : null;
+  $('aFlower').hidden = !zoom;
+  if (zoom) { $('aFlower').dataset.kind = zoom[0]; $('aFlower').lastChild.textContent = zoom[1]; }
   $('bCut').hidden = !(s.done && (s.sp === 'angio' || s.sp === 'gymno'));
   $('bCut').textContent = s.sp === 'gymno' ? 'Разрезать шишку' : 'Разрезать плод';
   const overTip = s.dead ? 'Растение погибло — посади новое' : 'Цикл завершён — растение дало семена';
@@ -2737,6 +2772,10 @@ function cutQuestion(kind) {
     opts.sort((a, b) => ((a.length * 7 + h) % 5) - ((b.length * 7 + h) % 5));
     return { q: F.q, right: F.right, opts, xp: 10, text: () => `Верно! ${cropOf(S).note} Формула цветка: ${F.formula}.`, hint: 'Внимательно прочитай подписи на схеме.' };
   }
+  if (kind === 'capsule') return { q: 'Какое поколение мха — эта коробочка на ножке?', right: 'Спорофит — бесполое поколение', opts: ['Гаметофит — половое поколение', 'Спорофит — бесполое поколение', 'Протонема'], xp: 15,
+    text: () => 'Коробочка на ножке — спорофит, бесполое поколение мха. Она вырастает из оплодотворённой яйцеклетки прямо на верхушке женского растения и питается за его счёт. Внутри созревают споры. В сухую погоду крышечка отпадает, зубцы перистома раскрываются, и споры высыпаются понемногу. Из споры вырастет протонема — зелёная нить.', hint: 'Подумай, что образует коробочка — споры или гаметы.' };
+  if (kind === 'sorus') return { q: 'Зачем спорангию кольцо из толстостенных клеток?', right: 'Высыхая, оно разрывает спорангий и разбрасывает споры', opts: ['Чтобы запасать воду', 'Высыхая, оно разрывает спорангий и разбрасывает споры', 'Чтобы привлекать насекомых'], xp: 15,
+    text: () => 'Сорус — это группа спорангиев на нижней стороне вайи. Сверху его прикрывает покрывальце. Когда споры созревают, кольцо спорангия высыхает, распрямляется и разрывает стенку, как катапульта, — споры отлетают в стороны, а дальше их уносит ветер. На влажной земле из споры вырастет заросток.', hint: 'Посмотри на подпись к кольцу на схеме.' };
   if (kind === 'cone') return { q: 'Почему шишка сосны — не плод?', right: 'У голосеменных нет цветков и завязи, семена лежат открыто', opts: ['Шишка слишком твёрдая', 'У голосеменных нет цветков и завязи, семена лежат открыто', 'В шишке нет семян'], xp: 15,
     text: () => 'Шишка сосны — не плод: у голосеменных нет цветков и завязи. Семена лежат открыто на семенных чешуях, по два на каждой. Шишка созревает около полутора-двух лет, а в сухую погоду чешуи раскрываются, и семена с крылышками улетают.', hint: 'Подумай, из какой части цветка образуется плод — и есть ли она у сосны.' };
   const F = FRUITS[cropOf(S).type], types = Object.keys(FRUITS);
@@ -2749,8 +2788,8 @@ function cutQuestion(kind) {
 function openCut(kind) {
   cutKind = kind;
   const crop = S.sp === 'angio' ? cropOf(S) : null;
-  $('cutTitle').textContent = kind === 'flower' ? `Цветок в разрезе: ${crop.name.toLowerCase()}` : kind === 'cone' ? 'Шишка сосны в разрезе' : `Плод в разрезе: ${crop.name.toLowerCase()}`;
-  $('cutPic').innerHTML = kind === 'flower' ? (FLOWERS[S.crop] || FLOWERS.tomato)() : kind === 'cone' ? CONE() : CUT[crop.type]();
+  $('cutTitle').textContent = kind === 'flower' ? `Цветок в разрезе: ${crop.name.toLowerCase()}` : kind === 'cone' ? 'Шишка сосны в разрезе' : kind === 'capsule' ? 'Коробочка мха в разрезе' : kind === 'sorus' ? 'Сорус папоротника вблизи' : `Плод в разрезе: ${crop.name.toLowerCase()}`;
+  $('cutPic').innerHTML = kind === 'flower' ? (FLOWERS[S.crop] || FLOWERS.tomato)() : kind === 'cone' ? CONE() : kind === 'capsule' ? MOSS_CAPSULE() : kind === 'sorus' ? FERN_SORUS() : CUT[crop.type]();
   const Q = cutQuestion(kind), done = S.cool['cut_' + kind];
   $('cutQ').textContent = Q.q;
   $('cutOpts').innerHTML = Q.opts.map((o, i) => `<button class="btn" id="cutopt-${i}" data-ans="${o === Q.right ? 1 : 0}">${o}</button>`).join('');
@@ -2772,7 +2811,7 @@ const closeCut = () => { $('cutModal').hidden = true; cutKind = null; };
 $('cutClose').onclick = closeCut;
 $('cutModal').addEventListener('click', ev => { if (ev.target === $('cutModal')) closeCut(); });
 document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !$('cutModal').hidden) closeCut(); });
-$('aFlower').onclick = () => openCut('flower');
+$('aFlower').onclick = () => openCut($('aFlower').dataset.kind || 'flower');
 $('bCut').onclick = () => openCut(S.sp === 'gymno' ? 'cone' : 'fruit');
 
 // ---------- 3D-просмотр ----------
@@ -2849,7 +2888,7 @@ function decor3D(T, root, pot, plant) {
     const ws = new T.Shape(); ws.moveTo(0, 0); ws.bezierCurveTo(0.02, 0.07, 0.09, 0.07, 0.08, 0.02); ws.bezierCurveTo(0.09, -0.03, 0.04, -0.06, 0, 0);
     const wg = new T.ShapeGeometry(ws), wl = new T.Mesh(wg, wm), wr = new T.Mesh(wg, wm); wr.scale.x = -1; g.add(wl, wr);
     const bd = new T.Mesh(new T.CapsuleGeometry(0.007, 0.05, 4, 6), M('#3a2a1e')); bd.rotation.z = Math.PI / 2; bd.rotation.y = Math.PI / 2; g.add(bd);
-    if (jar) { g.position.set(0.3, 1.13, 0.28); g.rotation.x = -1.2; } // на краю банки, а не в воде
+    if (jar) { g.position.set(-0.3, 1.14, 0.28); g.rotation.set(-1.2, 0, 0.4); } // на левом краю банки: на правом сидит божья коровка
     else { g.position.set(bb.max.x * 0.7 + 0.12, bb.min.y + (bb.max.y - bb.min.y) * 0.7, 0.18); g.rotation.x = -0.6; }
     root.add(g); root.userData.wings = [wl, wr]; }
 }
