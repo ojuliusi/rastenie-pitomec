@@ -202,6 +202,7 @@ svg .maskify [stroke]:not([stroke="none"]) { stroke: #fff; stroke-width: 5px; }
 .modes { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 10px; }
 .modes legend { padding: 0; }
 .danger-zone { border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+.plant-row { border-top: 1px solid var(--line); padding-top: 14px; }
 .danger-zone p { margin: 0; font-size: 13px; color: var(--muted); max-width: 60ch; }
 
 /* блоки */
@@ -498,12 +499,6 @@ header #openSettings { flex: none; }
         <option value="random">Сюрприз — узнаешь, когда вырастет</option>
       </select>
     </div>
-    <div class="row">
-      <button class="btn primary" id="plant"><span class="dot"></span><span class="lbl">Посадить</span></button>
-      <button class="btn danger" id="replant" hidden>Посадить заново</button>
-      <button class="btn danger" id="removePlant" hidden>Убрать это растение</button>
-      <span class="locked-note">Растения разных групп растут одновременно. Переключаться между ними можно вкладками над растением.</span>
-    </div>
     <div class="name-set">
       <label class="row-label" for="studentName">Имя и фамилия ученика</label>
       <input id="studentName" class="select" maxlength="40" autocomplete="name" placeholder="Например, Маша Иванова">
@@ -536,6 +531,12 @@ header #openSettings { flex: none; }
     <span id="modeNote">Режим урока: 1 секунда = 1 час жизни растения.</span>
     <button class="link" id="teacher">Учителю: открыть все блоки</button>
     </footer>
+    <div class="row plant-row">
+      <button class="btn primary" id="plant"><span class="dot"></span><span class="lbl">Посадить</span></button>
+      <button class="btn danger" id="replant" hidden>Посадить заново</button>
+      <button class="btn danger" id="removePlant" hidden>Убрать это растение</button>
+      <span class="locked-note">Растения разных групп растут одновременно. Переключаться между ними можно вкладками над растением.</span>
+    </div>
   </section>
 
 
@@ -4125,8 +4126,8 @@ function showGame(on) { $('game').hidden = !on; $('openSettings').hidden = !on; 
 // подсказка у заблокированной кнопки: отдельная плашка поверх страницы, сдвигается так, чтобы не обрезаться краем
 const tipEl = document.createElement('div'); tipEl.className = 'float-tip'; tipEl.hidden = true; tipEl.setAttribute('role', 'tooltip'); document.body.appendChild(tipEl);
 let tipFor = null, tipT = 0;
-function showTip(el) {
-  tipFor = el; tipEl.textContent = el.dataset.tip; tipEl.hidden = false;
+function showTip(el, text = el.dataset.tip) {
+  tipFor = el; tipEl.textContent = text; tipEl.hidden = false;
   const r = el.getBoundingClientRect(), w = tipEl.offsetWidth, h = tipEl.offsetHeight;
   const x = clamp(r.left + r.width / 2 - w / 2, 8, innerWidth - w - 8); let y = r.top - h - 10; const below = y < 8; if (below) y = r.bottom + 10;
   tipEl.style.left = x + 'px'; tipEl.style.top = y + 'px'; tipEl.classList.toggle('below', below);
@@ -4134,7 +4135,54 @@ function showTip(el) {
 }
 const hideTip = () => { tipEl.hidden = true; tipFor = null; };
 const tipTarget = t => { const b = t && t.closest && t.closest('[data-tip]'); return b && (b.getAttribute('aria-disabled') === 'true' || b.disabled) ? b : null; };
-document.addEventListener('mouseover', ev => { const b = tipTarget(ev.target); if (b) { clearTimeout(tipT); showTip(b); } else if (tipFor) hideTip(); });
+// подсказки к обычным кнопкам игры: что делает кнопка (показываются при наведении с небольшой задержкой)
+const HINTS = {
+  aWater: 'Полить почву. Следи за влажностью: и пересохшая, и залитая почва вредят корням',
+  aFeed: 'Внести удобрение — минеральные соли для роста. Перекорм обжигает корни',
+  aRepot: 'Пересадить в горшок побольше, чтобы корням было где расти',
+  aIodine: 'Капнуть йодом на лист: если в нём есть крахмал, он посинеет',
+  aDecor: 'Украшения за проведённые опыты',
+  aSkins: 'Коллекция раскрасок горшка — новые открываются за успехи',
+  aLamp: 'Фитолампа: добавляет света, когда его мало',
+  aShade: 'Притенить растение шторой, если солнца слишком много',
+  aFlower: 'Рассмотреть строение вблизи и ответить на вопрос',
+  aLoupe: 'Осмотреть растение под лупой и найти, кто вызвал болезнь',
+  live6: 'Промотать 6 часов жизни растения',
+  live24: 'Промотать целые сутки жизни растения',
+  sp0: 'Пауза — время стоит', sp1: 'Обычная скорость времени', sp4: 'Время идёт в 4 раза быстрее',
+  bCut: 'Разрезать и рассмотреть, что внутри',
+  bFinal: 'Финальный тест с развёрнутыми ответами — его увидит учитель',
+  bRestart: 'Начать выращивать это растение заново',
+  bChoose: 'Открыть выбор растения',
+  addPlant: 'Посадить ещё одно растение',
+  helpBtn: 'Показать обучение заново',
+  openSettings: 'Выбор растения, имя, время года, тема и режим времени',
+  'pt-care': 'Полив, свет, приборы и опыты', 'pt-blocks': 'Блоки курса с вопросами — открывают новые стадии роста', 'pt-log': 'Что происходило с растением'
+};
+function hintOf(b) {
+  if (!b || !b.matches || !b.matches('button, .btn')) return '';
+  if (HINTS[b.id]) return HINTS[b.id];
+  const d = b.dataset;
+  if (b.id === 'aRepro') return 'Помочь растению размножиться: ' + b.textContent.trim().toLowerCase();
+  if (d.view === '3d') return 'Объёмный вид растения — можно крутить и приближать';
+  if (d.view === '2d') return 'Разрез: корни в почве и строение растения';
+  if (d.loc && LOC[d.loc]) return `Переставить горшок: ${LOC[d.loc].name.toLowerCase()}. Свет и температура здесь другие`;
+  if (d.exp && typeof EXPS !== 'undefined' && EXPS[d.exp]) return `Опыт «${EXPS[d.exp].name}». Награда — украшение и интересный факт`;
+  if (d.agent && AGENTS[d.agent]) return `Ответ: болезнь вызвали ${AGENTS[d.agent].toLowerCase()}`;
+  if (d.cure && CURES[d.cure]) return `Лечение: помогает против ${CURES[d.cure][1]}`;
+  if (d.quiz) return 'Ответь на 5 вопросов — откроется следующая стадия роста';
+  return '';
+}
+let hintT = 0;
+document.addEventListener('mouseover', ev => {
+  const b = tipTarget(ev.target); clearTimeout(hintT);
+  if (b) { clearTimeout(tipT); showTip(b); return; }
+  const h = ev.target.closest && ev.target.closest('button, .btn'), t = hintOf(h);
+  if (t && h === tipFor) return;
+  if (tipFor) hideTip();
+  if (t && !h.disabled && h.getAttribute('aria-disabled') !== 'true') hintT = setTimeout(() => showTip(h, t), 450);
+});
+document.addEventListener('pointerdown', ev => { clearTimeout(hintT); if (ev.pointerType !== 'mouse' || !tipTarget(ev.target)) hideTip(); }, true);
 document.addEventListener('scroll', hideTip, true);
 // нажатие на заблокированную кнопку не выполняет действие, а показывает подсказку (на телефоне нет наведения)
 document.addEventListener('click', ev => {
