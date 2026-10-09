@@ -4012,6 +4012,41 @@ function buildEnv(T) {
       box(5.4, 0.18, 7.5, '#efe6d6', 0, 3.0, 2.6);
       box(5.4, 3.2, 0.12, '#e9d8c0', 0, 1.5, 6.3);
     }
+    { // вид с балкона: внизу двор с деревьями и дорожками, дальше дома с окнами (ночью окна горят), холмы и облака
+      const night = e3 => e3.dl <= 0, dark = !(env(s).dl > 0), noLine = { visible: false };
+      const VM = (c, x = {}) => { const m = new T.MeshStandardMaterial(Object.assign({ color: c, roughness: 1 }, x)); m.userData.outlineParameters = noLine; return m; };
+      const add = (geo, m, x, y, z, ry = 0) => { const o = new T.Mesh(geo, m); o.position.set(x, y, z); o.rotation.y = ry; g.add(o); return o; };
+      const GY = -9; // земля далеко внизу: балкон на высоком этаже
+      const ground = { winter: '#eef2f4', autumn: '#9c9a52', spring: '#8fc96a', summer: '#79b552' }[SEASON] || '#79b552';
+      const gr = add(new T.PlaneGeometry(140, 90), VM(ground), 0, GY, -45); gr.rotation.x = -Math.PI / 2;
+      const path = add(new T.PlaneGeometry(1.6, 40), VM(SEASON === 'winter' ? '#d5dde2' : '#cdbb98'), -2, GY + 0.02, -18, 0.4); path.rotation.x = -Math.PI / 2; path.rotation.z = 0.5;
+      const road = add(new T.PlaneGeometry(140, 4), VM('#6d7078'), 0, GY + 0.02, -27); road.rotation.x = -Math.PI / 2;
+      // деревья во дворе: крона по сезону
+      const crown = { winter: null, autumn: ['#e09a2c', '#d0622a', '#e8b83a'], spring: ['#9bd66a', '#b6e27e'], summer: ['#4f9a3a', '#5fae44', '#3f8a32'] }[SEASON] || ['#4f9a3a'];
+      const trunkM = VM('#6a4a32');
+      for (let i = 0; i < 16; i++) {
+        const x = -16 + (i * 7.3) % 32 + Math.sin(i) * 1.5, z = -6 - (i * 5.7) % 16, h = 3 + (i % 3);
+        add(new T.CylinderGeometry(0.15, 0.25, h, 6), trunkM, x, GY + h / 2, z);
+        if (crown) { const c = add(new T.IcosahedronGeometry(1.3 + (i % 3) * 0.4, 1), VM(crown[i % crown.length]), x, GY + h + 0.8, z); c.scale.y = 1.15; }
+        else for (let b = 0; b < 4; b++) { const br = add(new T.CylinderGeometry(0.04, 0.08, 1.6, 4), trunkM, x, GY + h + 0.4, z); br.rotation.z = (b - 1.5) * 0.5; br.rotation.y = b; }
+      }
+      // дома: панельки с окнами — текстура рисуется на canvas, ночью часть окон светится
+      const winTex = (cols, rows, wall, seed) => { const cv = document.createElement('canvas'); cv.width = cols * 16; cv.height = rows * 20; const c = cv.getContext('2d');
+        c.fillStyle = wall; c.fillRect(0, 0, cv.width, cv.height);
+        for (let r = 0; r < rows; r++) for (let q = 0; q < cols; q++) { const lit = dark && ((r * 7 + q * 13 + seed) % 5 < 2);
+          c.fillStyle = lit ? '#ffd77a' : dark ? '#2a3140' : '#5f7f99'; c.fillRect(q * 16 + 4, r * 20 + 5, 8, 11); }
+        const t = new T.CanvasTexture(cv); t.magFilter = T.NearestFilter; return t; };
+      [[-34, -62, 11, 12, 4, '#c9a48a'], [-16, -70, 14, 15, 4, '#b9b2a6'], [2, -64, 12, 11, 4, '#d2b48e'], [20, -72, 16, 16, 4, '#a9b4bc'], [38, -62, 11, 13, 4, '#c79f86'], [-52, -74, 14, 10, 4, '#bdb2a3']].forEach(([x, z, w, h, d, wall], i) => {
+        const tex = winTex(Math.round(w / 1.2), Math.round(h / 1.5), wall, i * 3);
+        const m = new T.MeshStandardMaterial({ map: tex, roughness: 1, emissive: dark ? '#ffffff' : '#000000', emissiveMap: dark ? tex : null, emissiveIntensity: dark ? 0.55 : 0 }); m.userData.outlineParameters = noLine;
+        add(new T.BoxGeometry(w, h, d), m, x, GY + h / 2, z);
+        add(new T.BoxGeometry(w + 0.4, 0.4, d + 0.4), VM('#9a9590'), x, GY + h + 0.2, z);
+      });
+      // холмы на горизонте и облака
+      [[-60, -110, 30], [-10, -120, 40], [50, -105, 32]].forEach(([x, z, r]) => { const hl = add(new T.SphereGeometry(r, 20, 10), VM(SEASON === 'winter' ? '#dfe6ea' : '#8aa774'), x, GY - r * 0.75, z); hl.scale.y = 0.5; });
+      if (!dark) { const cm = new T.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.9 });
+        [[-18, 14, -70], [6, 18, -80], [28, 12, -65], [-38, 16, -85]].forEach(([x, y, z], i) => { for (let b = 0; b < 4; b++) { const c = add(new T.SphereGeometry(2.2 + (b % 2), 10, 8), cm, x + b * 2.4 - 3.6, y + (b % 2) * 0.8, z); c.scale.y = 0.6; } }); }
+    }
     prop('side_table', 1.7, 0, -0.55, -0.3, 0.95, () => { chair(1.35, 0, -0.2, -0.6, '#b08560'); cyl(0.25, 0.25, 0.04, '#8a5a3a', -1.3, 0.55, -0.3); }); // минималистичный столик из светлого дуба
     prop('stool', 0.98, 0, 0.82, 0.6, 0.6); prop('stool', 2.0, 0, 0.78, -0.9, 0.55); // складные деревянные табуреты
     prop('planter', -1.6, 0, -0.85, 0.2, 0.82, () => plantPot(-0.95, 0, -0.75, 1.4, '#4f8a2e', '#c4502a', 0xe86a8a));
@@ -4143,7 +4178,7 @@ function init3D() {
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); renderer.outputEncoding = T.sRGBEncoding;
   box.appendChild(renderer.domElement);
   const outline = T.OutlineEffect ? new T.OutlineEffect(renderer, { defaultThickness: 0.0045, defaultColor: [0.18, 0.13, 0.1] }) : null;
-  const scene = new T.Scene(), camera = new T.PerspectiveCamera(38, 400 / 440, 0.01, 60);
+  const scene = new T.Scene(), camera = new T.PerspectiveCamera(38, 400 / 440, 0.02, 260); // дальность — чтобы был виден пейзаж с балкона
   const hemi = new T.HemisphereLight(0xf4f8ff, 0x6b5a40, 0.8), sun = new T.DirectionalLight(0xfff4e0, 1), lamp = new T.PointLight(0xffd9a0, 0, 6), amb = new T.AmbientLight(0x6070a0, 0.15);
   scene.add(hemi, sun, sun.target, lamp, amb); lamp.position.set(0, 2.1, 0);
   const controls = new T.OrbitControls(camera, renderer.domElement);
