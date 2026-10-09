@@ -1899,7 +1899,7 @@ function load() {
       for (const k in g.plants || {}) if (g.plants[k] && SPECIES[g.plants[k].sp]) { plants[k] = revive(g.plants[k], unlocked); plants[k].key = k; }
       const active = plants[g.active] ? g.active : Object.keys(plants)[0];
       if (active) MODE = g.mode || 'lessons';
-      return active ? { active, plants, unlocked, mode: MODE, season: g.season || 'auto', student: g.student || null, decor: g.decor || {}, decorHide: g.decorHide || {}, potSkin: g.potSkin || 'auto', stats: g.stats || {}, skinSeen: g.skinSeen || {}, finals: g.finals || [] } : null;
+      return active ? { active, plants, unlocked, mode: MODE, season: g.season || 'auto', student: g.student || null, decor: g.decor || {}, decorHide: g.decorHide || {}, potSkin: g.potSkin || 'auto', stats: g.stats || {}, skinSeen: g.skinSeen || {}, finals: g.finals || [], mossBase: g.mossBase || 'brick' } : null;
     }
     r = localStorage.getItem(OLD_KEY); // растение из прошлой версии игры
     if (r) {
@@ -1916,7 +1916,7 @@ function save() {
     if (!G) { localStorage.removeItem(KEY); localStorage.removeItem(OLD_KEY); return; }
     const plants = {};
     for (const k in G.plants) { const { unlocked, ...rest } = G.plants[k]; plants[k] = rest; }
-    localStorage.setItem(KEY, JSON.stringify({ active: G.active, unlocked: G.unlocked, mode: MODE, season: G.season, student: G.student, decor: G.decor || {}, decorHide: G.decorHide || {}, potSkin: G.potSkin || 'auto', stats: G.stats || {}, skinSeen: G.skinSeen || {}, finals: G.finals || [], plants }));
+    localStorage.setItem(KEY, JSON.stringify({ active: G.active, unlocked: G.unlocked, mode: MODE, season: G.season, student: G.student, decor: G.decor || {}, decorHide: G.decorHide || {}, potSkin: G.potSkin || 'auto', stats: G.stats || {}, skinSeen: G.skinSeen || {}, finals: G.finals || [], mossBase: G.mossBase || 'brick', plants }));
     pushProgress(false);
   } catch (e) {}
 }
@@ -2063,7 +2063,7 @@ function decor2D(where) {
     if (decorOn('label')) { const nm = ((G.student && G.student.name) || 'Моё').split(' ')[0].slice(0, 9); o += `<path d="M238 302 L238 262" stroke="#b08a5a" stroke-width="3"/><rect x="214" y="244" width="48" height="20" rx="4" fill="#fffaf0" stroke="#b08a5a" stroke-width="1.5"/><text x="238" y="258" font-size="10" text-anchor="middle" fill="#4a3a2e" font-weight="700">${esc(nm)}</text>`; }
     if (decorOn('ladybug')) o += `<g transform="translate(146 287)"><ellipse rx="8" ry="6" fill="#d9332a" stroke="#4a1a14"/><path d="M0 -6 L0 6" stroke="#4a1a14"/><circle cx="-8" cy="0" r="3.5" fill="#2a1a14"/><circle cx="-3" cy="-2" r="1.4" fill="#2a1a14"/><circle cx="3" cy="2" r="1.4" fill="#2a1a14"/><circle cx="4" cy="-3" r="1.2" fill="#2a1a14"/></g>`;
   } else {
-    if (decorOn('gnome')) o += `<g transform="translate(300 408)"><ellipse cx="0" cy="0" rx="18" ry="4" fill="rgba(0,0,0,.18)"/><path d="M-13 0 L-11 -26 L11 -26 L13 0 Z" fill="#3d7fc0"/><circle cx="0" cy="-32" r="9" fill="#f2c8a0"/><path d="M-9 -30 Q0 -12 9 -30 Q0 -22 -9 -30 Z" fill="#fff"/><path d="M-11 -36 L0 -62 L11 -36 Z" fill="#d9332a"/><circle cx="-3" cy="-34" r="1.2" fill="#3a2a1e"/><circle cx="3" cy="-34" r="1.2" fill="#3a2a1e"/></g>`;
+    if (decorOn('gnome')) o += `<g transform="translate(${S.sp === 'moss' ? '308 412' : '300 408'})"><ellipse cx="0" cy="0" rx="18" ry="4" fill="rgba(0,0,0,.18)"/><path d="M-13 0 L-11 -26 L11 -26 L13 0 Z" fill="#3d7fc0"/><circle cx="0" cy="-32" r="9" fill="#f2c8a0"/><path d="M-9 -30 Q0 -12 9 -30 Q0 -22 -9 -30 Z" fill="#fff"/><path d="M-11 -36 L0 -62 L11 -36 Z" fill="#d9332a"/><circle cx="-3" cy="-34" r="1.2" fill="#3a2a1e"/><circle cx="3" cy="-34" r="1.2" fill="#3a2a1e"/></g>`;
     if (decorOn('butterfly')) o += `<g class="bfly" transform="translate(${S.sp === 'algae' ? '262 140' : '268 150'})"><path d="M0 0 C-18 -20 -26 -2 -14 6 C-22 12 -12 22 0 4 Z" fill="#f2b45a" stroke="#a8641a"/><path d="M0 0 C18 -20 26 -2 14 6 C22 12 12 22 0 4 Z" fill="#f2b45a" stroke="#a8641a"/><circle cx="-12" cy="-4" r="2.5" fill="#fff"/><circle cx="12" cy="-4" r="2.5" fill="#fff"/><path d="M0 -6 L0 8" stroke="#3a2a1e" stroke-width="2.5" stroke-linecap="round"/></g>`;
   }
   return o;
@@ -2076,14 +2076,20 @@ function decorBrick2D() {
   if (decorOn('ladybug')) o += `<g transform="translate(262 312)"><ellipse rx="8" ry="6" fill="#d9332a" stroke="#4a1a14"/><path d="M0 -6 L0 6" stroke="#4a1a14"/><circle cx="-8" cy="0" r="3.5" fill="#2a1a14"/><circle cx="-3" cy="-2" r="1.4" fill="#2a1a14"/><circle cx="3" cy="2" r="1.4" fill="#2a1a14"/></g>`;
   return o;
 }
-function drawBrick(s) {
-  const wet = clamp(s.moisture / 100, 0, 1), face = mix('#c4704a', '#7e3a24', wet * 0.75), top = mix('#d68a62', '#94492e', wet * 0.75), side = mix('#a85a38', '#64301e', wet * 0.75);
+function drawBrick(s, B = mossBase()) {
+  const wet = clamp(s.moisture / 100, 0, 1), dk = c => mix(c, '#1e1410', wet * 0.55), face = dk(B.face), top = dk(B.top), side = dk(B.side);
   let o = `<defs><clipPath id="humusClip"><path d="M126 302 L286 302 L270 318 L110 318 Z"/></clipPath></defs>`;
   o += `<ellipse cx="200" cy="404" rx="128" ry="16" fill="#f3efe6" stroke="#cfc7b6" stroke-width="2"/><ellipse cx="200" cy="402" rx="112" ry="11" fill="${mix('#bfe0ea', '#8fbfd0', wet)}" opacity="${(0.35 + wet * 0.5).toFixed(2)}"/>`; // блюдце с водой
-  o += `<path d="M110 318 L270 318 L270 396 L110 396 Z" fill="${face}" stroke="#5a2a18" stroke-width="2"/>`;
-  o += `<path d="M126 302 L286 302 L270 318 L110 318 Z" fill="${top}" stroke="#5a2a18" stroke-width="2"/>`;
-  o += `<path d="M286 302 L286 380 L270 396 L270 318 Z" fill="${side}" stroke="#5a2a18" stroke-width="2"/>`;
-  for (let i = 0; i < 46; i++) o += `<circle cx="${116 + (i * 37) % 150}" cy="${324 + (i * 23) % 68}" r="${(1 + (i % 3) * 0.6).toFixed(1)}" fill="#5a2a18" opacity=".45"/>`; // поры
+  const ed = mix(B.side, '#000', 0.45), j = (i, a) => B.rough ? f1(Math.sin(i * 2.7) * a * 120) : 0;
+  const rr = B.round ? 14 : 0;
+  // лицевая грань: у кирпича ровная, у камней — с неровным краем, у речного камня — скруглённая
+  const facePts = [[110, 318], [150, 318 + +j(1, .03)], [200, 318], [240, 318 + +j(2, .03)], [270, 318], [270 + +j(3, .05), 350], [270, 396], [220, 396 + +j(4, .03)], [160, 396], [110, 396], [110 - +j(5, .05), 356]];
+  o += B.round ? `<rect x="110" y="312" width="160" height="86" rx="${rr * 2}" fill="${face}" stroke="${ed}" stroke-width="2"/><ellipse cx="190" cy="314" rx="78" ry="12" fill="${top}"/>`
+    : `<path d="M${facePts.map(p => p.join(' ')).join(' L')} Z" fill="${face}" stroke="${ed}" stroke-width="2"/>`
+      + `<path d="M126 302 L286 302 L270 318 L110 318 Z" fill="${top}" stroke="${ed}" stroke-width="2"/><path d="M286 302 L286 380 L270 396 L270 318 Z" fill="${side}" stroke="${ed}" stroke-width="2"/>`;
+  for (let i = 0; i < B.pores; i++) o += `<circle cx="${116 + (i * 37) % 150}" cy="${324 + (i * 23) % 68}" r="${(1 + (i % 3) * 0.6).toFixed(1)}" fill="${i % 4 === 0 && B.light ? B.light : B.pore}" opacity=".5"/>`; // поры и вкрапления
+  if (B.grain) for (let i = 0; i < 7; i++) o += `<path d="M112 ${328 + i * 10} q40 ${i % 2 ? 4 : -4} 80 0 t76 0" stroke="${B.pore}" stroke-width="1.3" fill="none" opacity=".6"/>`; // волокна коряги
+  if (B.shells) for (let i = 0; i < 8; i++) o += `<path d="M${124 + i * 18} ${340 + (i % 3) * 16} a5 5 0 0 1 10 0 z" fill="#f6efdc" stroke="${B.pore}" stroke-width=".8"/>`; // ракушки
   o += `<path d="M110 ${f1(396 - wet * 40)} L270 ${f1(396 - wet * 40)}" stroke="#4a2414" stroke-width="1" opacity="${(wet * 0.4).toFixed(2)}" stroke-dasharray="4 4"/>`; // докуда поднялась вода
   return o;
 }
@@ -2725,7 +2731,8 @@ function render() {
   $('aRepro').querySelector('.lbl').textContent = SP.repro.label;
   $('aIodine').disabled = over;
   renderExps(s, over); checkSkins();
-  $('aSkins').hidden = !!SP.onRock || s.sp === 'algae'; // у мха кирпич, у водоросли банка — раскраски горшка не нужны
+  $('aSkins').hidden = s.sp === 'algae'; // у водоросли банка
+  $('aSkins').lastChild.textContent = SP.onRock ? 'Камни для мха' : 'Раскраски горшка';
   $('aRepot').hidden = !potSoon(s) || over;
   $('aRepot').classList.toggle('primary', rootbound(s));
   $('aRepot').querySelector('.lbl').textContent = `Пересадить в горшок побольше (сейчас ${POTS[s.pot || 1].name})`;
@@ -3044,7 +3051,7 @@ function decor3D(T, root, pot, plant) {
   const brick = S.sp === 'moss'; // мох растёт на кирпиче в блюдце
   if (decorOn('pebbles')) ['#e8737a', '#6fa8dc', '#f2b45a', '#8bc46a', '#b48fd1', '#f6d36b', '#ef9a6a', '#5fb7c9'].forEach((c, i) => {
     const m = new T.Mesh(new T.SphereGeometry(0.035, 10, 8), M(c)); m.scale.set(1, 0.5, 0.8); const a = i * 2.4, r = (0.16 + (i % 3) * 0.06) * (jar ? 1 : k);
-    if (brick) { const rr = 0.56 + (i % 2) * 0.06; m.position.set(Math.cos(a) * rr, 0.085, Math.sin(a) * rr); } // в блюдце вокруг кирпича
+    if (brick) { const aa = 0.5 + i * 0.75, rr = 0.6 + (i % 2) * 0.04; m.position.set(Math.cos(aa) * rr, 0.08, Math.sin(aa) * rr); } // в воде по кругу блюдца, мимо кирпича
     else m.position.set(Math.cos(a) * r, jar ? 0.04 : top + 0.012, Math.sin(a) * r); root.add(m); });
   if (decorOn('bow') && S.sp !== 'moss') { // пышный зелёный бант-розетка из атласной ленты: два слоя петель, узелок и два хвостика
     const y = jar ? 0.75 : 0.4 * k, z = jar ? 0.5 : rAt(0.4) + 0.012, g = new T.Group(); g.position.set(0, y, z);
@@ -3078,14 +3085,14 @@ function decor3D(T, root, pot, plant) {
     const pl = new T.Mesh(new T.PlaneGeometry(0.2, 0.086), new T.MeshBasicMaterial({ map: tex, side: T.DoubleSide })); pl.position.y = 0.27; g.add(pl);
     g.rotation.y = -0.25; root.add(g); }
   if (decorOn('ladybug')) { const a = 0.75, r = jar ? 0.43 : 0.47 * k, g = new T.Group(); g.position.set(Math.sin(a) * r, jar ? 1.1 : 0.72 * k, Math.cos(a) * r);
-    if (brick) g.position.set(0.4, top + 0.005, 0.27); // на переднем углу кирпича
+    if (brick) { g.position.set(0.42, 0.075, 0.47); g.rotation.y = -2.2; } // ползёт по блюдцу перед кирпичом
     const body = new T.Mesh(new T.SphereGeometry(0.035, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), M('#d9332a')); g.add(body);
     const head = new T.Mesh(new T.SphereGeometry(0.016, 10, 8), M('#2a1a14')); head.position.set(0.034, 0.006, 0); g.add(head);
     for (const [px, pz] of [[-0.01, 0.017], [-0.01, -0.017], [0.012, 0.014], [0.012, -0.014]]) { const d = new T.Mesh(new T.SphereGeometry(0.007, 8, 6), M('#2a1a14')); d.position.set(px, 0.026, pz); g.add(d); }
     g.rotation.y = -a + Math.PI / 2; root.add(g); }
-  if (decorOn('gnome')) { const g = new T.Group(); g.position.set(brick ? -0.98 : -0.75 * (jar ? 1 : k), 0, brick ? 0.3 : 0.28); g.rotation.y = 0.5; // слева от горшка: справа стоят часы
+  if (decorOn('gnome')) { const g = new T.Group(); g.position.set(brick ? -0.46 : -0.75 * (jar ? 1 : k), brick ? 0.07 : 0, brick ? 0.44 : 0.28); // у мха — в блюдце рядом с кирпичом g.rotation.y = 0.5; // слева от горшка: справа стоят часы
     loadModel('models/room/gnome.glb').then(m => { // настоящий садовый гномик (Poly Haven, CC0)
-      const sz = new T.Box3().setFromObject(m).getSize(new T.Vector3()); m.scale.setScalar(0.4 / sz.y);
+      const sz = new T.Box3().setFromObject(m).getSize(new T.Vector3()); m.scale.setScalar((brick ? 0.3 : 0.4) / sz.y);
       m.position.y -= new T.Box3().setFromObject(m).min.y; toonify(m);
       g.clear(); g.add(m); g.rotation.y = 0.35;
     }).catch(() => {});
@@ -3107,11 +3114,21 @@ function makeBrick(T) { // пористый кирпич в блюдце с во
   const dish = new T.Mesh(new T.CylinderGeometry(0.72, 0.62, 0.07, 48), new T.MeshStandardMaterial({ color: 0xf3efe6, roughness: 0.4 })); dish.position.y = 0.035; g.add(dish);
   const water = new T.Mesh(new T.CircleGeometry(0.66, 48), new T.MeshStandardMaterial({ color: 0x8fbfd0, transparent: true, opacity: 0.25 + wet * 0.45, roughness: 0.1 }));
   water.rotation.x = -Math.PI / 2; water.position.y = 0.074; water.material.userData.outlineParameters = { visible: false }; g.add(water);
-  const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d');
-  x.fillStyle = mix('#c4704a', '#7e3a24', wet * 0.75); x.fillRect(0, 0, 256, 256);
-  for (let i = 0; i < 900; i++) { x.fillStyle = i % 3 ? 'rgba(90,40,24,.35)' : 'rgba(240,190,150,.25)'; x.beginPath(); x.arc((i * 97) % 256, (i * 53 + i * i) % 256, 0.8 + (i % 4) * 0.6, 0, 7); x.fill(); }
+  const B = mossBase(), cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d');
+  x.fillStyle = mix(B.face, '#1e1410', wet * 0.55); x.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < B.pores * 18; i++) { x.globalAlpha = 0.35; x.fillStyle = i % 3 ? B.pore : (B.light || mix(B.top, '#fff', 0.3)); x.beginPath(); x.arc((i * 97) % 256, (i * 53 + i * i) % 256, 0.8 + (i % 4) * 0.6, 0, 7); x.fill(); }
+  if (B.grain) { x.globalAlpha = 0.5; x.strokeStyle = B.pore; x.lineWidth = 2; for (let i = 0; i < 26; i++) { x.beginPath(); for (let px = 0; px <= 256; px += 8) x.lineTo(px, i * 10 + Math.sin(px / 30 + i) * 3); x.stroke(); } }
+  if (B.shells) { x.globalAlpha = 0.8; x.fillStyle = '#f6efdc'; for (let i = 0; i < 40; i++) { x.beginPath(); x.arc((i * 61) % 256, (i * 37) % 256, 4, Math.PI, 0); x.fill(); } }
+  x.globalAlpha = 1;
   const tex = new T.CanvasTexture(cv); tex.encoding = T.sRGBEncoding;
-  const brick = new T.Mesh(new T.BoxGeometry(0.95, 0.3, 0.5), new T.MeshStandardMaterial({ map: tex, roughness: 1 }));
+  // форма: кирпич ровный, камни — с неровными боками, речной камень — скруглённый; верх остаётся плоским, по нему растёт ковёр
+  const geo = new T.BoxGeometry(0.95, 0.3, 0.5, 10, 4, 6), ps = geo.attributes.position, v = new T.Vector3();
+  for (let i = 0; i < ps.count; i++) { v.fromBufferAttribute(ps, i);
+    if (B.round) { const ex = Math.abs(v.x) / 0.475, ez = Math.abs(v.z) / 0.25, ey = (0.15 - v.y) / 0.3; const k2 = 1 - 0.25 * Math.pow(Math.max(ex, ez), 6) - 0.12 * ey * ey; v.x *= k2; v.z *= k2; }
+    if (B.rough && v.y < 0.149) { const n = B.rough * (Math.sin(v.x * 23 + v.y * 17) + Math.cos(v.z * 29 - v.y * 11)); v.x += Math.sign(v.x) * n; v.z += Math.sign(v.z) * n; }
+    ps.setXYZ(i, v.x, v.y, v.z); }
+  geo.computeVertexNormals();
+  const brick = new T.Mesh(geo, new T.MeshStandardMaterial({ map: tex, roughness: B.round ? 0.6 : 1, flatShading: !!B.rough }));
   brick.position.y = 0.22; brick.rotation.y = 0.12; g.add(brick);
   g.userData.top = 0.37; return g;
 }
@@ -3622,11 +3639,11 @@ function buildEnv(T) {
       box(5.4, 0.18, 7.5, '#efe6d6', 0, 3.0, 2.6);
       box(5.4, 3.2, 0.12, '#e9d8c0', 0, 1.5, 6.3);
     }
-    prop('side_table', 1.5, 0, -0.25, -0.3, 0.95, () => { chair(1.35, 0, -0.2, -0.6, '#b08560'); cyl(0.25, 0.25, 0.04, '#8a5a3a', -1.3, 0.55, -0.3); }); // минималистичный столик из светлого дуба
-    prop('stool', 0.85, 0, 0.5, 0.6, 0.6); prop('stool', 2.25, 0, 0.45, -0.9, 0.6); // складные деревянные табуреты
-    prop('planter', -1.45, 0, -0.75, 0.2, 1, () => plantPot(-0.95, 0, -0.75, 1.4, '#4f8a2e', '#c4502a', 0xe86a8a));
-    prop('houseplant', 0.9, 0, -0.85, 0, 0.9, () => plantPot(0.85, 0, -0.85, 1.1, '#6aa84f', '#f3e6c8'));
-    prop('lantern', -0.75, 0, 0.35, 0, 1.2);
+    prop('side_table', 1.7, 0, -0.55, -0.3, 0.95, () => { chair(1.35, 0, -0.2, -0.6, '#b08560'); cyl(0.25, 0.25, 0.04, '#8a5a3a', -1.3, 0.55, -0.3); }); // минималистичный столик из светлого дуба
+    prop('stool', 0.98, 0, 0.82, 0.6, 0.6); prop('stool', 2.0, 0, 0.78, -0.9, 0.55); // складные деревянные табуреты
+    prop('planter', -1.6, 0, -0.85, 0.2, 0.82, () => plantPot(-0.95, 0, -0.75, 1.4, '#4f8a2e', '#c4502a', 0xe86a8a));
+    prop('houseplant', -1.65, 0, 0.95, 0, 0.85, () => plantPot(-1.65, 0, 0.95, 1.1, '#6aa84f', '#f3e6c8'));
+    prop('lantern', -0.8, 0, 0.05, 0, 1.2);
     if (SEASON === 'autumn') for (let i = 0; i < 24; i++) { const l = new T.Mesh(new T.CircleGeometry(0.05, 8), M(i % 2 ? '#d9822b' : '#c4502a')); l.rotation.x = -Math.PI / 2; l.position.set(Math.sin(i * 7) * 2, 0.005, Math.cos(i * 3) * 1.1); l.scale.y = 0.5; g.add(l); }
     if (SEASON === 'winter') for (let i = 0; i < 40; i++) { const f = new T.Mesh(new T.SphereGeometry(0.015, 6, 4), new T.MeshBasicMaterial({ color: 0xffffff })); f.position.set(Math.sin(i * 12.9) * 2.5, 0.3 + (i * 0.37) % 2.5, -0.6 + Math.cos(i * 4.1) * 1.2); g.add(f); }
   } else if (s.loc === 'sill') {
@@ -3662,9 +3679,9 @@ function buildEnv(T) {
       for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4, leg = new T.Mesh(new T.CylinderGeometry(0.05, 0.025, -fy * 1.03, 12), M('#c9a874', 0.6));
         leg.position.set(Math.cos(a) * 0.72, fy / 2, Math.sin(a) * 0.72); leg.rotation.set(Math.sin(a) * 0.12, 0, -Math.cos(a) * 0.12); g.add(leg); }
     }
-    prop('sofa', 0.4, fy, -2.75, 0, 1, null, { tint: '#cfcac0' }); // светло-серая ткань
-    prop('pouf', -1.35, fy, -1.7, 0.3, 0.9, null, { tint: '#e0b04a' }); // горчичный пуф
-    prop('armchair', 2.5, fy, -0.6, -1.0, 1, null, { tint: { modern_arm_chair_01_pillow: '#e2d6c0' } }); // деревянный каркас, светлые подушки
+    prop('sofa', 0.2, fy, -2.62, 0, 0.8, null, { tint: '#cfcac0' }); // светло-серая ткань
+    prop('pouf', -1.95, fy, -1.05, 0.3, 0.45, null, { tint: '#e0b04a' }); // горчичный пуф
+    prop('armchair', 2.75, fy, -0.3, -1.0, 0.75, null, { tint: { modern_arm_chair_01_pillow: '#e2d6c0' } }); // деревянный каркас, светлые подушки
     { // открытый стеллаж из светлой сосны: на полках книги, цветок и ваза, сверху часы
       const sx = -2.6, sz = -2.75, r = 0.3, W = 1.7, D = 0.5, H = 2.9, wood = '#e4c495';
       const at = (lx, lz) => [sx + lx * Math.cos(r) + lz * Math.sin(r), sz - lx * Math.sin(r) + lz * Math.cos(r)];
@@ -3679,7 +3696,7 @@ function buildEnv(T) {
     shell(-4.4, 4.4, fy, fy + 6.2, -3.45, 8, '#f3e6c8', null, '#fbf4e6');
     g.userData.bounds = [-4.2, 4.2, fy + 0.3, fy + 6.0, -3.2, 7.8];
     prop('clock', -2.3, fy + 2.9, -2.65, 0.6, 1);
-    prop('houseplant', 2.6, fy, -2.6, 0, 1.2);
+    prop('houseplant', 3.55, fy, -2.7, 0, 0.9);
     prop('picture', 0.4, fy + 1.6 * U, -3.33, 0, 1);
     cyl(0.02, 0.02, 1.8 * U * 0.8, '#3a3a3a', -3.1, fy + 0.9 * U * 0.8, -1.2);
     const shadeL = new T.Mesh(new T.CylinderGeometry(0.22, 0.34, 0.4, 20, 1, true), new T.MeshStandardMaterial({ color: '#f2e6c8', side: T.DoubleSide, emissive: '#3a2a10' })); shadeL.position.set(-3.1, fy + 1.8 * U * 0.8, -1.2); g.add(shadeL);
@@ -3695,8 +3712,8 @@ function buildEnv(T) {
     shell(-1.3, 3.6, fy, fy + 5.4, -1.0, 7, '#665e54', null, '#5a534a');
     g.userData.bounds = [-1.1, 3.4, fy + 0.3, fy + 5.2, -0.8, 6.8];
     prop('side_table', 0, fy, -0.15, 0, 1, () => box(1.0, -fy, 0.8, '#5a4636', 0, fy / 2, -0.2), { fitH: -fy }); // тумба из светлого дуба вровень с горшком
-    prop('lounge', 2.2, fy, 0.1, -0.9, 0.75); // кресло в стиле середины века (датский дизайн)
-    prop('pouf', -0.75, fy, 0.75, 0.3, 0.8, () => box(0.5, 0.4, 0.4, '#8a6a4a', -0.75, fy + 0.2, 0.6), { tint: '#9fb59a' }); // шалфейный пуф
+    prop('lounge', 2.3, fy, 0.5, -0.9, 0.55); // кресло в стиле середины века (датский дизайн)
+    prop('pouf', -0.7, fy, 1.0, 0.3, 0.35, () => box(0.5, 0.4, 0.4, '#8a6a4a', -0.75, fy + 0.2, 0.6), { tint: '#9fb59a' }); // шалфейный пуф
   }
   if (s.shade && !L.win) { const n = new T.Mesh(new T.PlaneGeometry(4, 3), new T.MeshStandardMaterial({ color: '#2f4a33', transparent: true, opacity: 0.45, side: T.DoubleSide })); n.rotation.x = Math.PI / 2; n.position.y = 2.4; g.add(n); }
   if (s.lamp) { // фитолампа на шнуре; если растение выше, она поднимается (см. update3D)
@@ -3801,7 +3818,8 @@ async function update3D() {
         obj.scale.setScalar(2.2 * pr.k); obj.rotation.y = pr.rot;
         if (pr.o.fitH) obj.scale.multiplyScalar(pr.o.fitH / new T.Box3().setFromObject(obj).getSize(new T.Vector3()).y);
         if (pr.o.tint) obj.traverse(m => { if (!m.isMesh) return; const c = typeof pr.o.tint === 'string' ? pr.o.tint : pr.o.tint[m.material.name]; if (c) { m.material = m.material.clone(); m.material.map = null; m.material.color.set(c); } });
-        obj.position.set(pr.x, pr.y, pr.z); env3.add(toonify(obj));
+        const bb = new T.Box3().setFromObject(obj), cc = bb.getCenter(new T.Vector3());
+        obj.position.set(pr.x - cc.x, pr.y - bb.min.y, pr.z - cc.z); obj.name = 'prop:' + pr.name; env3.add(toonify(obj));
       }).catch(() => { if (m3.env === env3 && pr.fallback) { pr.fallback(); toonify(env3); } });
     }
   }
@@ -3816,7 +3834,7 @@ async function update3D() {
   m3.amb.intensity = e.dl > 0 ? 0.12 : 0.22;
   m3.lamp.intensity = s.lamp ? 1.8 : 0;
   const dz = s.disease ? s.disease.id + Math.round(s.disease.sev * 4) : '';
-  const sig = [skinOf(s, levelOf(s.xp)).name, Object.keys(DECOR).filter(decorOn).join(','), G.student && G.student.name, s.frost, s.pot, potSoon(s), rootbound(s), s.sp, s.crop, Math.round(s.biomass * 2), stageOf(s), Math.round(s.fruit * 8), Math.round(s.turgor * 5), Math.round(s.hp / 12), dz, levelOf(s.xp), !!s.dead, s.sp === 'algae' ? Math.round(s.moisture / 12) + '/' + (s.lastP > 0.25) : '', Math.round(s.moisture / 25), Math.round(s.chl * 5)].join('|');
+  const sig = [s.sp === 'moss' ? mossBase().name : '', skinOf(s, levelOf(s.xp)).name, Object.keys(DECOR).filter(decorOn).join(','), G.student && G.student.name, s.frost, s.pot, potSoon(s), rootbound(s), s.sp, s.crop, Math.round(s.biomass * 2), stageOf(s), Math.round(s.fruit * 8), Math.round(s.turgor * 5), Math.round(s.hp / 12), dz, levelOf(s.xp), !!s.dead, s.sp === 'algae' ? Math.round(s.moisture / 12) + '/' + (s.lastP > 0.25) : '', Math.round(s.moisture / 25), Math.round(s.chl * 5)].join('|');
   if (sig !== m3sig && !m3busy) {
     m3busy = true; m3sig = sig;
     const plant = toonify(await buildPlant3D(T));
@@ -4117,8 +4135,19 @@ const NEED_TEXT = {
   cured: () => 'Вылечи растение от болезни', repot: () => 'Пересади растение в горшок побольше', done: () => 'Вырасти растение до семян (замкни цикл)',
   decor: () => 'Собери все украшения за опыты', expAll: () => 'Проведи все опыты: йод и ещё 6',
 };
-function skinOpen(key) {
-  const n = POT_SKINS[key].need; if (!n || !G) return true;
+// камни для мха: на чём растёт ковёр. Открываются так же, как раскраски горшка
+const MOSS_BASES = {
+  brick: { name: 'Старый кирпич', face: '#c4704a', top: '#d68a62', side: '#a85a38', pore: '#5a2a18', rough: 0, pores: 46 },
+  granite: { name: 'Гранит', face: '#9c9a94', top: '#b2b0a8', side: '#85837d', pore: '#2f2e2c', light: '#e8e4dc', rough: 0.03, pores: 70, need: { lvl: 3 } },
+  limestone: { name: 'Ракушечник', face: '#ddd0b2', top: '#e9dfc6', side: '#c9bb9a', pore: '#8a7a5a', light: '#fff8e8', rough: 0.02, pores: 60, shells: 1, need: { exp: 2 } },
+  river: { name: 'Речной камень', face: '#8c9aa2', top: '#a3b0b6', side: '#76848c', pore: '#5a666c', rough: 0, round: 1, pores: 12, need: { cured: 1 } },
+  lava: { name: 'Вулканический туф', face: '#5a4f4a', top: '#6e625b', side: '#463d39', pore: '#1e1a18', rough: 0.035, pores: 120, need: { blocks: 1 } },
+  wood: { name: 'Коряга', face: '#8a6a4a', top: '#a07c58', side: '#6e5238', pore: '#4a3422', rough: 0.02, grain: 1, pores: 0, need: { done: 1 } },
+};
+function baseOpen(key) { return !MOSS_BASES[key].need || skinOpen.call(null, key, MOSS_BASES[key].need); }
+const mossBase = () => MOSS_BASES[G && G.mossBase && baseOpen(G.mossBase) ? G.mossBase : 'brick'];
+function skinOpen(key, needOverride) {
+  const n = needOverride || POT_SKINS[key].need; if (!n || !G) return true;
   const P = Object.values(G.plants);
   if (n.lvl) return P.some(p => levelOf(p.xp) >= n.lvl);
   if (n.exp) return new Set(P.flatMap(p => Object.keys(p.expDone || {}))).size >= n.exp;
@@ -4176,7 +4205,19 @@ function potTexture(T, K) {
   }
   const t = new T.CanvasTexture(cv); t.encoding = T.sRGBEncoding; t.anisotropy = 4; return t;
 }
+function openBases() { // для мха: на каком камне растёт ковёр
+  const cur = (G && G.mossBase) || 'brick';
+  $('skinTitle').textContent = 'Камни для мха';
+  $('skinGrid').innerHTML = Object.entries(MOSS_BASES).map(([k, B]) => { const open = baseOpen(k), nt = B.need ? NEED_TEXT[Object.keys(B.need)[0]](Object.values(B.need)[0]) : '';
+    return `<button class="skin${cur === k ? ' on' : ''}" data-base="${k}" ${open ? '' : `aria-disabled="true" data-tip="${nt}"`}>
+      <svg viewBox="96 290 210 132" aria-hidden="true">${open ? '' : '<g opacity=".35">'}${drawBrick({ moisture: 40 }, B)}${open ? '' : '</g>'}${open ? '' : '<path d="M182 336 h16 v14 h-16 z M185 336 v-5 a5 5 0 0 1 10 0 v5" fill="none" stroke="#fff" stroke-width="3"/>'}</svg>
+      <b>${B.name}</b><small>${open ? (cur === k ? 'мох растёт здесь' : 'открыто') : nt}</small></button>`; }).join('');
+  $('skinCount').textContent = `Открыто ${Object.keys(MOSS_BASES).filter(baseOpen).length} из ${Object.keys(MOSS_BASES).length}`;
+  $('skinModal').hidden = false; $('skinClose').focus();
+}
 function openSkins() {
+  if (S && SPECIES[S.sp].onRock) return openBases();
+  $('skinTitle').textContent = 'Раскраски горшка';
   const cur = (G && G.potSkin) || 'auto';
   const card = (key, K, open) => `<button class="skin${cur === key ? ' on' : ''}" data-skin="${key}" ${open ? '' : `aria-disabled="true" data-tip="${NEED_TEXT[Object.keys(K.need)[0]](Object.values(K.need)[0])}"`}>
     <svg viewBox="126 284 148 132" aria-hidden="true">${open ? '' : '<g opacity=".35">'}${drawPot({ moisture: 55, minerals: 40 }, 1, K, true)}${open ? '' : '</g>'}${open ? '' : '<path d="M192 330 h16 v14 h-16 z M195 330 v-5 a5 5 0 0 1 10 0 v5" fill="none" stroke="#4a3a2e" stroke-width="3"/>'}</svg>
@@ -4192,6 +4233,8 @@ $('aSkins').onclick = openSkins;
 $('skinClose').onclick = () => { $('skinModal').hidden = true; };
 $('skinModal').addEventListener('click', ev => {
   if (ev.target === $('skinModal')) { $('skinModal').hidden = true; return; }
+  const bb = ev.target.closest('[data-base]');
+  if (bb) { if (bb.getAttribute('aria-disabled') === 'true') return; G.mossBase = bb.dataset.base; save(); render(); openBases(); return; }
   const b = ev.target.closest('[data-skin]'); if (!b || b.getAttribute('aria-disabled') === 'true') return;
   G.potSkin = b.dataset.skin; save(); render(); openSkins();
 });
@@ -4200,7 +4243,12 @@ document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !$('skin
 function checkSkins() {
   if (!G) return;
   // при первом запуске новой версии уже открытые раскраски считаем увиденными, без шквала плашек
-  if (!G.skinSeen || !Object.keys(G.skinSeen).length) { G.skinSeen = { _init: true }; for (const k in POT_SKINS) if (POT_SKINS[k].need && skinOpen(k)) G.skinSeen[k] = true; return; }
+  if (!G.skinSeen || !Object.keys(G.skinSeen).length) { G.skinSeen = { _init: true }; for (const k in POT_SKINS) if (POT_SKINS[k].need && skinOpen(k)) G.skinSeen[k] = true; }
+  if (!G.skinSeen._bases) { G.skinSeen._bases = true; for (const k in MOSS_BASES) if (MOSS_BASES[k].need && baseOpen(k)) G.skinSeen['base:' + k] = true; return; }
+  for (const [k, B] of Object.entries(MOSS_BASES)) if (B.need && !G.skinSeen['base:' + k] && baseOpen(k)) {
+    G.skinSeen['base:' + k] = true;
+    if (S) popup(S, 'Новый камень', `Открыт камень для мха «${B.name}»`, 'Посади на него мох: у мха во вкладке «Уход и приборы» есть кнопка «Камни для мха».', 'good');
+  }
   for (const [k, K] of Object.entries(POT_SKINS)) if (K.need && !G.skinSeen[k] && skinOpen(k)) {
     G.skinSeen[k] = true;
     if (S) popup(S, 'Новая раскраска', `Открыта раскраска горшка «${K.name}»`, 'Выбери её кнопкой «Раскраски горшка» во вкладке «Уход и приборы».', 'good');
