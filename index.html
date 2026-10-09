@@ -414,6 +414,13 @@ header #openSettings { flex: none; }
   font: 700 12.5px/1.35 var(--f-body); text-align: center; pointer-events: none; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
 .float-tip::after { content: ''; position: absolute; left: var(--ax, 50%); top: 100%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: var(--ink); border-bottom: 0; }
 .float-tip.below::after { top: auto; bottom: 100%; border: 6px solid transparent; border-bottom-color: var(--ink); border-top: 0; }
+.new-tip { background: #2f6e2c; color: #fff; pointer-events: auto; cursor: pointer; text-align: left; max-width: min(280px, calc(100vw - 16px)); animation: newpop .35s ease-out; }
+.new-tip::after { border-top-color: #2f6e2c !important; }
+.new-tip.below::after { border-top-color: transparent !important; border-bottom-color: #2f6e2c !important; }
+.new-tip b { color: #fff59a; } .new-tip span { font-weight: 600; opacity: .92; }
+.is-new { animation: newglow 1.2s ease-in-out infinite; }
+@keyframes newpop { from { transform: translateY(6px) scale(.9); opacity: 0; } }
+@keyframes newglow { 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--leaf) 45%, transparent), 0 2px 0 var(--outline); } }
 /* ===== Финальный тест ===== */
 .final-form { display: grid; gap: 14px; }
 .final-form .fq { display: grid; gap: 6px; }
@@ -487,7 +494,7 @@ header #openSettings { flex: none; }
     <div class="head">
       <div>
         <h2 id="hSet">Выбор растения</h2>
-        <p class="sub">Вырасти растение и доведи его до размножения. Оно отвечает на свет, воду, жару и удобрения так же, как настоящее. Следи за приборами и читай дневник наблюдений.</p>
+        <p class="sub">Вырасти растение так, чтобы оно дало семена или споры. Оно отвечает на свет, воду, жару и удобрения так же, как настоящее. Следи за приборами и читай дневник наблюдений.</p>
         <p class="lead" id="setLead">У каждой группы своя биология: кому-то нужна тень и сырость, кому-то солнце; одни размножаются семенами, другие спорами.</p>
       </div>
       <button class="btn" id="closeSettings">Закрыть</button>
@@ -2808,6 +2815,7 @@ function render() {
   else $('iodine').hidden = true;
   drawScene();
   paneBadges();
+  announceNew();
 }
 
 // места
@@ -4182,6 +4190,51 @@ document.addEventListener('mouseover', ev => {
   if (tipFor) hideTip();
   if (t && !h.disabled && h.getAttribute('aria-disabled') !== 'true') hintT = setTimeout(() => showTip(h, t), 450);
 });
+// ---------- «Теперь можно!» ----------
+// Когда в игре появляется или разблокируется кнопка, рядом с ней всплывает плашка: что теперь можно сделать. Каждая — один раз.
+const NEW_SEL = '#aFeed, #aRepot, #aIodine, #aDecor, #aSkins, #aLamp, #aShade, #aRepro, #aFlower, #aLoupe, #bCut, #bFinal, [data-exp], [data-loc]';
+const newEl = document.createElement('div'); newEl.className = 'float-tip new-tip'; newEl.hidden = true; newEl.setAttribute('role', 'status'); document.body.appendChild(newEl);
+let newQ = [], newFor = null, newT = 0;
+const btnKey = b => 'btn:' + (b.id === 'aFlower' ? 'aFlower-' + (b.dataset.kind || '') : b.id);
+const usable = b => !b.hidden && !b.disabled && b.getAttribute('aria-disabled') !== 'true' && !(b.parentElement && b.parentElement.closest('[hidden]:not(.pane)'));
+const btnName = b => [...b.childNodes].filter(n => !(n.classList && n.classList.contains('dot'))).map(n => n.textContent).join('').trim().replace(/\s+/g, ' ');
+function announceNew() {
+  if (!G || !S || S.dead) return;
+  G.skinSeen = G.skinSeen || {};
+  const btns = [...document.querySelectorAll(NEW_SEL)].filter(usable);
+  if (!G.skinSeen._btns) { G.skinSeen._btns = true; btns.forEach(b => G.skinSeen[btnKey(b)] = true); save(); return; }
+  let added = false;
+  for (const b of btns) { const k = btnKey(b); if (G.skinSeen[k]) continue; G.skinSeen[k] = true; newQ.push(b); added = true; }
+  if (added) { save(); if (!newFor) nextNew(); }
+}
+function placeFloat(el, a) {
+  const r = a.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+  const x = clamp(r.left + r.width / 2 - w / 2, 8, innerWidth - w - 8); let y = r.top - h - 10; const below = y < 8; if (below) y = r.bottom + 10;
+  el.style.left = x + 'px'; el.style.top = y + 'px'; el.classList.toggle('below', below);
+  el.style.setProperty('--ax', clamp(r.left + r.width / 2 - x, 12, w - 12) + 'px');
+}
+function newAnchor(b) {
+  if (b.offsetParent) return [b, ''];
+  const p = b.closest('.pane'), tab = p && $('pt-' + p.dataset.pane);
+  return tab && tab.offsetParent ? [tab, ` — во вкладке «${btnName(tab)}»`] : [null, ''];
+}
+function nextNew() {
+  clearTimeout(newT); document.querySelectorAll('.is-new').forEach(x => x.classList.remove('is-new'));
+  newFor = null; newEl.hidden = true;
+  if (tour) { newT = setTimeout(nextNew, 1500); return; }
+  while (newQ.length) {
+    const b = newQ.shift(); if (!b.isConnected || !usable(b)) continue;
+    const [a, where] = newAnchor(b); if (!a) continue;
+    const h = hintOf(b);
+    newEl.innerHTML = `<b>Теперь можно!</b> «${btnName(b)}»${where}${h ? '<br><span>' + h + '</span>' : ''}`;
+    newEl.hidden = false; placeFloat(newEl, a); newFor = [b, a];
+    b.classList.add('is-new'); a.classList.add('is-new');
+    newT = setTimeout(nextNew, 7000); return;
+  }
+}
+document.addEventListener('click', ev => { if (!newFor) return; const [b, a] = newFor; if (b.contains(ev.target) || a.contains(ev.target) || newEl.contains(ev.target)) nextNew(); });
+document.addEventListener('scroll', () => { if (newFor) { const [b] = newFor; const [a] = newAnchor(b); a ? placeFloat(newEl, a) : nextNew(); } }, true);
+addEventListener('resize', () => { if (newFor) placeFloat(newEl, newFor[1]); });
 document.addEventListener('pointerdown', ev => { clearTimeout(hintT); if (ev.pointerType !== 'mouse' || !tipTarget(ev.target)) hideTip(); }, true);
 document.addEventListener('scroll', hideTip, true);
 // нажатие на заблокированную кнопку не выполняет действие, а показывает подсказку (на телефоне нет наведения)
@@ -4637,7 +4690,7 @@ document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !$('deco
 // Приветствие при первом заходе (поверх выбора растения) и экскурсия по экрану после посадки первого растения.
 const TOUR_WELCOME = [
   { k: 'Добро пожаловать', t: 'PetPlant 🌱', x: 'Здесь ты вырастишь настоящее растение — от семени или споры до плодов и семян. Оно живёт по законам биологии: без света не образует крахмал, от лишних удобрений у него горят корни, а в жару оно испаряет больше воды.' },
-  { k: 'Как выиграть', t: 'Доведи растение до размножения', x: 'Ухаживай за ним, следи за приборами и проходи блоки курса: каждый блок открывает новые инструменты. Без пройденных блоков растение не вырастет до конца.' },
+  { k: 'Как выиграть', t: 'Вырасти растение, чтобы оно дало потомство', x: 'Ухаживай за ним, следи за приборами и проходи блоки курса: каждый блок открывает новые инструменты. Без пройденных блоков растение не вырастет до конца.' },
   { k: 'С чего начать', t: 'Выбери растение', x: 'Сначала выбери группу: водоросли, мхи, плауны, папоротники, голосеменные или цветковые. У каждой своя биология. Впиши своё имя — так учитель увидит твои успехи.', target: '#species' },
 ];
 const TOUR_GAME = [
