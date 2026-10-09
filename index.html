@@ -2070,6 +2070,12 @@ function decor2D(where) {
 }
 // мох растёт на старом пористом кирпиче: кирпич стоит в блюдце с водой и впитывает её снизу, как губка.
 // Влажный кирпич темнее. Ризоиды цепляются за поры у самой поверхности.
+function decorBrick2D() {
+  let o = '';
+  if (decorOn('pebbles')) ['#e8737a', '#6fa8dc', '#f2b45a', '#8bc46a', '#b48fd1', '#f6d36b'].forEach((c, i) => o += `<ellipse cx="${[86, 100, 300, 314, 96, 306][i]}" cy="${[402, 408, 400, 407, 414, 413][i]}" rx="5" ry="3" fill="${c}" stroke="rgba(0,0,0,.25)"/>`);
+  if (decorOn('ladybug')) o += `<g transform="translate(262 312)"><ellipse rx="8" ry="6" fill="#d9332a" stroke="#4a1a14"/><path d="M0 -6 L0 6" stroke="#4a1a14"/><circle cx="-8" cy="0" r="3.5" fill="#2a1a14"/><circle cx="-3" cy="-2" r="1.4" fill="#2a1a14"/><circle cx="3" cy="2" r="1.4" fill="#2a1a14"/></g>`;
+  return o;
+}
 function drawBrick(s) {
   const wet = clamp(s.moisture / 100, 0, 1), face = mix('#c4704a', '#7e3a24', wet * 0.75), top = mix('#d68a62', '#94492e', wet * 0.75), side = mix('#a85a38', '#64301e', wet * 0.75);
   let o = `<defs><clipPath id="humusClip"><path d="M126 302 L286 302 L270 318 L110 318 Z"/></clipPath></defs>`;
@@ -2612,7 +2618,7 @@ function drawScene() {
   const lvl = levelOf(s.xp);
   const ctx = { droop: clamp(1 - s.turgor, 0, 1), col: leafColor(s), st: stageOf(s), lush: (lvl - 1) / 9, lvl };
   let o = drawBackground(s, e);
-  if (s.sp === 'moss') o += drawBrick(s);
+  if (s.sp === 'moss') o += drawBrick(s) + decorBrick2D();
   else if (s.sp !== 'algae') {
     const k = [1, 1, 1.12, 1.24][s.pot || 1];
     o += `<g transform="translate(200 410) scale(${k}) translate(-200 -410)">${drawPot(s, lvl)}</g>`;
@@ -3015,9 +3021,11 @@ function loadModel(url) {
 function decor3D(T, root, pot, plant) {
   const k = pot.scale.x, jar = S.sp === 'algae', top = pot.userData.top, M = c => new T.MeshStandardMaterial({ color: c, roughness: 0.6 });
   const rAt = y => jar ? 0.42 : (0.32 + 0.1 * clamp(y / 0.62, 0, 1)) * k; // радиус горшка на высоте y
+  const brick = S.sp === 'moss'; // мох растёт на кирпиче в блюдце
   if (decorOn('pebbles')) ['#e8737a', '#6fa8dc', '#f2b45a', '#8bc46a', '#b48fd1', '#f6d36b', '#ef9a6a', '#5fb7c9'].forEach((c, i) => {
     const m = new T.Mesh(new T.SphereGeometry(0.035, 10, 8), M(c)); m.scale.set(1, 0.5, 0.8); const a = i * 2.4, r = (0.16 + (i % 3) * 0.06) * (jar ? 1 : k);
-    m.position.set(Math.cos(a) * r, jar ? 0.04 : top + 0.012, Math.sin(a) * r); root.add(m); });
+    if (brick) { const rr = 0.56 + (i % 2) * 0.06; m.position.set(Math.cos(a) * rr, 0.085, Math.sin(a) * rr); } // в блюдце вокруг кирпича
+    else m.position.set(Math.cos(a) * r, jar ? 0.04 : top + 0.012, Math.sin(a) * r); root.add(m); });
   if (decorOn('bow') && S.sp !== 'moss') { // пышный зелёный бант-розетка из атласной ленты: два слоя петель, узелок и два хвостика
     const y = jar ? 0.75 : 0.4 * k, z = jar ? 0.5 : rAt(0.4) + 0.012, g = new T.Group(); g.position.set(0, y, z);
     const satin = new T.MeshStandardMaterial({ color: '#2f9e55', roughness: 0.35, side: T.DoubleSide }), satin2 = new T.MeshStandardMaterial({ color: '#4cbf6e', roughness: 0.3, side: T.DoubleSide });
@@ -3050,11 +3058,12 @@ function decor3D(T, root, pot, plant) {
     const pl = new T.Mesh(new T.PlaneGeometry(0.2, 0.086), new T.MeshBasicMaterial({ map: tex, side: T.DoubleSide })); pl.position.y = 0.27; g.add(pl);
     g.rotation.y = -0.25; root.add(g); }
   if (decorOn('ladybug')) { const a = 0.75, r = jar ? 0.43 : 0.47 * k, g = new T.Group(); g.position.set(Math.sin(a) * r, jar ? 1.1 : 0.72 * k, Math.cos(a) * r);
+    if (brick) g.position.set(0.4, top + 0.005, 0.27); // на переднем углу кирпича
     const body = new T.Mesh(new T.SphereGeometry(0.035, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), M('#d9332a')); g.add(body);
     const head = new T.Mesh(new T.SphereGeometry(0.016, 10, 8), M('#2a1a14')); head.position.set(0.034, 0.006, 0); g.add(head);
     for (const [px, pz] of [[-0.01, 0.017], [-0.01, -0.017], [0.012, 0.014], [0.012, -0.014]]) { const d = new T.Mesh(new T.SphereGeometry(0.007, 8, 6), M('#2a1a14')); d.position.set(px, 0.026, pz); g.add(d); }
     g.rotation.y = -a + Math.PI / 2; root.add(g); }
-  if (decorOn('gnome')) { const g = new T.Group(); g.position.set(-0.75 * (jar ? 1 : k), 0, 0.28); g.rotation.y = 0.5; // слева от горшка: справа стоят часы
+  if (decorOn('gnome')) { const g = new T.Group(); g.position.set(brick ? -0.98 : -0.75 * (jar ? 1 : k), 0, brick ? 0.3 : 0.28); g.rotation.y = 0.5; // слева от горшка: справа стоят часы
     loadModel('models/room/gnome.glb').then(m => { // настоящий садовый гномик (Poly Haven, CC0)
       const sz = new T.Box3().setFromObject(m).getSize(new T.Vector3()); m.scale.setScalar(0.4 / sz.y);
       m.position.y -= new T.Box3().setFromObject(m).min.y; toonify(m);
@@ -3375,26 +3384,47 @@ function proceduralPlant(T) {
       g.add(fr); }
     return g;
   }
-  if (S.sp === 'moss') { // кукушкин лён: стебельки с жёсткими листочками, позже — коробочки на ножках
-    const n = 14 + Math.round(k * 40), leafG = new T.ConeGeometry(0.006, 0.04, 3), dry = clamp(1 - S.turgor, 0, 1);
-    const mm = new T.MeshStandardMaterial({ color: col.clone().lerp(new T.Color('#8f7e44'), dry * 0.8), roughness: 0.8 });
-    for (let i = 0; i < n; i++) {
-      const r = 0.36 * Math.sqrt(rnd()), a = rnd() * Math.PI * 2, h = (0.08 + k * 0.18) * (0.7 + rnd() * 0.5);
-      const sh = new T.Group(); sh.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); sh.rotation.set((rnd() - 0.5) * 0.3, 0, (rnd() - 0.5) * 0.3);
-      const stem = new T.Mesh(new T.CylinderGeometry(0.004, 0.005, h, 5), mm); stem.position.y = h / 2; sh.add(stem);
-      for (let j = 0; j < 7; j++) for (let q = 0; q < 4; q++) {
-        const l = new T.Mesh(leafG, mm), y = h * (0.25 + 0.75 * j / 7), b = q * 1.57 + j;
-        l.position.set(Math.cos(b) * 0.012, y, Math.sin(b) * 0.012); l.rotation.set(Math.sin(b) * (0.9 - dry * 0.6), 0, -Math.cos(b) * (0.9 - dry * 0.6)); sh.add(l);
-      }
-      if (st >= 3 && st <= 4 && i % 3 === 0) { const t = new T.Mesh(new T.SphereGeometry(0.012, 8, 6), new T.MeshStandardMaterial({ color: '#c45a3a' })); t.position.y = h + 0.01; sh.add(t); }
-      if (st >= 5 && i % 3 === 1) {
-        const gr = st === 6 ? 1 : S.fruit, sl = 0.04 + gr * 0.22;
-        const seta = new T.Mesh(new T.CylinderGeometry(0.002, 0.002, sl, 4), new T.MeshStandardMaterial({ color: '#b0603a' })); seta.position.y = h + sl / 2; sh.add(seta);
-        const cap = new T.Mesh(new T.CapsuleGeometry(0.008 + gr * 0.006, 0.02 + gr * 0.015, 4, 8), new T.MeshStandardMaterial({ color: new T.Color('#7fae4a').lerp(new T.Color('#7a5530'), gr) }));
-        cap.position.y = h + sl + 0.015; if (st === 6) cap.rotation.z = 0.8; sh.add(cap);
-      }
-      g.add(sh);
+  if (S.sp === 'moss') { // ковёр мха на кирпиче: густые дерновинки затягивают верх неровным пятном и свешиваются с краёв
+    const dry = clamp(1 - S.turgor, 0, 1), W = 0.47, D = 0.24, step = 0.026;
+    g.rotation.y = 0.12; // как кирпич
+    const cover = clamp(0.12 + S.biomass / 13, 0.12, 1.05); // доля поверхности, которую уже занял мох
+    const field = (x, z) => { // где мох появился раньше: от центра пятна, с неровной «рваной» границей, как на живом кирпиче
+      const d = Math.hypot((x - 0.08) / W, (z + 0.02) / D) / 1.45;
+      return d + 0.16 * Math.sin(x * 23 + z * 7) + 0.1 * Math.sin(z * 31 - x * 11) + 0.08 * Math.cos(x * 41);
+    };
+    const tuft = new T.IcosahedronGeometry(0.019, 0); tuft.scale(1, 0.85, 1); tuft.translate(0, 0.012, 0);
+    const mm = new T.MeshStandardMaterial({ color: '#ffffff', roughness: 0.85 }); mm.userData.outlineParameters = { visible: false };
+    const spots = [];
+    for (let x = -W + step / 2; x < W; x += step) for (let z = -D + step / 2; z < D; z += step) {
+      const jx = x + (rnd() - 0.5) * step * 0.8, jz = z + (rnd() - 0.5) * step * 0.8;
+      if (field(jx, jz) < cover) spots.push([jx, 0, jz, 0, 0]);
     }
+    // по краям мох свешивается на боковые грани кирпича
+    for (const sp0 of spots.slice()) { const [x, , z] = sp0;
+      if (Math.abs(z) > D - step && rnd() < 0.7) for (let q = 1; q <= 1 + Math.floor(cover * 3); q++) spots.push([x, -q * step * 0.9, Math.sign(z) * (D + 0.004), Math.sign(z) * 1.4, 0]);
+      if (Math.abs(x) > W - step && rnd() < 0.7) for (let q = 1; q <= 1 + Math.floor(cover * 3); q++) spots.push([Math.sign(x) * (W + 0.004), -q * step * 0.9, z, 0, -Math.sign(x) * 1.4]); }
+    const n = spots.length, im = new T.InstancedMesh(tuft, mm, n * 3), m4 = new T.Matrix4(), q4 = new T.Quaternion(), e3 = new T.Euler(), sc = new T.Vector3(), ps = new T.Vector3();
+    const greens = ['#5fb33a', '#79c84a', '#4f9e32', '#8fd65a', '#6abf3f'].map(c => new T.Color(c).lerp(new T.Color('#9a8a4a'), dry * 0.75));
+    let c = 0, h0 = 0.6 + Math.min(1, S.biomass / 12) * 0.7;
+    for (const [x, y, z, rx, rz] of spots) for (let t = 0; t < 3; t++) {
+      ps.set(x + (rnd() - 0.5) * 0.02, y, z + (rnd() - 0.5) * 0.02);
+      e3.set(rx + (rnd() - 0.5) * 0.6, rnd() * 6, rz + (rnd() - 0.5) * 0.6); q4.setFromEuler(e3);
+      const s0 = (0.7 + rnd() * 0.6) * h0; sc.set(s0, s0 * (0.8 + rnd() * 0.6), s0);
+      m4.compose(ps, q4, sc); im.setMatrixAt(c, m4); im.setColorAt(c, greens[Math.floor(rnd() * greens.length)]); c++;
+    }
+    im.count = c; g.add(im);
+    // мужские растения с красноватыми «цветочками» (антеридии), потом коробочки на ножках — спорофиты
+    const tops = spots.filter(p => p[1] === 0);
+    const red = new T.MeshStandardMaterial({ color: '#c45a3a' });
+    tops.forEach((p, i) => {
+      if (st >= 3 && st <= 4 && rnd() < 0.07) { const t = new T.Mesh(new T.SphereGeometry(0.009, 8, 6), red); t.position.set(p[0], 0.05 * h0, p[2]); g.add(t); }
+      if (st >= 5 && rnd() < 0.12) {
+        const gr = st === 6 ? 1 : S.fruit, sl = 0.04 + gr * 0.2;
+        const seta = new T.Mesh(new T.CylinderGeometry(0.002, 0.002, sl, 4), new T.MeshStandardMaterial({ color: '#b0603a' })); seta.position.set(p[0], 0.04 + sl / 2, p[2]); g.add(seta);
+        const cap = new T.Mesh(new T.CapsuleGeometry(0.007 + gr * 0.005, 0.018 + gr * 0.012, 4, 8), new T.MeshStandardMaterial({ color: new T.Color('#7fae4a').lerp(new T.Color('#7a5530'), gr) }));
+        cap.position.set(p[0], 0.04 + sl + 0.013, p[2]); if (st === 6) cap.rotation.z = 0.8; g.add(cap);
+      }
+    });
     return g;
   }
   if (S.sp === 'algae') { // нити спирогиры в банке
