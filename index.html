@@ -3471,6 +3471,18 @@ function proceduralPlant(T) {
         if (nrm.y < 0.3) continue; // на отвесных боках мох не держится
         if (rnd() < cover) spots.push([hit.point.x, hit.point.y, hit.point.z, nrm]); // мох равномерно густеет по камню
       }
+      // когда ковёр загустел, мох заползает и на бока камня: ищем бока лучами снаружи
+      if (cover > 0.5) {
+        const c = bb.getCenter(new T.Vector3()), hh = bb.max.y - bb.min.y;
+        for (let a = 0; a < Math.PI * 2; a += 0.06) for (let yy = bb.min.y + hh * 0.35; yy < bb.max.y - 0.01; yy += step) {
+          const dir = new T.Vector3(-Math.cos(a), 0, -Math.sin(a)); from.set(c.x + Math.cos(a) * 2, yy, c.z + Math.sin(a) * 2); rc.set(from, dir);
+          const hit = rc.intersectObject(surf, true)[0]; if (!hit || !hit.face) continue;
+          const nrm = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+          if (nrm.y < -0.2 || nrm.y >= 0.3) continue; // верх уже покрыт, под нависанием мох не растёт
+          const lowK = (yy - bb.min.y) / hh; // чем выше по боку, тем гуще
+          if (rnd() < (cover - 0.4) * 1.4 * lowK) spots.push([hit.point.x, hit.point.y, hit.point.z, nrm]);
+        }
+      }
     }
     const n = spots.length, im = new T.InstancedMesh(tuft, mm, n * 4), m4 = new T.Matrix4(), q4 = new T.Quaternion(), e3 = new T.Euler(), sc = new T.Vector3(), ps = new T.Vector3();
     const greens = ['#5fb33a', '#79c84a', '#4f9e32', '#8fd65a', '#6abf3f'].map(c => new T.Color(c).lerp(new T.Color('#9a8a4a'), dry * 0.75));
@@ -3478,7 +3490,7 @@ function proceduralPlant(T) {
     const up = new T.Vector3(0, 1, 0), qa = new T.Quaternion(), qy = new T.Quaternion();
     for (const [x, y, z, nrm] of spots) for (let t = 0; t < 4; t++) {
       ps.set(x + (rnd() - 0.5) * 0.02, y - 0.004, z + (rnd() - 0.5) * 0.02);
-      qa.setFromUnitVectors(up, nrm.clone().lerp(up, 0.45).normalize()); qy.setFromAxisAngle(up, rnd() * 6.28);
+      qa.setFromUnitVectors(up, nrm.clone().lerp(up, nrm.y < 0.6 ? 0.8 : 0.6).normalize()); // побеги тянутся вверх, к свету, даже на боках камня qy.setFromAxisAngle(up, rnd() * 6.28);
       e3.set((rnd() - 0.5) * 0.4, 0, (rnd() - 0.5) * 0.4); q4.setFromEuler(e3).premultiply(qy).premultiply(qa);
       const s0 = (0.75 + rnd() * 0.5) * h0, droop = 1 - dry * 0.35; sc.set(s0, s0 * (0.7 + rnd() * 0.6) * droop, s0);
       m4.compose(ps, q4, sc); im.setMatrixAt(c, m4); im.setColorAt(c, greens[Math.floor(rnd() * greens.length)]); c++;
