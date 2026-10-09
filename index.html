@@ -783,7 +783,7 @@ const SPECIES = {
     group: 'Мхи', name: 'Кукушкин лён', trait: 'Нет корней, только ризоиды. Любит тень и сырость, без воды не размножится.',
     start: 'room', sat: 0.25, pmax: 0.75, burnAt: 0.6, dryLo: 28, span: 30, wiltDmg: 0.25, transp: 1.3, rotThr: null, heatMax: 28, coldMin: -15,
     green: '#4c8a2e', rootWord: 'Ризоиды', wetWord: 'Влажность почвы', wetOk: [45, 98], trWord: 'Испарение',
-    water: 'Полить и опрыскать', feed: 'Подкормить', sample: 'веточка мха', leaves: 'листочки', pot: 'горшок',
+    water: 'Полить и опрыскать', feed: 'Подкормить', sample: 'веточка мха', leaves: 'листочки', pot: 'кирпич', onRock: true,
     stages: [
       ['Протонема', 'Из споры выросла протонема — зелёная ветвящаяся нить, похожая на водоросль.'],
       ['Зелёные стебельки', 'На протонеме появились почки, из них растут стебельки с листочками. Это гаметофит — половое поколение мха.'],
@@ -2068,6 +2068,19 @@ function decor2D(where) {
   }
   return o;
 }
+// мох растёт на старом пористом кирпиче: кирпич стоит в блюдце с водой и впитывает её снизу, как губка.
+// Влажный кирпич темнее. Ризоиды цепляются за поры у самой поверхности.
+function drawBrick(s) {
+  const wet = clamp(s.moisture / 100, 0, 1), face = mix('#c4704a', '#7e3a24', wet * 0.75), top = mix('#d68a62', '#94492e', wet * 0.75), side = mix('#a85a38', '#64301e', wet * 0.75);
+  let o = `<defs><clipPath id="humusClip"><path d="M126 302 L286 302 L270 318 L110 318 Z"/></clipPath></defs>`;
+  o += `<ellipse cx="200" cy="404" rx="128" ry="16" fill="#f3efe6" stroke="#cfc7b6" stroke-width="2"/><ellipse cx="200" cy="402" rx="112" ry="11" fill="${mix('#bfe0ea', '#8fbfd0', wet)}" opacity="${(0.35 + wet * 0.5).toFixed(2)}"/>`; // блюдце с водой
+  o += `<path d="M110 318 L270 318 L270 396 L110 396 Z" fill="${face}" stroke="#5a2a18" stroke-width="2"/>`;
+  o += `<path d="M126 302 L286 302 L270 318 L110 318 Z" fill="${top}" stroke="#5a2a18" stroke-width="2"/>`;
+  o += `<path d="M286 302 L286 380 L270 396 L270 318 Z" fill="${side}" stroke="#5a2a18" stroke-width="2"/>`;
+  for (let i = 0; i < 46; i++) o += `<circle cx="${116 + (i * 37) % 150}" cy="${324 + (i * 23) % 68}" r="${(1 + (i % 3) * 0.6).toFixed(1)}" fill="#5a2a18" opacity=".45"/>`; // поры
+  o += `<path d="M110 ${f1(396 - wet * 40)} L270 ${f1(396 - wet * 40)}" stroke="#4a2414" stroke-width="1" opacity="${(wet * 0.4).toFixed(2)}" stroke-dasharray="4 4"/>`; // докуда поднялась вода
+  return o;
+}
 function leafColor(s) {
   const healthy = mix('#c9b94a', SPc().green, s.chl);
   const c = s.hp < 40 ? mix(healthy, '#7d5a2c', 1 - s.hp / 40) : healthy;
@@ -2255,7 +2268,7 @@ function drawMoss(s, ctx) {
       if (st === 6) for (let q = 0; q < 4; q++) extra += `<circle cx="${f1(cx + 8 + q * 4)}" cy="${f1(cy - 8 + q * 3)}" r="1" fill="#8a6a3a"/>`;
     }
   }
-  o += `<g clip-path="url(#soilClip)"><path d="${rh}" stroke="${rootColor(s)}" stroke-width=".7" fill="none"/></g>`;
+  o += `<g clip-path="url(#${s.sp === 'moss' ? 'humusClip' : 'soilClip'})"><path d="${rh}" stroke="${rootColor(s)}" stroke-width=".7" fill="none"/></g>`;
   o += `<path d="${stems}" stroke="${mix(col, '#4a5a22', .3)}" stroke-width="1.2" fill="none"/><path d="${leaves}" stroke="${col}" stroke-width="1.6" stroke-linecap="round" fill="none"/>` + extra;
   return o;
 }
@@ -2599,7 +2612,8 @@ function drawScene() {
   const lvl = levelOf(s.xp);
   const ctx = { droop: clamp(1 - s.turgor, 0, 1), col: leafColor(s), st: stageOf(s), lush: (lvl - 1) / 9, lvl };
   let o = drawBackground(s, e);
-  if (s.sp !== 'algae') {
+  if (s.sp === 'moss') o += drawBrick(s);
+  else if (s.sp !== 'algae') {
     const k = [1, 1, 1.12, 1.24][s.pot || 1];
     o += `<g transform="translate(200 410) scale(${k}) translate(-200 -410)">${drawPot(s, lvl)}</g>`;
     if (potSoon(s)) { // кончики корней из дренажного отверстия, а у тесного горшка — корни, оплетающие ком
@@ -2608,7 +2622,7 @@ function drawScene() {
       if (rootbound(s)) o += `<path d="M154 392 Q200 404 246 392 M156 372 Q200 384 244 372" stroke="${rootColor(s)}" stroke-width="1.4" fill="none" opacity=".9"/>`;
     }
   }
-  if (s.sp !== 'algae') o += `<g transform="translate(200 410) scale(${[1, 1, 1.12, 1.24][s.pot || 1]}) translate(-200 -410)">${decor2D('pot')}</g>`;
+  if (s.sp !== 'algae' && s.sp !== 'moss') o += `<g transform="translate(200 410) scale(${[1, 1, 1.12, 1.24][s.pot || 1]}) translate(-200 -410)">${decor2D('pot')}</g>`;
   const plant = DRAW[s.sp](s, ctx);
   o += plant + decor2D('free');
   if (s.disease && !s.dead) o += diseaseLayer(s, plant);
@@ -2687,6 +2701,7 @@ function render() {
   $('aRepro').querySelector('.lbl').textContent = SP.repro.label;
   $('aIodine').disabled = over;
   renderExps(s, over); checkSkins();
+  $('aSkins').hidden = !!SP.onRock || s.sp === 'algae'; // у мха кирпич, у водоросли банка — раскраски горшка не нужны
   $('aRepot').hidden = !potSoon(s) || over;
   $('aRepot').classList.toggle('primary', rootbound(s));
   $('aRepot').querySelector('.lbl').textContent = `Пересадить в горшок побольше (сейчас ${POTS[s.pot || 1].name})`;
@@ -2768,7 +2783,7 @@ $('locs').innerHTML = Object.entries(LOC).map(([k, v]) =>
   `<button class="btn" id="loc-${k}" data-loc="${k}" aria-pressed="false">${v.name}<small>${v.light >= 1 ? 'много солнца' : v.light >= .7 ? 'светло' : v.light >= .25 ? 'полутень' : 'темно'}</small></button>`).join('');
 $('locs').addEventListener('click', ev => {
   const b = ev.target.closest('[data-loc]'); if (!b || S.loc === b.dataset.loc) return;
-  S.loc = b.dataset.loc; note(S, null, `${SPc().pot === 'банку' ? 'Банку' : 'Горшок'} переставили: ${LOC[S.loc].name.toLowerCase()}.`, 'act');
+  S.loc = b.dataset.loc; note(S, null, `${SPc().pot === 'банку' ? 'Банку' : SPc().onRock ? 'Кирпич с мхом' : 'Горшок'} переставили: ${LOC[S.loc].name.toLowerCase()}.`, 'act');
   if (S.loc === 'balcony') note(S, 'bal', 'На балконе много света, но днём жарко. Следи за водой.', 'info', 72);
   render(); save();
 });
@@ -3003,7 +3018,7 @@ function decor3D(T, root, pot, plant) {
   if (decorOn('pebbles')) ['#e8737a', '#6fa8dc', '#f2b45a', '#8bc46a', '#b48fd1', '#f6d36b', '#ef9a6a', '#5fb7c9'].forEach((c, i) => {
     const m = new T.Mesh(new T.SphereGeometry(0.035, 10, 8), M(c)); m.scale.set(1, 0.5, 0.8); const a = i * 2.4, r = (0.16 + (i % 3) * 0.06) * (jar ? 1 : k);
     m.position.set(Math.cos(a) * r, jar ? 0.04 : top + 0.012, Math.sin(a) * r); root.add(m); });
-  if (decorOn('bow')) { // пышный зелёный бант-розетка из атласной ленты: два слоя петель, узелок и два хвостика
+  if (decorOn('bow') && S.sp !== 'moss') { // пышный зелёный бант-розетка из атласной ленты: два слоя петель, узелок и два хвостика
     const y = jar ? 0.75 : 0.4 * k, z = jar ? 0.5 : rAt(0.4) + 0.012, g = new T.Group(); g.position.set(0, y, z);
     const satin = new T.MeshStandardMaterial({ color: '#2f9e55', roughness: 0.35, side: T.DoubleSide }), satin2 = new T.MeshStandardMaterial({ color: '#4cbf6e', roughness: 0.3, side: T.DoubleSide });
     // лента: полоса вдоль кривой, ширина — вдоль заданной оси
@@ -3021,11 +3036,11 @@ function decor3D(T, root, pot, plant) {
       const m = strip(c, 0.05, t => new T.Vector3(1, sd * 0.25, 0).normalize().multiplyScalar(1 - t * 0.15), satin, 16);
       const pos = m.geometry.attributes.position; pos.setY(pos.count - (sd > 0 ? 1 : 2), pos.getY(pos.count - (sd > 0 ? 1 : 2)) + 0.018); pos.needsUpdate = true; m.geometry.computeVertexNormals(); g.add(m); }
     root.add(g); }
-  if (decorOn('stars')) { const sh = new T.Shape(); for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2 - Math.PI / 2, r = i % 2 ? 0.014 : 0.034; i ? sh.lineTo(Math.cos(a) * r, -Math.sin(a) * r) : sh.moveTo(Math.cos(a) * r, -Math.sin(a) * r); }
+  if (decorOn('stars') && S.sp !== 'moss') { const sh = new T.Shape(); for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2 - Math.PI / 2, r = i % 2 ? 0.014 : 0.034; i ? sh.lineTo(Math.cos(a) * r, -Math.sin(a) * r) : sh.moveTo(Math.cos(a) * r, -Math.sin(a) * r); }
     const sg = new T.ShapeGeometry(sh), sm = new T.MeshStandardMaterial({ color: '#f6d36b', roughness: 0.4, side: T.DoubleSide });
     [[-0.7, 0.3], [0.65, 0.22], [-0.35, 0.12], [0.3, 0.38], [0.95, 0.4]].forEach(([a, h]) => { const y = jar ? h * 1.4 : h * k, r = rAt(jar ? h : h) + 0.004, m = new T.Mesh(sg, sm);
       m.position.set(Math.sin(a) * r, y, Math.cos(a) * r); m.lookAt(Math.sin(a) * 5, y, Math.cos(a) * 5); root.add(m); }); }
-  if (decorOn('label')) { const nm = ((G.student && G.student.name) || 'Моё').split(' ')[0].slice(0, 9);
+  if (decorOn('label') && S.sp !== 'moss') { const nm = ((G.student && G.student.name) || 'Моё').split(' ')[0].slice(0, 9);
     const cv = document.createElement('canvas'); cv.width = 256; cv.height = 110; const x = cv.getContext('2d');
     x.fillStyle = '#fffaf0'; x.fillRect(0, 0, 256, 110); x.strokeStyle = '#b08a5a'; x.lineWidth = 10; x.strokeRect(5, 5, 246, 100);
     x.fillStyle = '#4a3a2e'; x.font = 'bold 54px Nunito, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(nm, 128, 58);
@@ -3058,7 +3073,21 @@ function decor3D(T, root, pot, plant) {
     else { g.position.set(bb.max.x * 0.7 + 0.12, bb.min.y + (bb.max.y - bb.min.y) * 0.7, 0.18); g.rotation.x = -0.6; }
     root.add(g); root.userData.wings = [wl, wr]; }
 }
+function makeBrick(T) { // пористый кирпич в блюдце с водой
+  const g = new T.Group(), wet = clamp(S.moisture / 100, 0, 1);
+  const dish = new T.Mesh(new T.CylinderGeometry(0.72, 0.62, 0.07, 48), new T.MeshStandardMaterial({ color: 0xf3efe6, roughness: 0.4 })); dish.position.y = 0.035; g.add(dish);
+  const water = new T.Mesh(new T.CircleGeometry(0.66, 48), new T.MeshStandardMaterial({ color: 0x8fbfd0, transparent: true, opacity: 0.25 + wet * 0.45, roughness: 0.1 }));
+  water.rotation.x = -Math.PI / 2; water.position.y = 0.074; water.material.userData.outlineParameters = { visible: false }; g.add(water);
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d');
+  x.fillStyle = mix('#c4704a', '#7e3a24', wet * 0.75); x.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 900; i++) { x.fillStyle = i % 3 ? 'rgba(90,40,24,.35)' : 'rgba(240,190,150,.25)'; x.beginPath(); x.arc((i * 97) % 256, (i * 53 + i * i) % 256, 0.8 + (i % 4) * 0.6, 0, 7); x.fill(); }
+  const tex = new T.CanvasTexture(cv); tex.encoding = T.sRGBEncoding;
+  const brick = new T.Mesh(new T.BoxGeometry(0.95, 0.3, 0.5), new T.MeshStandardMaterial({ map: tex, roughness: 1 }));
+  brick.position.y = 0.22; brick.rotation.y = 0.12; g.add(brick);
+  g.userData.top = 0.37; return g;
+}
 function makePot(T, lvl, jar) {
+  if (S.sp === 'moss') return makeBrick(T);
   const g = new T.Group();
   if (jar) {
     const glass = new T.Mesh(new T.CylinderGeometry(0.42, 0.42, 1.1, 40, 1, true), new T.MeshPhysicalMaterial({ color: 0xdff0f4, transparent: true, opacity: 0.22, roughness: 0.05, side: T.DoubleSide }));
