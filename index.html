@@ -3697,7 +3697,7 @@ function buildEnv(T) {
     alarmClock(0.95, 0, wz + 1.0, -0.4);
   } else if (s.loc === 'room') {
     // горшок стоит на круглом столе посреди комнаты; вокруг диван, кресло, шкаф, картина, торшер
-    const fy = -1.01 * U * 0.95;
+    const fy = -1.2; // столешница на уровне журнального/обеденного стола рядом с диваном и креслом
     const fl = new T.Mesh(new T.PlaneGeometry(14, 14), M('#e3cba3')); fl.rotation.x = -Math.PI / 2; fl.position.y = fy; g.add(fl);
     const rug = new T.Mesh(new T.CircleGeometry(1.9, 40), M('#ece6da')); rug.rotation.x = -Math.PI / 2; rug.position.set(0, fy + 0.01, 0.2); g.add(rug);
     for (const r of [1.55, 1.25]) { const ring = new T.Mesh(new T.RingGeometry(r - 0.05, r, 48), M('#c9bfae')); ring.rotation.x = -Math.PI / 2; ring.position.set(0, fy + 0.015, 0.2); g.add(ring); }
