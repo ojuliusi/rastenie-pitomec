@@ -3443,7 +3443,7 @@ function proceduralPlant(T) {
   if (S.sp === 'moss') { // ковёр мха на кирпиче: густые дерновинки затягивают верх неровным пятном и свешиваются с краёв
     const dry = clamp(1 - S.turgor, 0, 1), W = 0.47, D = 0.24, step = 0.026;
     g.rotation.y = 0.12; // как кирпич
-    const cover = clamp(0.12 + S.biomass / 13, 0.12, 1.05); // доля поверхности, которую уже занял мох
+    const cover = clamp(0.18 + S.biomass / 12, 0.18, 1); // насколько густо мох уже затянул камень
     const field = (x, z) => { // где мох появился раньше: от центра пятна, с неровной «рваной» границей, как на живом кирпиче
       const d = Math.hypot((x - 0.08) / W, (z + 0.02) / D) / 1.45;
       return d + 0.16 * Math.sin(x * 23 + z * 7) + 0.1 * Math.sin(z * 31 - x * 11) + 0.08 * Math.cos(x * 41);
@@ -3453,12 +3453,12 @@ function proceduralPlant(T) {
     const spots = [];
     for (let x = -W + step / 2; x < W; x += step) for (let z = -D + step / 2; z < D; z += step) {
       const jx = x + (rnd() - 0.5) * step * 0.8, jz = z + (rnd() - 0.5) * step * 0.8;
-      if (field(jx, jz) < cover) spots.push([jx, 0, jz, 0, 0]);
+      if (rnd() < cover) spots.push([jx, 0, jz, 0, 0]); // мох равномерно густеет по всей поверхности камня
     }
     // по краям мох свешивается на боковые грани кирпича
     for (const sp0 of spots.slice()) { const [x, , z] = sp0;
-      if (Math.abs(z) > D - step && rnd() < 0.7) for (let q = 1; q <= 1 + Math.floor(cover * 3); q++) spots.push([x, -q * step * 0.9, Math.sign(z) * (D + 0.004), Math.sign(z) * 1.4, 0]);
-      if (Math.abs(x) > W - step && rnd() < 0.7) for (let q = 1; q <= 1 + Math.floor(cover * 3); q++) spots.push([Math.sign(x) * (W + 0.004), -q * step * 0.9, z, 0, -Math.sign(x) * 1.4]); }
+      if (cover > 0.6 && Math.abs(z) > D - step && rnd() < 0.7) for (let q = 1; q <= Math.floor((cover - 0.4) * 4); q++) spots.push([x, -q * step * 0.9, Math.sign(z) * (D + 0.004), Math.sign(z) * 1.4, 0]);
+      if (cover > 0.6 && Math.abs(x) > W - step && rnd() < 0.7) for (let q = 1; q <= Math.floor((cover - 0.4) * 4); q++) spots.push([Math.sign(x) * (W + 0.004), -q * step * 0.9, z, 0, -Math.sign(x) * 1.4]); }
     const n = spots.length, im = new T.InstancedMesh(tuft, mm, n * 4), m4 = new T.Matrix4(), q4 = new T.Quaternion(), e3 = new T.Euler(), sc = new T.Vector3(), ps = new T.Vector3();
     const greens = ['#5fb33a', '#79c84a', '#4f9e32', '#8fd65a', '#6abf3f'].map(c => new T.Color(c).lerp(new T.Color('#9a8a4a'), dry * 0.75));
     let c = 0, h0 = 0.6 + Math.min(1, S.biomass / 12) * 0.7;
