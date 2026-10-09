@@ -2273,7 +2273,7 @@ function drawMoss(s, ctx) {
     rh += `M${x} 303 l${(k % 3) - 1} ${f1(5 + rl * 12)} M${x} 303 l${k % 2 ? 3 : -3} ${f1(4 + rl * 8)} `;
     if (st >= 3 && st <= 4 && k % 3 === 0) extra += `<circle cx="${f1(tx_)}" cy="${f1(ty - 2)}" r="2.6" fill="#c45a3a"/>`;
     if (st >= 5 && k % 3 === 1) {
-      const g = st === 6 ? 1 : s.fruit, sl = 6 + g * 42, cx = tx_ + (st === 6 ? 4 : 0), cy = ty - sl;
+      const g = st === 6 ? 1 : s.fruit, sl = 5 + g * 20, cx = tx_ + (st === 6 ? 4 : 0), cy = ty - sl;
       extra += `<path d="M${f1(tx_)} ${f1(ty)} L${f1(cx)} ${f1(cy)}" stroke="#b0603a" stroke-width="1.1"/>`;
       extra += `<ellipse cx="${f1(cx + (st === 6 ? 2 : 0))}" cy="${f1(cy - 3)}" rx="${f1(1.6 + g * 1.4)}" ry="${f1(2.5 + g * 3)}" fill="${mix('#7fae4a', '#7a5530', g)}" ${st === 6 ? `transform="rotate(35 ${f1(cx)} ${f1(cy)})"` : ''}/>`;
       if (st === 5 && g > 0.3) extra += `<path d="M${f1(cx - 2.5)} ${f1(cy - 5 - g * 3)} l2.5 -4 l2.5 4 z" fill="#d6c38a"/>`;
@@ -2520,13 +2520,13 @@ const MOSS_PLANT = () => {
   o += `<path d="M112 236 Q110 170 114 96" stroke="#7a6a3a" stroke-width="3.5" fill="none"/>`; // стебелёк
   for (let j = 0; j < 12; j++) { const y = 226 - j * 11, x = 112 + (226 - y) * 0.012, l = 26 - j * 1.2;
     for (const sd of [-1, 1]) o += `<path d="M${f1(x)} ${y} q${sd * l * 0.6} ${-l * 0.25} ${sd * l} ${-l * 0.55} q${-sd * l * 0.45} ${l * 0.12} ${-sd * l} ${l * 0.55}z" fill="#4f9e32" stroke="#2f6a1e" stroke-width=".8"/>`; }
-  if (sporo) { o += `<path d="M114 96 Q118 60 120 30" stroke="#b0603a" stroke-width="2.5" fill="none"/><rect x="113" y="12" width="16" height="22" rx="4" fill="#9a7a3a" stroke="#6b4a1a"/><path d="M112 14 q9 -12 18 0 z" fill="#c9b07a" stroke="#8a6a3a"/>`; }
+  if (sporo) { o += `<path d="M114 96 Q116 78 118 62" stroke="#b0603a" stroke-width="2.5" fill="none"/><rect x="111" y="40" width="16" height="22" rx="4" fill="#9a7a3a" stroke="#6b4a1a"/><path d="M110 42 q9 -12 18 0 z" fill="#c9b07a" stroke="#8a6a3a"/>`; }
   else o += `<circle cx="114" cy="92" r="6" fill="${st >= 3 ? '#c45a3a' : '#7fb24a'}" stroke="#7a3a22"/>`; // верхушка: антеридии/архегонии
   // листочек под микроскопом: один слой клеток
   o += `<circle cx="196" cy="150" r="34" fill="#eef7e6" stroke="#555" stroke-width="3"/><clipPath id="mlc"><circle cx="196" cy="150" r="32"/></clipPath><g clip-path="url(#mlc)">`;
   for (let r = 0; r < 7; r++) for (let c = 0; c < 9; c++) { const x = 166 + c * 8 + (r % 2) * 4, y = 122 + r * 9; o += `<rect x="${x}" y="${y}" width="7" height="8" rx="1.5" fill="#bfe3a2" stroke="#5f9a3c" stroke-width=".7"/><circle cx="${x + 2.5}" cy="${y + 3}" r="1.1" fill="#3f8a2a"/><circle cx="${x + 4.8}" cy="${y + 5}" r="1.1" fill="#3f8a2a"/>`; }
   o += `</g><path d="M138 178 L166 168" stroke="#555" stroke-dasharray="3 3"/>`;
-  return o + (sporo ? lab(126, 22, 14, 'Коробочка со спорами|(спорофит)') + lab(118, 60, 48, 'Ножка коробочки') : lab(118, 92, 26, st >= 3 ? 'Верхушка: антеридии или|архегонии (половые органы)' : 'Верхушка растёт'))
+  return o + (sporo ? lab(124, 50, 14, 'Коробочка со спорами|(спорофит)') + lab(117, 74, 48, 'Ножка коробочки') : lab(118, 92, 26, st >= 3 ? 'Верхушка: антеридии или|архегонии (половые органы)' : 'Верхушка растёт'))
     + lab(136, 150, 72, 'Листочки: узкие,|без черешка') + lab(222, 132, 134, 'Листочек под микроскопом:|один слой клеток|с хлоропластами')
     + lab(114, 200, 196, 'Стебелёк — гаметофит,|половое поколение') + lab(124, 246, 240, 'Ризоиды: держат|за поры кирпича');
 };
@@ -3109,11 +3109,27 @@ function decor3D(T, root, pot, plant) {
     else { g.position.set(bb.max.x * 0.7 + 0.12, bb.min.y + (bb.max.y - bb.min.y) * 0.7, 0.18); g.rotation.x = -0.6; }
     root.add(g); root.userData.wings = [wl, wr]; }
 }
-function makeBrick(T) { // пористый кирпич в блюдце с водой
+let MOSS_SURF = null; // поверхность камня, по которой растёт ковёр мха
+async function makeStone(T) {
+  const B = mossBase();
+  if (B.model) try {
+    const g = makeBrick(T, true), wet = clamp(S.moisture / 100, 0, 1), m = await loadModel(`models/stones/${B.model}.glb`);
+    m.rotation.y = B.rotY || 0;
+    let bb = new T.Box3().setFromObject(m), sz = bb.getSize(new T.Vector3());
+    m.scale.multiplyScalar(Math.min(0.95 / Math.max(sz.x, sz.z), 0.45 / sz.y));
+    bb = new T.Box3().setFromObject(m); const c = bb.getCenter(new T.Vector3());
+    m.position.x -= c.x; m.position.z -= c.z; m.position.y += 0.07 - bb.min.y;
+    m.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.color.multiplyScalar(1 - wet * 0.35); } }); // мокрый камень темнее
+    g.add(m); g.userData.surface = m; g.userData.top = 0; return g;
+  } catch (e) { /* нет модели — нарисуем камень сами */ }
+  return makeBrick(T);
+}
+function makeBrick(T, dishOnly) { // пористый кирпич в блюдце с водой
   const g = new T.Group(), wet = clamp(S.moisture / 100, 0, 1);
   const dish = new T.Mesh(new T.CylinderGeometry(0.72, 0.62, 0.07, 48), new T.MeshStandardMaterial({ color: 0xf3efe6, roughness: 0.4 })); dish.position.y = 0.035; g.add(dish);
   const water = new T.Mesh(new T.CircleGeometry(0.66, 48), new T.MeshStandardMaterial({ color: 0x8fbfd0, transparent: true, opacity: 0.25 + wet * 0.45, roughness: 0.1 }));
   water.rotation.x = -Math.PI / 2; water.position.y = 0.074; water.material.userData.outlineParameters = { visible: false }; g.add(water);
+  if (dishOnly) return g;
   const B = mossBase(), cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d');
   x.fillStyle = mix(B.face, '#1e1410', wet * 0.55); x.fillRect(0, 0, 256, 256);
   for (let i = 0; i < B.pores * 18; i++) { x.globalAlpha = 0.35; x.fillStyle = i % 3 ? B.pore : (B.light || mix(B.top, '#fff', 0.3)); x.beginPath(); x.arc((i * 97) % 256, (i * 53 + i * i) % 256, 0.8 + (i % 4) * 0.6, 0, 7); x.fill(); }
@@ -3130,10 +3146,9 @@ function makeBrick(T) { // пористый кирпич в блюдце с во
   geo.computeVertexNormals();
   const brick = new T.Mesh(geo, new T.MeshStandardMaterial({ map: tex, roughness: B.round ? 0.6 : 1, flatShading: !!B.rough }));
   brick.position.y = 0.22; brick.rotation.y = 0.12; g.add(brick);
-  g.userData.top = 0.37; return g;
+  g.userData.surface = brick; g.userData.top = 0; return g;
 }
 function makePot(T, lvl, jar) {
-  if (S.sp === 'moss') return makeBrick(T);
   const g = new T.Group();
   if (jar) {
     const glass = new T.Mesh(new T.CylinderGeometry(0.42, 0.42, 1.1, 40, 1, true), new T.MeshPhysicalMaterial({ color: 0xdff0f4, transparent: true, opacity: 0.22, roughness: 0.05, side: T.DoubleSide }));
@@ -3441,44 +3456,44 @@ function proceduralPlant(T) {
     return g;
   }
   if (S.sp === 'moss') { // ковёр мха на кирпиче: густые дерновинки затягивают верх неровным пятном и свешиваются с краёв
-    const dry = clamp(1 - S.turgor, 0, 1), W = 0.47, D = 0.24, step = 0.026;
-    g.rotation.y = 0.12; // как кирпич
+    const dry = clamp(1 - S.turgor, 0, 1), step = 0.024;
     const cover = clamp(0.18 + S.biomass / 12, 0.18, 1); // насколько густо мох уже затянул камень
-    const field = (x, z) => { // где мох появился раньше: от центра пятна, с неровной «рваной» границей, как на живом кирпиче
-      const d = Math.hypot((x - 0.08) / W, (z + 0.02) / D) / 1.45;
-      return d + 0.16 * Math.sin(x * 23 + z * 7) + 0.1 * Math.sin(z * 31 - x * 11) + 0.08 * Math.cos(x * 41);
-    };
     const tuft = mossShootGeo(T);
     const mm = new T.MeshStandardMaterial({ color: '#ffffff', roughness: 0.85 }); mm.userData.outlineParameters = { visible: false };
-    const spots = [];
-    for (let x = -W + step / 2; x < W; x += step) for (let z = -D + step / 2; z < D; z += step) {
-      const jx = x + (rnd() - 0.5) * step * 0.8, jz = z + (rnd() - 0.5) * step * 0.8;
-      if (rnd() < cover) spots.push([jx, 0, jz, 0, 0]); // мох равномерно густеет по всей поверхности камня
+    const spots = [], surf = MOSS_SURF;
+    if (surf) {
+      surf.updateWorldMatrix(true, true);
+      const bb = new T.Box3().setFromObject(surf), rc = new T.Raycaster(), down = new T.Vector3(0, -1, 0), from = new T.Vector3();
+      for (let x = bb.min.x + step / 2; x < bb.max.x; x += step) for (let z = bb.min.z + step / 2; z < bb.max.z; z += step) {
+        from.set(x + (rnd() - 0.5) * step * 0.8, bb.max.y + 0.5, z + (rnd() - 0.5) * step * 0.8); rc.set(from, down);
+        const hit = rc.intersectObject(surf, true)[0]; if (!hit || !hit.face) continue;
+        const nrm = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+        if (nrm.y < 0.3) continue; // на отвесных боках мох не держится
+        if (rnd() < cover) spots.push([hit.point.x, hit.point.y, hit.point.z, nrm]); // мох равномерно густеет по камню
+      }
     }
-    // по краям мох свешивается на боковые грани кирпича
-    for (const sp0 of spots.slice()) { const [x, , z] = sp0;
-      if (cover > 0.6 && Math.abs(z) > D - step && rnd() < 0.7) for (let q = 1; q <= Math.floor((cover - 0.4) * 4); q++) spots.push([x, -q * step * 0.9, Math.sign(z) * (D + 0.004), Math.sign(z) * 1.4, 0]);
-      if (cover > 0.6 && Math.abs(x) > W - step && rnd() < 0.7) for (let q = 1; q <= Math.floor((cover - 0.4) * 4); q++) spots.push([Math.sign(x) * (W + 0.004), -q * step * 0.9, z, 0, -Math.sign(x) * 1.4]); }
     const n = spots.length, im = new T.InstancedMesh(tuft, mm, n * 4), m4 = new T.Matrix4(), q4 = new T.Quaternion(), e3 = new T.Euler(), sc = new T.Vector3(), ps = new T.Vector3();
     const greens = ['#5fb33a', '#79c84a', '#4f9e32', '#8fd65a', '#6abf3f'].map(c => new T.Color(c).lerp(new T.Color('#9a8a4a'), dry * 0.75));
     let c = 0, h0 = 0.6 + Math.min(1, S.biomass / 12) * 0.7;
-    for (const [x, y, z, rx, rz] of spots) for (let t = 0; t < 4; t++) {
-      ps.set(x + (rnd() - 0.5) * 0.024, y, z + (rnd() - 0.5) * 0.024);
-      e3.set(rx + (rnd() - 0.5) * 0.5, rnd() * 6, rz + (rnd() - 0.5) * 0.5); q4.setFromEuler(e3);
+    const up = new T.Vector3(0, 1, 0), qa = new T.Quaternion(), qy = new T.Quaternion();
+    for (const [x, y, z, nrm] of spots) for (let t = 0; t < 4; t++) {
+      ps.set(x + (rnd() - 0.5) * 0.02, y - 0.004, z + (rnd() - 0.5) * 0.02);
+      qa.setFromUnitVectors(up, nrm.clone().lerp(up, 0.45).normalize()); qy.setFromAxisAngle(up, rnd() * 6.28);
+      e3.set((rnd() - 0.5) * 0.4, 0, (rnd() - 0.5) * 0.4); q4.setFromEuler(e3).premultiply(qy).premultiply(qa);
       const s0 = (0.75 + rnd() * 0.5) * h0, droop = 1 - dry * 0.35; sc.set(s0, s0 * (0.7 + rnd() * 0.6) * droop, s0);
       m4.compose(ps, q4, sc); im.setMatrixAt(c, m4); im.setColorAt(c, greens[Math.floor(rnd() * greens.length)]); c++;
     }
     im.count = c; g.add(im);
     // мужские растения с красноватыми «цветочками» (антеридии), потом коробочки на ножках — спорофиты
-    const tops = spots.filter(p => p[1] === 0);
+    const tops = spots;
     const red = new T.MeshStandardMaterial({ color: '#c45a3a' });
     tops.forEach((p, i) => {
-      if (st >= 3 && st <= 4 && rnd() < 0.07) { const t = new T.Mesh(new T.SphereGeometry(0.008, 8, 6), red); t.position.set(p[0], 0.06 * h0, p[2]); g.add(t); }
+      if (st >= 3 && st <= 4 && rnd() < 0.07) { const t = new T.Mesh(new T.SphereGeometry(0.008, 8, 6), red); t.position.set(p[0], p[1] + 0.06 * h0, p[2]); g.add(t); }
       if (st >= 5 && rnd() < 0.12) {
-        const gr = st === 6 ? 1 : S.fruit, sl = 0.04 + gr * 0.2;
-        const seta = new T.Mesh(new T.CylinderGeometry(0.002, 0.002, sl, 4), new T.MeshStandardMaterial({ color: '#b0603a' })); seta.position.set(p[0], 0.055 + sl / 2, p[2]); g.add(seta);
+        const gr = st === 6 ? 1 : S.fruit, sl = 0.025 + gr * 0.07; // ножка коробочки — коротенькая
+        const seta = new T.Mesh(new T.CylinderGeometry(0.002, 0.002, sl, 4), new T.MeshStandardMaterial({ color: '#b0603a' })); seta.position.set(p[0], p[1] + 0.05 + sl / 2, p[2]); g.add(seta);
         const cap = new T.Mesh(new T.CapsuleGeometry(0.007 + gr * 0.005, 0.018 + gr * 0.012, 4, 8), new T.MeshStandardMaterial({ color: new T.Color('#7fae4a').lerp(new T.Color('#7a5530'), gr) }));
-        cap.position.set(p[0], 0.055 + sl + 0.013, p[2]); if (st === 6) cap.rotation.z = 0.8; g.add(cap);
+        cap.position.set(p[0], p[1] + 0.05 + sl + 0.013, p[2]); if (st === 6) cap.rotation.z = 0.8; g.add(cap);
       }
     });
     return g;
@@ -3523,7 +3538,8 @@ let m3 = null, m3init = null, m3busy = false, m3sig = '', m3envSig = '', m3sp = 
 const DZ_TINT = { mildew: '#f2f2ea', rust: '#d9722a', mosaic: '#e8d75a', spot: '#4a3218', shutte: '#7a4518', mould: '#c4c4bb', aphid: '#c4e05a', mite: '#ece6b0', chytrid: '#3a2a1a', blackleg: '#3a2a1a', bloom: '#2f8f88' };
 async function buildPlant3D(T) {
   let h = 7; for (const c of S.sp + (S.crop || '')) h = (h * 31 + c.charCodeAt(0)) % 2147483647; RS = h || 7;
-  const root = new T.Group(), lvl = levelOf(S.xp), pot = makePot(T, lvl, S.sp === 'algae'); root.add(pot);
+  const root = new T.Group(), lvl = levelOf(S.xp), pot = S.sp === 'moss' ? await makeStone(T) : makePot(T, lvl, S.sp === 'algae'); root.add(pot);
+  MOSS_SURF = pot.userData.surface || null;
   if (S.sp !== 'algae') {
     const k = [1, 1, 1.15, 1.3][S.pot || 1]; pot.scale.setScalar(k); pot.userData.top *= k;
     if (potSoon(S)) for (let i = 0; i < (rootbound(S) ? 7 : 3); i++) { // корни лезут из-под горшка
@@ -4138,14 +4154,15 @@ const NEED_TEXT = {
 // камни для мха: на чём растёт ковёр. Открываются так же, как раскраски горшка
 const MOSS_BASES = {
   brick: { name: 'Старый кирпич', face: '#c4704a', top: '#d68a62', side: '#a85a38', pore: '#5a2a18', rough: 0, pores: 46 },
-  granite: { name: 'Гранит', face: '#9c9a94', top: '#b2b0a8', side: '#85837d', pore: '#2f2e2c', light: '#e8e4dc', rough: 0.03, pores: 70, need: { lvl: 3 } },
-  limestone: { name: 'Ракушечник', face: '#ddd0b2', top: '#e9dfc6', side: '#c9bb9a', pore: '#8a7a5a', light: '#fff8e8', rough: 0.02, pores: 60, shells: 1, need: { exp: 2 } },
-  river: { name: 'Речной камень', face: '#8c9aa2', top: '#a3b0b6', side: '#76848c', pore: '#5a666c', rough: 0, round: 1, pores: 12, need: { cured: 1 } },
-  lava: { name: 'Вулканический туф', face: '#5a4f4a', top: '#6e625b', side: '#463d39', pore: '#1e1a18', rough: 0.035, pores: 120, need: { blocks: 1 } },
-  wood: { name: 'Коряга', face: '#8a6a4a', top: '#a07c58', side: '#6e5238', pore: '#4a3422', rough: 0.02, grain: 1, pores: 0, need: { done: 1 } },
+  // остальные камни — настоящие модели Poly Haven (CC0); цвета ниже — для «Разреза» и запасного варианта
+  granite: { name: 'Серый камень', model: 'granite', rotY: 0.6, face: '#a8a49c', top: '#bcb8b0', side: '#8e8a83', pore: '#4a4844', light: '#e8e4dc', rough: 0.03, pores: 60, need: { lvl: 3 } },
+  limestone: { name: 'Песчаник', model: 'limestone', rotY: 0.3, face: '#cdbb98', top: '#ddcdae', side: '#b5a482', pore: '#8a7a5a', light: '#fff8e8', rough: 0.02, round: 1, pores: 60, need: { exp: 2 } },
+  river: { name: 'Тёмный валун', model: 'river', rotY: 0, face: '#4f4a46', top: '#625c57', side: '#3e3a37', pore: '#262321', rough: 0, round: 1, pores: 12, need: { cured: 1 } },
+  lava: { name: 'Бурый скалистый валун', model: 'lava', rotY: 2.2, face: '#7a5a44', top: '#8e6c52', side: '#634836', pore: '#33241a', rough: 0.035, pores: 100, need: { blocks: 1 } },
+  slab: { name: 'Каменная плита', model: 'slab', rotY: 0.2, face: '#5e4636', top: '#725646', side: '#4a382b', pore: '#2a1e17', rough: 0.02, pores: 40, need: { done: 1 } },
 };
 function baseOpen(key) { return !MOSS_BASES[key].need || skinOpen.call(null, key, MOSS_BASES[key].need); }
-const mossBase = () => MOSS_BASES[G && G.mossBase && baseOpen(G.mossBase) ? G.mossBase : 'brick'];
+const mossBase = () => MOSS_BASES[G && MOSS_BASES[G.mossBase] && baseOpen(G.mossBase) ? G.mossBase : 'brick'];
 function skinOpen(key, needOverride) {
   const n = needOverride || POT_SKINS[key].need; if (!n || !G) return true;
   const P = Object.values(G.plants);
