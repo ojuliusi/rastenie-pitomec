@@ -506,6 +506,13 @@ header #openSettings { flex: none; }
         <option value="random">Сюрприз — узнаешь, когда вырастет</option>
       </select>
     </div>
+    <div class="crop-set" id="algaSet" hidden>
+      <label class="row-label" for="alga">Какую водоросль посадить?</label>
+      <select id="alga" class="select">
+        <option value="spiro">Спирогира — нитчатая водоросль, тина из тонких нитей</option>
+        <option value="chara">Хара — похожа на хвощ, растёт на песке</option>
+      </select>
+    </div>
     <div class="name-set">
       <label class="row-label" for="studentName">Имя и фамилия ученика</label>
       <input id="studentName" class="select" maxlength="40" autocomplete="name" placeholder="Например, Маша Иванова">
@@ -1418,6 +1425,33 @@ const MORE_QS_2 = {
 Object.entries(MORE_QS_2).forEach(([k, qs]) => { const [sp, id] = k.split('.'); BLOCKS[sp].find(b => b.id === id).qs.push(...qs); });
 const ACT_NAME = { feed: 'Подкормка', lamp: 'Фитолампа', shade: 'Притенение', repro: 'Размножение' };
 const unlockedSet = s => (s.unlocked[s.sp] = s.unlocked[s.sp] || {});
+// вопросы о харе: показываются только тем, кто растит хару (флаг .chara)
+const CHARA_QS = {
+  cell: [
+    ['К какой группе организмов относится хара?', 'К водорослям (харовые водоросли)', 'К хвощам', 'К мхам'],
+    ['Чем хара прикрепляется к песку на дне?', 'Бесцветными ризоидами', 'Настоящими корнями', 'Корневищем'],
+    ['Хара похожа на хвощ. Чем она от него отличается?', 'У хары нет тканей и органов — это слоевище', 'У хары есть сосуды', 'Хара размножается семенами'],
+    ['Что такое междоузлие у хары?', 'Одна очень длинная клетка между узлами', 'Пучок сосудов', 'Сросшиеся листья'],
+    ['Почему хара жёсткая и шершавая на ощупь?', 'Её клеточные стенки покрываются известью', 'Она покрыта корой', 'В ней есть древесина'],
+    ['Как называют тело хары, не разделённое на ткани и органы?', 'Слоевище, или таллом', 'Побег', 'Заросток'],
+    ['Как хара поглощает воду и минеральные соли?', 'Всей поверхностью тела', 'Только ризоидами', 'Корневыми волосками']],
+  chloro: [
+    ['Почему хара растёт только там, куда проникает свет?', 'Ей нужен свет для фотосинтеза', 'Свет нужен ризоидам', 'В темноте вода холоднее'],
+    ['Что за пузырьки видны на веточках хары на свету?', 'Кислород, выделенный при фотосинтезе', 'Углекислый газ', 'Пары воды'],
+    ['Какого цвета пигмент делает хару зелёной?', 'Хлорофилл', 'Каротин', 'Гемоглобин'],
+    ['Зачем в аквариум с рыбками сажают хару?', 'Она выделяет кислород и очищает воду', 'Она кормит рыб нектаром', 'Она нагревает воду'],
+    ['Где в клетках хары идёт фотосинтез?', 'В хлоропластах', 'В ядре', 'В клеточной стенке'],
+    ['Что хара запасает днём в результате фотосинтеза?', 'Крахмал', 'Белок кератин', 'Известь']],
+  repro: [
+    ['Как размножается хара половым путём?', 'Сперматозоиды из антеридиев оплодотворяют яйцеклетку в оогонии', 'Спорами из колосков', 'Семенами'],
+    ['Как выглядят антеридии хары?', 'Ярко-оранжевые шарики на веточках', 'Бурые коробочки на ножках', 'Жёлтые колоски'],
+    ['Что находится в оогонии хары?', 'Яйцеклетка', 'Пыльца', 'Споры'],
+    ['Зачем для оплодотворения хары нужна вода?', 'Сперматозоиды плывут к яйцеклетке в воде', 'Вода растворяет пыльцу', 'Без воды не раскроется цветок'],
+    ['Что образуется у хары после оплодотворения?', 'Ооспора в толстой оболочке', 'Семя с зародышем', 'Коробочка со спорами'],
+    ['Зачем ооспоре хары толстая оболочка?', 'Чтобы пережить зиму и пересыхание водоёма', 'Чтобы привлекать насекомых', 'Чтобы плавать на поверхности'],
+    ['Может ли хара размножаться вегетативно?', 'Да, кусочками слоевища', 'Нет, только семенами', 'Нет, только спорами']]
+};
+Object.entries(CHARA_QS).forEach(([id, qs]) => qs.forEach(q => { q.chara = true; BLOCKS.algae.find(b => b.id === id).qs.push(q); }));
 const has = (s, act) => BLOCKS[s.sp].some(b => b.unlocks.includes(act) && unlockedSet(s)[b.id]);
 const blockFor = (sp, act) => BLOCKS[sp].find(b => b.unlocks.includes(act));
 // Рост привязан к курсу: каждая следующая стадия требует ещё одного пройденного блока (любого, кроме блока о размножении).
@@ -1446,12 +1480,13 @@ const TX = {
     cold: 'Растение замёрзло: в клетках образовался лёд и разорвал их. Холодостойкость у растений разная.',
     disease: 'Растение погибло от болезни: её не вылечили вовремя.' },
 };
+const spX = sp => typeof sp === 'object' ? spOf(sp) : SPECIES[sp]; // вид по ключу или по самому растению (учитывает хару)
 function tx(sp, key, vars = {}) {
-  let t = (SPECIES[sp].tx && SPECIES[sp].tx[key]) || TX[key];
-  vars.leaves = vars.leaves || SPECIES[sp].leaves;
+  const SPv = spX(sp); let t = (SPv.tx && SPv.tx[key]) || TX[key];
+  vars.leaves = vars.leaves || SPv.leaves;
   return t.replace(/\{(\w+)\}/g, (_, k) => vars[k]);
 }
-function deadText(sp, cause) { const d = SPECIES[sp].tx && SPECIES[sp].tx.dead || {}; return d[cause] || TX.dead[cause] || 'Растение погибло.'; }
+function deadText(sp, cause) { const d = spX(sp).tx && spX(sp).tx.dead || {}; return d[cause] || TX.dead[cause] || 'Растение погибло.'; }
 
 // Уровни: опыт за здоровые часы, новые стадии, пройденные блоки и завершённый цикл. Уровень переходит к следующему поколению.
 const LEVELS = [0, 40, 100, 180, 280, 400, 550, 730, 950, 1200];
@@ -1703,7 +1738,7 @@ let SEASON = 'summer';
 const seasonByMonth = m => m < 2 || m === 11 ? 'winter' : m < 5 ? 'spring' : m < 8 ? 'summer' : 'autumn';
 function daylight(h) { const Z = SEASONS[SEASON], x = h % 24; return (x > Z.rise && x < Z.set) ? Math.sin(Math.PI * (x - Z.rise) / (Z.set - Z.rise)) : 0; }
 function env(s) {
-  const L = LOC[s.loc], SP = SPECIES[s.sp], dl = daylight(s.hour);
+  const L = LOC[s.loc], SP = spOf(s), dl = daylight(s.hour);
   const Z = SEASONS[SEASON];
   let sun = dl * L.light * Z.sun; if (s.shade) sun *= 0.45;
   const light = clamp(sun + (s.lamp ? 0.35 : 0), 0, 1);
@@ -1728,7 +1763,7 @@ function note(s, key, text, kind = 'info', cool = 24) {
 }
 function step(s) {
   if (s.dead || s.done) return;
-  const SP = SPECIES[s.sp], e = env(s), { light, temp, leafArea, tr } = e;
+  const SP = spOf(s), e = env(s), { light, temp, leafArea, tr } = e;
   s.moisture = clamp(s.moisture - tr - 0.2 * temp / 20 * (s.sp === 'algae' ? 1.2 : 1), 0, 100);
 
   // корни: переувлажнение и избыток солей
@@ -1845,18 +1880,18 @@ function step(s) {
   if (s.lightHist < 0.06) note(s, 'pale', `Бледнеют ${SP.leaves}: без света хлорофилл не образуется.`, 'warn', 48);
   if (dormant && s.loc === 'balcony') note(s, 'dormant', 'Мороз. Растение в зимнем покое: оно не растёт и почти не тратит запасы. Весной проснётся.', 'info', 72);
   if (starving && !dormant) note(s, 'starve', 'Запас крахмала кончился. Растению нечем дышать и не из чего расти. Нужен свет.', 'warn', 24);
-  if (burnt) note(s, 'sun', tx(s.sp, 'sun') + locked('shade', 'Притенение'), 'warn', 20);
-  if (s.turgor < 0.35) note(s, 'wilt', tx(s.sp, 'wilt'), 'warn', 12);
-  if (SP.rotThr && s.soggy > SP.rotThr) note(s, 'rot', tx(s.sp, 'rot'), 'warn', 18);
-  if (s.minerals > 85) note(s, 'burn', tx(s.sp, 'burn'), 'warn', 12);
+  if (burnt) note(s, 'sun', tx(s, 'sun') + locked('shade', 'Притенение'), 'warn', 20);
+  if (s.turgor < 0.35) note(s, 'wilt', tx(s, 'wilt'), 'warn', 12);
+  if (SP.rotThr && s.soggy > SP.rotThr) note(s, 'rot', tx(s, 'rot'), 'warn', 18);
+  if (s.minerals > 85) note(s, 'burn', tx(s, 'burn'), 'warn', 12);
   if (temp > Math.min(29, SP.heatMax - 1) && (tr > 1.4 || s.sp === 'algae' || s.sp === 'gymno'))
-    note(s, 'heat', tx(s.sp, 'heat', { t: temp.toFixed(0), ml: (tr * 10).toFixed(0) }), 'warn', 30);
+    note(s, 'heat', tx(s, 'heat', { t: temp.toFixed(0), ml: (tr * 10).toFixed(0) }), 'warn', 30);
   if (temp < SP.coldMin) note(s, 'cold', `Мороз для этого растения: ${temp.toFixed(0)} °C. Вода в клетках замерзает, ${SP.leaves} обвисают и темнеют — растение замерзает. Скорее занеси горшок в тепло!`, 'warn', 12);
   else if (s.frost === 1) note(s, 'chill', `Холодно: ${temp.toFixed(0)} °C. Холодные корни плохо всасывают воду, и растение начинает вянуть, хотя почва влажная. Перенеси его в тепло.`, 'warn', 24);
   else if (temp < SP.coldMin + 8 && s.loc === 'balcony') note(s, 'cool', `Прохладно: ${temp.toFixed(0)} °C. В холоде фотосинтез и рост замедляются.` + (s.sp === 'gymno' ? ' Сосна зимостойкая: в мороз она просто впадает в покой.' : s.sp === 'moss' ? ' Мхи выносливы и переживают даже морозы.' : ''), 'info', 48);
   if (e.dryAir > 1.3 && s.sp !== 'algae') note(s, 'dryair', 'Работает отопление: воздух над батареей сухой и тёплый, почва на подоконнике сохнет быстрее.', 'info', 96);
   if (SEASON === 'winter' && e.dl > 0.6 && light < 0.25 && !s.lamp && SP.sat > 0.5) note(s, 'winterdark', 'Зимой день короткий, а солнце низкое: даже на подоконнике света мало. Растениям помогает фитолампа.', 'warn', 72);
-  if (s.minerals < 12 && s.biomass > 2) note(s, 'poor', tx(s.sp, 'poor') + locked('feed', 'Подкормка'), 'warn', 36);
+  if (s.minerals < 12 && s.biomass > 2) note(s, 'poor', tx(s, 'poor') + locked('feed', 'Подкормка'), 'warn', 36);
   if (e.dl === 0 && !s.cool.night) note(s, 'night', 'Наступила ночь. Без света фотосинтеза нет: растение только дышит и расходует крахмал.', 'info', 1e9);
 
   s.hour += 1;
@@ -1870,7 +1905,7 @@ function step(s) {
   }
   if (s.fruit >= 1 && !s.done) { s.done = true; s.stageIdx = 6; note(s, 'stage6', SP.stages[6][1], 'good', 1e9); addXP(s, 100); }
   if (s.hp <= 0) {
-    s.hp = 0; s.dead = deadText(s.sp, s.cause); note(s, 'dead', s.dead, 'warn', 1e9);
+    s.hp = 0; s.dead = deadText(s, s.cause); note(s, 'dead', s.dead, 'warn', 1e9);
     const start = LEVELS[levelOf(s.xp) - 1];
     if (s.xp > start) { note(s, null, `Опыт текущего уровня потерян: ${s.xp - start}. Уровень ${levelOf(s.xp)} сохранился.`, 'warn'); s.xp = start; }
   }
@@ -1892,7 +1927,25 @@ const resolveSeason = () => { const pick = G ? G.season || 'auto' : SEASON_PICK;
 let G = null, S = null;
 // Режим времени: 'lessons' — время стоит, пока ученик не нажмёт «Прожить сутки»; 'real' — живёт по настоящим часам.
 let MODE = 'lessons';
-const SPc = () => SPECIES[S.sp];
+// Хара — второй вид водорослей на выбор: биология и стадии свои, уход и приборы — как у спирогиры
+const CHARA = {};
+Object.assign(CHARA, SPECIES.algae, {
+  name: 'Хара', trait: 'Харовая водоросль: похожа на хвощ, но тканей и корней нет. Растёт в банке с песком.',
+  green: '#5f9a52', sample: 'веточка хары', leaves: 'веточки', sat: 0.45, heatMax: 27,
+  stages: [
+    ['Кусочек слоевища', 'В банку с песком на дне посадили кусочек хары. Бесцветные ризоиды цепляются за песок — корней у водорослей нет.'],
+    ['Узлы и междоузлия', 'Слоевище растёт верхушкой. Оно делится на узлы и длинные междоузлия — каждое междоузлие это одна огромная клетка.'],
+    ['Мутовки веточек', 'В каждом узле выросла мутовка коротких веточек. Хара похожа на хвощ, но это водоросль: у неё нет тканей и органов.'],
+    ['Подводный лесок', 'Хара разрослась в густой подводный лесок. Её стенки покрываются известью, поэтому хара жёсткая и шершавая на ощупь.'],
+    ['Оогонии и антеридии', 'На веточках появились оранжевые шарики-антеридии (там сперматозоиды) и бурые оогонии (там яйцеклетка).'],
+    ['Ооспора', 'Сперматозоид доплыл до яйцеклетки, и произошло оплодотворение. Получилась ооспора в толстой оболочке: она переживает зиму на дне.'],
+    ['Новая хара', 'Из ооспоры проросла новая хара. Цикл замкнулся!']],
+  repro: { label: 'Покачать банку: пусть сперматозоиды доплывут', short: 'половое размножение', done: 'Сперматозоиды из антеридиев доплыли до оогониев. Произошло оплодотворение в воде.' },
+  tx: Object.assign({}, SPECIES.algae.tx, { start: 'В банку с песком на дне посадили кусочек хары.',
+    wilt: 'Воды в банке почти не осталось: веточки хары обсыхают и теряют тургор.' })
+});
+const spOf = P => P && P.sp === 'algae' && P.alga === 'chara' ? CHARA : SPECIES[P.sp];
+const SPc = () => spOf(S);
 function revive(raw, unlocked) {
   const st = Object.assign(newState(raw.sp), raw);
   st.unlocked = unlocked;
@@ -1934,7 +1987,7 @@ const plantsOf = sp => plantKeys().filter(k => G.plants[k].sp === sp);
 function newKey(sp) { if (!G || !G.plants[sp]) return sp; let n = 2; while (G.plants[sp + '-' + n]) n++; return sp + '-' + n; }
 // подпись растения во вкладках: культура или группа, а если таких несколько — с номером
 function plantTitle(k) {
-  const P = G.plants[k], base = P.sp === 'angio' ? cropOf(P).name : SPECIES[P.sp].group;
+  const P = G.plants[k], base = P.sp === 'angio' ? cropOf(P).name : P.alga === 'chara' ? 'Хара' : SPECIES[P.sp].group;
   const same = plantKeys().filter(x => { const Q = G.plants[x]; return Q.sp === P.sp && (Q.sp !== 'angio' || cropOf(Q).name === base); });
   return same.length > 1 ? `${base} ${same.indexOf(k) + 1}` : base;
 }
@@ -1946,8 +1999,9 @@ function fresh(sp, crop, key) {
   const P = newState(sp); P.key = key;
   P.unlocked = G.unlocked;
   if (sp === 'angio') { P.cropRandom = !crop || crop === 'random'; P.crop = P.cropRandom ? CROP_KEYS[Math.floor(Math.random() * CROP_KEYS.length)] : crop; }
+  if (sp === 'algae') P.alga = crop === 'chara' ? 'chara' : 'spiro';
   if (!LESSON && MODE === 'real') { const now = new Date(); now.setMinutes(0, 0, 0); P.hour = now.getHours(); P.lastTs = now.getTime(); }
-  const SP = SPECIES[sp];
+  const SP = spOf(P);
   note(P, null, `${sp === 'angio' ? `Посадили семя: ${P.cropRandom ? 'что вырастет — сюрприз' : CROPS[P.crop].name.toLowerCase()}.` : SP.tx.start} Место: ${LOC[P.loc].name.toLowerCase()}. ${SP.stages[0][1]}`, 'good');
   P.cool.stage0 = P.hour;
   const prev = G.plants[key];
@@ -1970,7 +2024,7 @@ function pushProgress(force) {
   lastPush = Date.now();
   const plants = plantKeys().map(key => {
     const P = G.plants[key], k = P.sp, st = stageOf(P);
-    return { group: SPECIES[k].group, plant: (k === 'angio' ? cropOf(P).name : SPECIES[k].name) + (plantsOf(k).length > 1 ? ` (${plantTitle(key)})` : ''), stage: SPECIES[k].stages[st][0], stageNum: st,
+    return { group: SPECIES[k].group, plant: (k === 'angio' ? cropOf(P).name : spOf(P).name) + (plantsOf(k).length > 1 ? ` (${plantTitle(key)})` : ''), stage: spOf(P).stages[st][0], stageNum: st,
       day: Math.floor(P.hour / 24) + 1, hp: Math.round(P.hp), level: levelOf(P.xp), xp: P.xp, gen: P.gen || 1,
       status: P.dead ? 'погибло' : P.done ? 'цикл завершён' : P.disease ? 'болеет' : 'растёт', disease: P.disease ? DISEASES[P.disease.id].name : '',
       blocks: BLOCKS[k].filter(b => (G.unlocked[k] || {})[b.id]).length, blocksTotal: BLOCKS[k].length };
@@ -2339,6 +2393,51 @@ function drawLycopod(s, ctx) {
 }
 
 // Водоросль: банка с водой, нити спирогиры, пузырьки кислорода
+// хара в разрезе банки: песок на дне, ризоиды, оси с узлами и мутовками веточек; при созревании — антеридии и оогонии
+function drawChara(s, ctx) {
+  const { droop, col, st, lush } = ctx, bm = Math.min(s.biomass, 22), lvl = 404 - 236 * s.moisture / 100;
+  const water = s.minerals > 85 ? mix('#cfe6ee', '#cbc48a', 0.6) : mix('#cfe6ee', '#a9d0a0', Math.min(1, bm / 20) * 0.5);
+  let o = `<defs><clipPath id="waterClip"><rect x="130" y="${f1(lvl)}" width="140" height="${f1(404 - lvl)}"/></clipPath></defs>`;
+  o += `<rect x="124" y="160" width="152" height="250" rx="16" fill="#e6f2f5" opacity=".35" stroke="#eef6f8" stroke-width="3"/>`;
+  o += `<rect x="128" y="${f1(lvl)}" width="144" height="${f1(406 - lvl)}" rx="12" fill="${water}" opacity=".85"/>`;
+  o += `<path d="M128 ${f1(lvl)} h144" stroke="#ffffff" stroke-opacity=".6" stroke-width="1.5"/>`;
+  o += `<path d="M128 386 Q160 381 200 384 T272 385 V398 Q272 406 262 406 H138 Q128 406 128 398 Z" fill="#d8c08c"/>`; // песок
+  for (let i = 0; i < 26; i++) o += `<circle cx="${134 + (i * 37) % 134}" cy="${390 + (i * 13) % 13}" r="1" fill="#b89c62"/>`;
+  const axC = mix(col, '#8fa889', .25), twC = mix(col, '#b9d79a', .15), grown = Math.min(1, 0.25 + s.biomass / 12);
+  let ax = '', tw = '', rz = '', extra = '';
+  const na = Math.min(5, 1 + Math.floor(bm / 4) + Math.round(lush));
+  for (let a = 0; a < na; a++) {
+    const x0 = na === 1 ? 200 : 146 + 108 * a / (na - 1), y0 = 386, H = Math.max(26, (y0 - lvl - 10) * grown * (0.75 + ((a * 37) % 10) / 40));
+    const lean = (((a * 17) % 5) - 2) * 0.05 + droop * (a % 2 ? 0.3 : -0.3);
+    for (let i = 0; i < 4; i++) rz += `M${f1(x0)} ${y0} q${(i - 1.5) * 3} 6 ${(i - 1.5) * 6} 13 `;
+    const nodes = Math.max(2, Math.round(H / 26));
+    let x = x0, y = y0;
+    for (let n = 1; n <= nodes; n++) {
+      const top = n === nodes, L = top ? 10 : H / nodes, nx = x + Math.sin(lean) * L, ny = y - Math.cos(lean) * L;
+      ax += `M${f1(x)} ${f1(y)} L${f1(nx)} ${f1(ny)} `; x = nx; y = ny;
+      extra += `<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="3" ry="2" fill="${axC}"/>`;
+      const tl = top ? 8 : 19 - 5 * n / nodes;
+      for (const sd of [-1, 1]) for (const k of [0.55, 1.05]) { // веточки мутовки: видны те, что торчат вбок
+        const a2 = lean + sd * (top ? 0.35 : k) + droop * sd * 0.4, ex = x + Math.sin(a2) * tl, ey = y - Math.cos(a2) * tl;
+        tw += `M${f1(x)} ${f1(y)} Q${f1(x + Math.sin(a2) * tl * 0.6)} ${f1(y - Math.cos(a2) * tl * 0.6 - 2)} ${f1(ex)} ${f1(ey)} `;
+        if (st >= 4 && st <= 5 && !top && n > 1 && k === 0.55) {
+          const mx = x + Math.sin(a2) * tl * 0.5, my = y - Math.cos(a2) * tl * 0.5;
+          extra += `<circle cx="${f1(mx)}" cy="${f1(my + 2)}" r="1.5" fill="#ff7a1a" stroke="#a5440c" stroke-width=".4"/><ellipse cx="${f1(mx)}" cy="${f1(my - 2.5)}" rx="1.1" ry="1.9" fill="#8a5a2a"/>`;
+        }
+      }
+    }
+  }
+  o += `<g clip-path="url(#waterClip)"><path d="${rz}" stroke="#f3f1e4" stroke-width="1" fill="none"/><path d="${ax}" stroke="${axC}" stroke-width="2.6" stroke-linecap="round" fill="none"/><path d="${tw}" stroke="${twC}" stroke-width="1.8" stroke-linecap="round" fill="none"/>${extra}</g>`;
+  if (st >= 5) for (let i = 0; i < 5; i++) o += `<ellipse cx="${150 + i * 23}" cy="${388 + (i % 2) * 3}" rx="2" ry="2.6" fill="#2a2018"/>`; // ооспоры на дне
+  if (s.lastP > 0.25 && s.moisture > 20) {
+    const nb = Math.min(14, Math.floor(s.lastP * 10));
+    for (let k = 0; k < nb; k++) { const bx = 140 + (k * 53) % 120, by = Math.max(lvl + 70, 380 - (k * 37) % 150); o += `<circle class="bub" style="animation-delay:-${(k * 0.37).toFixed(2)}s" cx="${bx}" cy="${f1(by)}" r="${1.5 + (k % 3) * 0.7}" fill="none" stroke="#ffffff" stroke-width="1"/>`; }
+  }
+  const jt = potTier(levelOf(s.xp));
+  o += `<rect x="118" y="152" width="164" height="12" rx="4" fill="${['#c9d6da', '#c9d6da', '#7fb3c2', '#d4a93a', '#e8c25a'][jt]}" opacity=".9"/>`;
+  if (jt >= 1) o += `<path d="M126 176 h148" stroke="${jt >= 3 ? '#d4a93a' : '#e07a8a'}" stroke-width="4" opacity=".85"/>`;
+  return o;
+}
 function drawAlgae(s, ctx) {
   const { droop, col, st, lush } = ctx;
   const bm = Math.min(s.biomass, 22);
@@ -2648,7 +2747,7 @@ function fruitIcon(type, x, y, r, g) {
   }
   return '';
 }
-const DRAW = { angio: drawAngio, gymno: drawPine, fern: drawFern, moss: drawMoss, lycopod: drawLycopod, algae: drawAlgae };
+const DRAW = { angio: drawAngio, gymno: drawPine, fern: drawFern, moss: drawMoss, lycopod: drawLycopod, algae: (s, ctx) => s.alga === 'chara' ? drawChara(s, ctx) : drawAlgae(s, ctx) };
 function drawScene() {
   const s = S, e = env(s);
   const lvl = levelOf(s.xp);
@@ -3167,7 +3266,9 @@ function makePot(T, lvl, jar) {
     const glass = new T.Mesh(new T.CylinderGeometry(0.42, 0.42, 1.1, 40, 1, true), new T.MeshPhysicalMaterial({ color: 0xdff0f4, transparent: true, opacity: 0.22, roughness: 0.05, side: T.DoubleSide, depthWrite: false }));
     glass.position.y = 0.55; g.add(glass);
     const water = new T.Mesh(new T.CylinderGeometry(0.4, 0.4, 0.9 * Math.max(0.1, S.moisture / 100), 40), new T.MeshStandardMaterial({ color: 0x9cc9b0, transparent: true, opacity: 0.45, depthWrite: false }));
-    water.position.y = 0.45 * Math.max(0.1, S.moisture / 100); g.add(water); g.userData.top = 0.02; return g;
+    water.position.y = 0.45 * Math.max(0.1, S.moisture / 100); g.add(water); g.userData.top = 0.02;
+    if (S && S.alga === 'chara') { const sand = new T.Mesh(new T.CylinderGeometry(0.405, 0.405, 0.08, 40), new T.MeshStandardMaterial({ color: '#d8c08c', roughness: 1 })); sand.position.y = 0.04; g.add(sand); } // песок на дне для хары
+    return g;
   }
   const K = skinOf(S, lvl);
   const pts = [[0.0, 0], [0.32, 0], [0.42, 0.62], [0.47, 0.62], [0.47, 0.7], [0.4, 0.7], [0.36, 0.1], [0, 0.1]].map(([x, y]) => new T.Vector2(x, y));
@@ -3442,6 +3543,44 @@ function mossShootGeo(T) {
   MOSS_SHOOT = new T.BufferGeometry(); MOSS_SHOOT.setAttribute('position', new T.BufferAttribute(pos, 3)); MOSS_SHOOT.computeVertexNormals();
   return MOSS_SHOOT;
 }
+// хара в банке: из песка поднимаются оси-слоевища; узлы и длинные междоузлия, в каждом узле мутовка веточек;
+// при созревании на веточках оранжевые антеридии и бурые оогонии, потом на песке — тёмные ооспоры
+function chara3D(T, col, st, k) {
+  const g = new T.Group(), up = new T.Vector3(0, 1, 0), WL = 0.9 * Math.max(0.1, S.moisture / 100) - 0.05;
+  const line = { thickness: 0.003, color: [0.16, 0.22, 0.12], alpha: 1, visible: true };
+  const mk = (c, x = {}) => { const m = new T.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.8, transparent: true, opacity: 1 }, x)); m.userData.outlineParameters = line; return m; };
+  const axisM = mk(col.clone().lerp(new T.Color('#8fa889'), 0.25)), twigM = mk(col.clone().offsetHSL(0, 0.05, 0.05));
+  const rhizM = mk('#efeee2'), antM = mk('#ff7a1a'), oogM = mk('#8a5a2a'), sporeM = mk('#2a2018');
+  const seg = (a, b, r0, r1, m) => { const d = b.clone().sub(a), L = d.length(); const c = new T.Mesh(new T.CylinderGeometry(r1, r0, L, 6), m);
+    c.position.copy(a).addScaledVector(d, 0.5); c.quaternion.setFromUnitVectors(up, d.normalize()); c.renderOrder = 5; g.add(c); return c; };
+  const ball = (p, r, m, sy = 1) => { const b = new T.Mesh(new T.SphereGeometry(r, 8, 6), m); b.position.copy(p); b.scale.y = sy; b.renderOrder = 5; g.add(b); return b; };
+  const base = 0.085, na = 1 + Math.round(k * 4), grown = Math.min(1, 0.25 + S.biomass / 12);
+  const fertile = st >= 4 && st <= 5;
+  for (let a = 0; a < na; a++) {
+    const ang = a * 2.4 + 0.5, r = a ? 0.1 + (a % 3) * 0.07 : 0, H = Math.max(0.12, (WL - base) * grown * (0.75 + ((a * 37) % 10) / 40));
+    let p = new T.Vector3(Math.cos(ang) * r, base, Math.sin(ang) * r);
+    // ризоиды уходят в песок
+    for (let i = 0; i < 4; i++) seg(p, p.clone().add(new T.Vector3(Math.cos(i * 1.6) * 0.03, -0.05, Math.sin(i * 1.6) * 0.03)), 0.0025, 0.0015, rhizM);
+    const nodes = Math.max(2, Math.round(H / 0.085)), lean = new T.Vector3(Math.cos(ang + 1) * 0.12, 1, Math.sin(ang + 1) * 0.12).normalize();
+    for (let n = 1; n <= nodes; n++) {
+      const top = n === nodes, len = top ? 0.04 : H / nodes;
+      const q = p.clone().addScaledVector(lean, len); seg(p, q, 0.009, 0.008, axisM); p = q;
+      ball(p, 0.011, axisM, 0.7); // узел
+      const young = (n / nodes), tl = top ? 0.035 : 0.08 + 0.05 * (1 - young * 0.6), nw = 8;
+      for (let w = 0; w < nw; w++) { // мутовка веточек
+        const wa = w / nw * Math.PI * 2 + n * 0.4, out = new T.Vector3(Math.cos(wa), 0, Math.sin(wa));
+        const d1 = out.clone().multiplyScalar(0.8).addScaledVector(up, top ? 1.4 : 0.35).normalize();
+        const m1 = p.clone().addScaledVector(d1, tl * 0.55), d2 = d1.clone().lerp(up, 0.45).normalize(), e = m1.clone().addScaledVector(d2, tl * 0.45);
+        seg(p, m1, 0.0042, 0.0036, twigM); seg(m1, e, 0.0036, 0.002, twigM); ball(m1, 0.0045, twigM, 0.8);
+        if (fertile && !top && n > 1 && n < nodes && w % 2 === 0) { ball(m1.clone().addScaledVector(out, 0.007), 0.0075, antM); ball(m1.clone().addScaledVector(up, 0.011), 0.006, oogM, 1.5); }
+      }
+    }
+  }
+  if (st >= 5) for (let i = 0; i < 6; i++) ball(new T.Vector3((rnd() - 0.5) * 0.4, base + 0.004, (rnd() - 0.5) * 0.4), 0.007, sporeM, 1.3);
+  if (S.lastP > 0.2) { const bm = new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75 });
+    for (let i = 0; i < 8 + k * 10; i++) { const b = new T.Mesh(new T.SphereGeometry(0.005 + rnd() * 0.006, 6, 5), bm); b.position.set((rnd() - 0.5) * 0.4, base + rnd() * (WL - base) * grown, (rnd() - 0.5) * 0.4); b.renderOrder = 6; g.add(b); } }
+  return g;
+}
 function proceduralPlant(T) {
   const g = new T.Group(), col = new T.Color(leafColor(S)), st = stageOf(S), k = Math.min(1, 0.25 + S.biomass / 16);
   const mat = new T.MeshStandardMaterial({ color: col, roughness: 0.7 });
@@ -3524,6 +3663,7 @@ function proceduralPlant(T) {
     });
     return g;
   }
+  if (S.sp === 'algae' && S.alga === 'chara') return chara3D(T, col, st, k);
   if (S.sp === 'algae') { // спирогира: пушистые клубки-«тина» из множества тончайших нитей, парят в толще воды
     const WL = 0.9 * Math.max(0.1, S.moisture / 100) - 0.04, nc = 1 + Math.round(k * 3), clumps = []; // WL — уровень воды
     for (let c = 0; c < nc; c++) { const a = c * 2.4 + rnd(), r = c ? 0.14 + rnd() * 0.1 : 0.04; clumps.push(new T.Vector3(Math.cos(a) * r, Math.min(WL - 0.12, 0.25 + rnd() * 0.3 + k * 0.12), Math.sin(a) * r)); }
@@ -3978,11 +4118,13 @@ const blockList = () => BLOCKS[S.sp];
 // у каждого растения свой случайный набор вопросов блока; новые вопросы берём из тех, что ещё не попадались
 function quizSet(b) {
   const Q = (S.quiz = S.quiz || {}), used = (S.quizUsed = S.quizUsed || {});
-  const ok = Q[b.id] && Q[b.id].filter(x => typeof x === 'number').length === Math.min(QUIZ_N, b.qs.length) && Q[b.id].every(x => qOf(b, x));
+  const ok = Q[b.id] && Q[b.id].filter(x => typeof x === 'number').length === Math.min(QUIZ_N, b.qs.length) && Q[b.id].every(x => qOf(b, x) && qFits(qOf(b, x)));
   if (!ok) { Q[b.id] = []; for (let i = 0; i < Math.min(QUIZ_N, b.qs.length); i++) Q[b.id].push(drawQ(b, Q[b.id])); }
   return Q[b.id];
 }
 // элемент набора: число — вопрос блока, 'd:<болезнь>:<номер>' — вопрос о болезни
+// у водорослей вопросы зависят от вида: про спирогиру — только тем, кто растит спирогиру, про хару — тем, кто растит хару
+const qFits = q => !q || S.sp !== 'algae' ? true : S.alga === 'chara' ? !/спирогир/i.test(q[0] + q[1]) : !q.chara;
 const qOf = (b, x) => typeof x === 'number' ? b.qs[x] : (DQ[x.split(':')[1]] || [])[+x.split(':')[2]];
 function drawDQ(did, taken) {
   const key = 'd:' + did, used = (S.quizUsed[key] = S.quizUsed[key] || []), all = DQ[did].map((_, k) => `d:${did}:${k}`);
@@ -3993,8 +4135,9 @@ function drawDQ(did, taken) {
 }
 function drawQ(b, taken) {
   const used = (S.quizUsed[b.id] = S.quizUsed[b.id] || []);
-  let pool = b.qs.map((_, i) => i).filter(i => !taken.includes(i) && !used.includes(i));
-  if (!pool.length) { used.length = 0; pool = b.qs.map((_, i) => i).filter(i => !taken.includes(i)); }
+  const fit = i => qFits(b.qs[i]);
+  let pool = b.qs.map((_, i) => i).filter(i => fit(i) && !taken.includes(i) && !used.includes(i));
+  if (!pool.length) { used.length = 0; pool = b.qs.map((_, i) => i).filter(i => fit(i) && !taken.includes(i)); }
   const i = pool[Math.floor(Math.random() * pool.length)];
   used.push(i); return i;
 }
@@ -4004,7 +4147,7 @@ function renderBlocks() {
   $('blocks').innerHTML = blockList().map(b => {
     const open = isOpen(b.id);
     return `<div class="block ${open ? 'open' : ''}" id="blk-${b.id}">
-      <div class="block-head"><div><h3>${b.title}</h3><p>${b.gives}</p></div>
+      <div class="block-head"><div><h3>${b.title}</h3><p>${S.alga === 'chara' && b.id === 'repro' ? 'Открывает половое размножение' : b.gives}</p></div>
       ${open ? '<span class="badge">Пройден</span>' : `<button class="btn" data-quiz="${b.id}" id="qbtn-${b.id}">Пройти проверку</button>`}</div>
       <form class="quiz" id="quiz-${b.id}" hidden>
         ${open ? '' : quizSet(b).map((x, i) => [qOf(b, x), x]).map(([q, x], i) => `<fieldset id="fs-${b.id}-${i}" class="${typeof x === 'number' ? '' : 'dq'}"><legend>${i + 1}. ${typeof x === 'number' ? '' : `<span class="dqtag">${DISEASES[x.split(':')[1]].name}</span> `}${q[0]}</legend>
@@ -4094,7 +4237,7 @@ function plantStatus(P) {
   if (P.dead) return ['bad', 'погибло'];
   if (P.done) return ['done', 'цикл завершён'];
   if (P.disease) return ['bad', 'болеет'];
-  const st = SPECIES[P.sp].stages[stageOf(P)][0].toLowerCase();
+  const st = spOf(P).stages[stageOf(P)][0].toLowerCase();
   return [P.hp < 40 || P.turgor < 0.35 ? 'warn' : 'ok', st];
 }
 function renderGarden() {
@@ -4114,7 +4257,7 @@ $('crop').insertAdjacentHTML('beforeend', CROP_KEYS.map(k => `<option value="${k
 $('species').innerHTML = SP_ORDER.map((k, i) => {
   const v = SPECIES[k];
   return `<label class="sp-card"><input type="radio" name="sp" id="sp-${k}" value="${k}">
-    <span class="n">${String(i + 1).padStart(2, '0')}</span><span class="g">${v.group}</span><span class="e">${v.name}</span><span class="t">${v.trait}</span><span class="have" id="have-${k}"></span></label>`;
+    <span class="n">${String(i + 1).padStart(2, '0')}</span><span class="g">${v.group}</span><span class="e">${k === 'algae' ? 'Спирогира или хара' : v.name}</span><span class="t">${k === 'algae' ? 'Нитчатая спирогира или похожая на хвощ хара — в банке с водой. Нет корней, стебля и листьев.' : v.trait}</span><span class="have" id="have-${k}"></span></label>`;
 }).join('');
 const chosen = () => (document.querySelector('#species input:checked') || {}).value;
 function syncChoice() {
@@ -4123,7 +4266,7 @@ function syncChoice() {
   $('plant').disabled = !!G && Object.keys(G.plants).length >= MAX_PLANTS;
   $('replant').hidden = !(S && S.sp === sp);
   $('removePlant').hidden = !(S && S.sp === sp);
-  $('cropSet').hidden = sp !== 'angio';
+  $('cropSet').hidden = sp !== 'angio'; $('algaSet').hidden = sp !== 'algae';
   disarm();
 }
 $('species').addEventListener('change', syncChoice);
@@ -4175,7 +4318,7 @@ $('removePlant').onclick = () => {
   select(left[0]); openSettings(false);
 };
 function plant(sp, crop, key) {
-  fresh(sp, crop !== undefined ? crop : sp === 'angio' ? $('crop').value : null, key);
+  fresh(sp, crop !== undefined ? crop : sp === 'angio' ? $('crop').value : sp === 'algae' ? $('alga').value : null, key);
   closeSettings(); showGame(true); renderBlocks(); render(); renderGarden(); save();
   if (!tourDone('game')) setTimeout(() => startTour('game'), 500);
 }
@@ -4183,7 +4326,7 @@ $('reset').onclick = () => {
   if (!arm($('reset'), 'reset', 'Точно? Нажми ещё раз — всё удалится', 'Сбросить весь прогресс')) return;
   G = null; S = null; save(); showGame(false); renderGarden(); openSettings(true);
 };
-$('bRestart').onclick = () => plant(S.sp, S.sp === 'angio' ? (S.cropRandom ? 'random' : S.crop) : null, S.key);
+$('bRestart').onclick = () => plant(S.sp, S.sp === 'angio' ? (S.cropRandom ? 'random' : S.crop) : S.sp === 'algae' ? S.alga : null, S.key);
 $('bChoose').onclick = () => openSettings(false, true);
 function showGame(on) { $('game').hidden = !on; $('openSettings').hidden = !on; }
 
@@ -4445,6 +4588,10 @@ const finalSent = s => (G.finals || []).some(f => (f.key || f.sp) === (s.key || 
 // Когда цикл замкнулся, ученик отвечает развёрнуто на 5 вопросов своей группы. Ответы уходят учителю вместе с прогрессом.
 const FINAL_REFLECT = 'Какая ошибка в уходе у тебя была (или могла быть) и как ты её исправил(а)? Объясни с точки зрения биологии.';
 const FINAL_QS = {
+  chara: ['Опиши, как устроена хара: из чего состоит её тело, чем она прикрепляется ко дну и почему её путают с хвощом.',
+    'Зачем харе свет? Что за пузырьки появляются на её веточках на свету?',
+    'Как хара размножается половым путём? Где образуются сперматозоиды и яйцеклетка и зачем нужна вода?',
+    'Чем водоросли отличаются от высших растений? Приведи не меньше двух признаков.', FINAL_REFLECT],
   algae: ['Опиши, как устроена спирогира: из чего состоит её тело и где идёт фотосинтез.',
     'Почему спирогире нужен свет? Что происходит с крахмалом в её клетках днём и ночью?',
     'Как размножается спирогира? Опиши вегетативное размножение и конъюгацию.',
@@ -4470,7 +4617,7 @@ const FINAL_QS = {
     'Как связаны свет, фотосинтез и крахмал? Какой опыт это доказывает и как его поставить?',
     'Как вода с минеральными веществами попадает от корней к листьям, а сахара — к плодам? Назови ткани.', FINAL_REFLECT],
 };
-const finalQs = s => FINAL_QS[s.sp].map(q => typeof q === 'function' ? q(s) : q);
+const finalQs = s => FINAL_QS[s.sp === 'algae' && s.alga === 'chara' ? 'chara' : s.sp].map(q => typeof q === 'function' ? q(s) : q);
 const FINAL_MIN = 25; // слишком короткий ответ не принимаем
 function openFinal() {
   const qs = finalQs(S), sent = (G.finals || []).filter(f => (f.key || f.sp) === (S.key || S.sp) && f.gen === (S.gen || 1)).pop();
@@ -4491,7 +4638,7 @@ $('finalForm').addEventListener('submit', ev => {
   const short = ans.map((a, i) => a.length < FINAL_MIN ? i + 1 : 0).filter(Boolean);
   if (short.length) { $('finalMsg').textContent = `Ответь подробнее на ${short.length > 1 ? 'вопросы' : 'вопрос'} ${short.join(', ')}: хотя бы пару предложений.`; return; }
   G.finals = G.finals || [];
-  G.finals.push({ sp: S.sp, key: S.key || S.sp, group: SPECIES[S.sp].group, plant: S.sp === 'angio' ? cropOf(S).name : SPECIES[S.sp].name, gen: S.gen || 1, day: Math.floor(S.hour / 24) + 1, at: Date.now(), answers: qs.map((q, i) => ({ q, a: ans[i] })) });
+  G.finals.push({ sp: S.sp, key: S.key || S.sp, group: SPECIES[S.sp].group, plant: S.sp === 'angio' ? cropOf(S).name : SPc().name, gen: S.gen || 1, day: Math.floor(S.hour / 24) + 1, at: Date.now(), answers: qs.map((q, i) => ({ q, a: ans[i] })) });
   S.finalDraft = null; addXP(S, 30);
   note(S, null, 'Финальный тест отправлен учителю. +30 опыта!', 'good');
   save(); pushProgress(true); render(); openFinal();
@@ -4851,7 +4998,7 @@ document.querySelector('.ptabs').addEventListener('keydown', ev => {
 
 // ---------- время ----------
 function summary(P, before, label) {
-  const SP = SPECIES[P.sp];
+  const SP = spOf(P);
   let t = `${label}: ${SP.wetWord.toLowerCase()} ${Math.round(before.m)} → ${Math.round(P.moisture)} %`;
   if (stageOf(P) > before.st) t += `, новая стадия — «${SP.stages[stageOf(P)][0]}»`;
   if (P.hp < before.hp - 5) t += `, здоровье упало до ${Math.round(P.hp)}`;
