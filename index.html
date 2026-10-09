@@ -2715,8 +2715,8 @@ function render() {
   const zoom = s.dead ? null : s.sp === 'angio' && (st === 4 || (st === 5 && s.fruit < 0.15)) ? ['flower', 'Рассмотреть цветок'] : s.sp === 'moss' && st >= 5 ? ['capsule', 'Разрезать коробочку'] : s.sp === 'fern' && st >= 3 ? ['sorus', 'Рассмотреть сорус'] : null;
   $('aFlower').hidden = !zoom;
   if (zoom) { $('aFlower').dataset.kind = zoom[0]; $('aFlower').lastChild.textContent = zoom[1]; }
-  $('bCut').hidden = !(s.done && (s.sp === 'angio' || s.sp === 'gymno'));
-  $('bCut').textContent = s.sp === 'gymno' ? 'Разрезать шишку' : 'Разрезать плод';
+  $('bCut').hidden = !(s.done && ['angio', 'gymno', 'moss', 'fern'].includes(s.sp));
+  $('bCut').textContent = { gymno: 'Разрезать шишку', moss: 'Разрезать коробочку на ножке', fern: 'Рассмотреть сорус' }[s.sp] || 'Разрезать плод';
   const overTip = s.dead ? 'Растение погибло — посади новое' : 'Цикл завершён — растение дало семена';
   const lockTip = act => !has(s, act) ? `Чтобы открыть, пройди блок курса «${blockFor(s.sp, act).title}» (вкладка «Блоки»)` : over ? overTip : '';
   setLocked($('aFeed'), !has(s, 'feed'), over, lockTip('feed'));
@@ -2999,7 +2999,7 @@ $('cutClose').onclick = closeCut;
 $('cutModal').addEventListener('click', ev => { if (ev.target === $('cutModal')) closeCut(); });
 document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !$('cutModal').hidden) closeCut(); });
 $('aFlower').onclick = () => openCut($('aFlower').dataset.kind || 'flower');
-$('bCut').onclick = () => openCut(S.sp === 'gymno' ? 'cone' : 'fruit');
+$('bCut').onclick = () => openCut({ gymno: 'cone', moss: 'capsule', fern: 'sorus' }[S.sp] || 'fruit');
 
 // ---------- 3D-просмотр ----------
 // three.js грузится только при первом открытии окна; модели — облегчённые копии моделей Poly Haven (CC0)
