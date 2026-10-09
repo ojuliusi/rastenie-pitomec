@@ -2506,6 +2506,24 @@ const CONE = () => {
       if (k > 0 && k < 7) o += `<ellipse cx="${f1(120 + sd * 16)}" cy="${f1(y - 3)}" rx="4" ry="2.6" fill="#4e2f16"/><path d="M${f1(120 + sd * 19)} ${f1(y - 4)} q${sd * 14} -8 ${sd * 24} -6 q${-sd * 8} 6 ${-sd * 24} 6 z" fill="#e3cf9e" opacity=".95"/>`; } }
   return o + lab(120, 220, 225, 'Ось шишки') + lab(170, 112, 50, 'Семенная чешуя') + lab(144, 116, 110, 'Семя с крылышком —|лежит открыто на чешуе') + lab(78, 106, 170, 'На каждой чешуе|по два семени');
 };
+// Мох вблизи: побег кукушкина льна (гаметофит) и, если уже выросла, коробочка на ножке (спорофит); листочек под микроскопом
+const MOSS_PLANT = () => {
+  const st = stageOf(S), sporo = st >= 5;
+  let o = `<rect x="20" y="236" width="200" height="16" rx="3" fill="#b5603e"/><path d="M20 236 h200" stroke="#7e3a24" stroke-width="2"/>`; // кирпич
+  for (let i = 0; i < 9; i++) o += `<path d="M${112 + (i % 3) * 6 - 6} 236 q${i % 2 ? 6 : -6} 6 ${i % 2 ? 3 : -4} ${8 + (i % 4) * 2}" stroke="#9a7a4a" stroke-width="1.2" fill="none"/>`; // ризоиды
+  o += `<path d="M112 236 Q110 170 114 96" stroke="#7a6a3a" stroke-width="3.5" fill="none"/>`; // стебелёк
+  for (let j = 0; j < 12; j++) { const y = 226 - j * 11, x = 112 + (226 - y) * 0.012, l = 26 - j * 1.2;
+    for (const sd of [-1, 1]) o += `<path d="M${f1(x)} ${y} q${sd * l * 0.6} ${-l * 0.25} ${sd * l} ${-l * 0.55} q${-sd * l * 0.45} ${l * 0.12} ${-sd * l} ${l * 0.55}z" fill="#4f9e32" stroke="#2f6a1e" stroke-width=".8"/>`; }
+  if (sporo) { o += `<path d="M114 96 Q118 60 120 30" stroke="#b0603a" stroke-width="2.5" fill="none"/><rect x="113" y="12" width="16" height="22" rx="4" fill="#9a7a3a" stroke="#6b4a1a"/><path d="M112 14 q9 -12 18 0 z" fill="#c9b07a" stroke="#8a6a3a"/>`; }
+  else o += `<circle cx="114" cy="92" r="6" fill="${st >= 3 ? '#c45a3a' : '#7fb24a'}" stroke="#7a3a22"/>`; // верхушка: антеридии/архегонии
+  // листочек под микроскопом: один слой клеток
+  o += `<circle cx="196" cy="150" r="34" fill="#eef7e6" stroke="#555" stroke-width="3"/><clipPath id="mlc"><circle cx="196" cy="150" r="32"/></clipPath><g clip-path="url(#mlc)">`;
+  for (let r = 0; r < 7; r++) for (let c = 0; c < 9; c++) { const x = 166 + c * 8 + (r % 2) * 4, y = 122 + r * 9; o += `<rect x="${x}" y="${y}" width="7" height="8" rx="1.5" fill="#bfe3a2" stroke="#5f9a3c" stroke-width=".7"/><circle cx="${x + 2.5}" cy="${y + 3}" r="1.1" fill="#3f8a2a"/><circle cx="${x + 4.8}" cy="${y + 5}" r="1.1" fill="#3f8a2a"/>`; }
+  o += `</g><path d="M138 178 L166 168" stroke="#555" stroke-dasharray="3 3"/>`;
+  return o + (sporo ? lab(126, 22, 14, 'Коробочка со спорами|(спорофит)') + lab(118, 60, 48, 'Ножка коробочки') : lab(118, 92, 26, st >= 3 ? 'Верхушка: антеридии или|архегонии (половые органы)' : 'Верхушка растёт'))
+    + lab(136, 150, 72, 'Листочки: узкие,|без черешка') + lab(222, 132, 134, 'Листочек под микроскопом:|один слой клеток|с хлоропластами')
+    + lab(114, 200, 196, 'Стебелёк — гаметофит,|половое поколение') + lab(124, 246, 240, 'Ризоиды: держат|за поры кирпича');
+};
 // Коробочка кукушкина льна в продольном разрезе
 const MOSS_CAPSULE = () => {
   let o = `<path d="M120 252 V188" stroke="#b5823a" stroke-width="6"/><path d="M110 192 Q120 178 130 192 Z" fill="#a7b06a"/>`; // ножка и шейка-апофиза
@@ -2712,7 +2730,7 @@ function render() {
   $('aRepot').classList.toggle('primary', rootbound(s));
   $('aRepot').querySelector('.lbl').textContent = `Пересадить в горшок побольше (сейчас ${POTS[s.pot || 1].name})`;
   if (!living) $('live6').disabled = $('live24').disabled = over;
-  const zoom = s.dead ? null : s.sp === 'angio' && (st === 4 || (st === 5 && s.fruit < 0.15)) ? ['flower', 'Рассмотреть цветок'] : s.sp === 'moss' && st >= 5 ? ['capsule', 'Разрезать коробочку'] : s.sp === 'fern' && st >= 3 ? ['sorus', 'Рассмотреть сорус'] : null;
+  const zoom = s.dead ? null : s.sp === 'angio' && (st === 4 || (st === 5 && s.fruit < 0.15)) ? ['flower', 'Рассмотреть цветок'] : s.sp === 'moss' && st >= 5 ? ['capsule', 'Разрезать коробочку'] : s.sp === 'moss' && s.biomass >= 1 ? ['mossplant', 'Рассмотреть мох вблизи'] : s.sp === 'fern' && st >= 3 ? ['sorus', 'Рассмотреть сорус'] : null;
   $('aFlower').hidden = !zoom;
   if (zoom) { $('aFlower').dataset.kind = zoom[0]; $('aFlower').lastChild.textContent = zoom[1]; }
   $('bCut').hidden = !(s.done && ['angio', 'gymno', 'moss', 'fern'].includes(s.sp));
@@ -2959,6 +2977,8 @@ function cutQuestion(kind) {
     opts.sort((a, b) => ((a.length * 7 + h) % 5) - ((b.length * 7 + h) % 5));
     return { q: F.q, right: F.right, opts, xp: 10, text: () => `Верно! ${cropOf(S).note} Формула цветка: ${F.formula}.`, hint: 'Внимательно прочитай подписи на схеме.' };
   }
+  if (kind === 'mossplant') return { q: 'Чем мох держится за кирпич?', right: 'Ризоидами — нитями из клеток', opts: ['Настоящими корнями', 'Ризоидами — нитями из клеток', 'Корневищем'], xp: 15,
+    text: () => 'Зелёный мох, который мы видим, — гаметофит, половое поколение. У него есть стебелёк и узкие листочки, но нет настоящих корней и развитых проводящих тканей: воду он впитывает всей поверхностью, а за кирпич держится ризоидами. Листочек почти везде толщиной в один слой клеток, поэтому мох быстро сохнет и быстро снова намокает. На верхушках созревают половые органы, а после оплодотворения вырастает коробочка на ножке — спорофит.', hint: 'Посмотри на подпись внизу схемы.' };
   if (kind === 'capsule') return { q: 'Какое поколение мха — эта коробочка на ножке?', right: 'Спорофит — бесполое поколение', opts: ['Гаметофит — половое поколение', 'Спорофит — бесполое поколение', 'Протонема'], xp: 15,
     text: () => 'Коробочка на ножке — спорофит, бесполое поколение мха. Она вырастает из оплодотворённой яйцеклетки прямо на верхушке женского растения и питается за его счёт. Внутри созревают споры. В сухую погоду крышечка отпадает, зубцы перистома раскрываются, и споры высыпаются понемногу. Из споры вырастет протонема — зелёная нить.', hint: 'Подумай, что образует коробочка — споры или гаметы.' };
   if (kind === 'sorus') return { q: 'Зачем спорангию кольцо из толстостенных клеток?', right: 'Высыхая, оно разрывает спорангий и разбрасывает споры', opts: ['Чтобы запасать воду', 'Высыхая, оно разрывает спорангий и разбрасывает споры', 'Чтобы привлекать насекомых'], xp: 15,
@@ -2975,8 +2995,8 @@ function cutQuestion(kind) {
 function openCut(kind) {
   cutKind = kind;
   const crop = S.sp === 'angio' ? cropOf(S) : null;
-  $('cutTitle').textContent = kind === 'flower' ? `Цветок в разрезе: ${crop.name.toLowerCase()}` : kind === 'cone' ? 'Шишка сосны в разрезе' : kind === 'capsule' ? 'Коробочка мха в разрезе' : kind === 'sorus' ? 'Сорус папоротника вблизи' : `Плод в разрезе: ${crop.name.toLowerCase()}`;
-  $('cutPic').innerHTML = kind === 'flower' ? (FLOWERS[S.crop] || FLOWERS.tomato)() : kind === 'cone' ? CONE() : kind === 'capsule' ? MOSS_CAPSULE() : kind === 'sorus' ? FERN_SORUS() : CUT[crop.type]();
+  $('cutTitle').textContent = kind === 'flower' ? `Цветок в разрезе: ${crop.name.toLowerCase()}` : kind === 'cone' ? 'Шишка сосны в разрезе' : kind === 'capsule' ? 'Коробочка мха в разрезе' : kind === 'mossplant' ? 'Мох вблизи' : kind === 'sorus' ? 'Сорус папоротника вблизи' : `Плод в разрезе: ${crop.name.toLowerCase()}`;
+  $('cutPic').innerHTML = kind === 'flower' ? (FLOWERS[S.crop] || FLOWERS.tomato)() : kind === 'cone' ? CONE() : kind === 'capsule' ? MOSS_CAPSULE() : kind === 'mossplant' ? MOSS_PLANT() : kind === 'sorus' ? FERN_SORUS() : CUT[crop.type]();
   const Q = cutQuestion(kind), done = S.cool['cut_' + kind];
   $('cutQ').textContent = Q.q;
   $('cutOpts').innerHTML = Q.opts.map((o, i) => `<button class="btn" id="cutopt-${i}" data-ans="${o === Q.right ? 1 : 0}">${o}</button>`).join('');
@@ -3358,6 +3378,25 @@ function angio3D(T, col, st, k) {
   for (const tp of tillerTops) { const f2 = f.clone(); f2.position.copy(tp); g.add(f2); }
   return g;
 }
+// побег мха для ковра: тонкий стебелёк и мутовки узких листочков, торчащих в стороны; одна общая геометрия
+let MOSS_SHOOT = null;
+function mossShootGeo(T) {
+  if (MOSS_SHOOT) return MOSS_SHOOT;
+  const parts = [], H = 0.05, add = (geo, m) => { geo = geo.index ? geo.toNonIndexed() : geo; geo.applyMatrix4(m); parts.push(geo); };
+  const M4 = new T.Matrix4(), Q = new T.Quaternion(), E = new T.Euler(), V = new T.Vector3(), SC = new T.Vector3(1, 1, 1);
+  add(new T.CylinderGeometry(0.0015, 0.0022, H, 4), M4.clone().makeTranslation(0, H / 2, 0));
+  for (let j = 0; j < 7; j++) for (let q = 0; q < 5; q++) {
+    const y = H * (0.18 + 0.82 * j / 7), b = q * 1.2566 + j * 0.6, tilt = 1.05 - j * 0.08, len = 0.016 - j * 0.0012;
+    const leaf = new T.ConeGeometry(0.0022, len, 3); leaf.translate(0, len / 2, 0);
+    E.set(Math.sin(b) * tilt, 0, -Math.cos(b) * tilt); Q.setFromEuler(E); V.set(0, y, 0);
+    add(leaf, M4.clone().compose(V, Q, SC));
+  }
+  const cone = new T.ConeGeometry(0.004, 0.012, 5); cone.translate(0, H + 0.004, 0); add(cone, new T.Matrix4()); // верхушка — розетка молодых листочков
+  let n = 0; parts.forEach(g => n += g.attributes.position.count);
+  const pos = new Float32Array(n * 3); let o = 0; parts.forEach(g => { pos.set(g.attributes.position.array, o); o += g.attributes.position.array.length; });
+  MOSS_SHOOT = new T.BufferGeometry(); MOSS_SHOOT.setAttribute('position', new T.BufferAttribute(pos, 3)); MOSS_SHOOT.computeVertexNormals();
+  return MOSS_SHOOT;
+}
 function proceduralPlant(T) {
   const g = new T.Group(), col = new T.Color(leafColor(S)), st = stageOf(S), k = Math.min(1, 0.25 + S.biomass / 16);
   const mat = new T.MeshStandardMaterial({ color: col, roughness: 0.7 });
@@ -3392,7 +3431,7 @@ function proceduralPlant(T) {
       const d = Math.hypot((x - 0.08) / W, (z + 0.02) / D) / 1.45;
       return d + 0.16 * Math.sin(x * 23 + z * 7) + 0.1 * Math.sin(z * 31 - x * 11) + 0.08 * Math.cos(x * 41);
     };
-    const tuft = new T.IcosahedronGeometry(0.019, 0); tuft.scale(1, 0.85, 1); tuft.translate(0, 0.012, 0);
+    const tuft = mossShootGeo(T);
     const mm = new T.MeshStandardMaterial({ color: '#ffffff', roughness: 0.85 }); mm.userData.outlineParameters = { visible: false };
     const spots = [];
     for (let x = -W + step / 2; x < W; x += step) for (let z = -D + step / 2; z < D; z += step) {
@@ -3403,13 +3442,13 @@ function proceduralPlant(T) {
     for (const sp0 of spots.slice()) { const [x, , z] = sp0;
       if (Math.abs(z) > D - step && rnd() < 0.7) for (let q = 1; q <= 1 + Math.floor(cover * 3); q++) spots.push([x, -q * step * 0.9, Math.sign(z) * (D + 0.004), Math.sign(z) * 1.4, 0]);
       if (Math.abs(x) > W - step && rnd() < 0.7) for (let q = 1; q <= 1 + Math.floor(cover * 3); q++) spots.push([Math.sign(x) * (W + 0.004), -q * step * 0.9, z, 0, -Math.sign(x) * 1.4]); }
-    const n = spots.length, im = new T.InstancedMesh(tuft, mm, n * 3), m4 = new T.Matrix4(), q4 = new T.Quaternion(), e3 = new T.Euler(), sc = new T.Vector3(), ps = new T.Vector3();
+    const n = spots.length, im = new T.InstancedMesh(tuft, mm, n * 4), m4 = new T.Matrix4(), q4 = new T.Quaternion(), e3 = new T.Euler(), sc = new T.Vector3(), ps = new T.Vector3();
     const greens = ['#5fb33a', '#79c84a', '#4f9e32', '#8fd65a', '#6abf3f'].map(c => new T.Color(c).lerp(new T.Color('#9a8a4a'), dry * 0.75));
     let c = 0, h0 = 0.6 + Math.min(1, S.biomass / 12) * 0.7;
-    for (const [x, y, z, rx, rz] of spots) for (let t = 0; t < 3; t++) {
-      ps.set(x + (rnd() - 0.5) * 0.02, y, z + (rnd() - 0.5) * 0.02);
-      e3.set(rx + (rnd() - 0.5) * 0.6, rnd() * 6, rz + (rnd() - 0.5) * 0.6); q4.setFromEuler(e3);
-      const s0 = (0.7 + rnd() * 0.6) * h0; sc.set(s0, s0 * (0.8 + rnd() * 0.6), s0);
+    for (const [x, y, z, rx, rz] of spots) for (let t = 0; t < 4; t++) {
+      ps.set(x + (rnd() - 0.5) * 0.024, y, z + (rnd() - 0.5) * 0.024);
+      e3.set(rx + (rnd() - 0.5) * 0.5, rnd() * 6, rz + (rnd() - 0.5) * 0.5); q4.setFromEuler(e3);
+      const s0 = (0.75 + rnd() * 0.5) * h0, droop = 1 - dry * 0.35; sc.set(s0, s0 * (0.7 + rnd() * 0.6) * droop, s0);
       m4.compose(ps, q4, sc); im.setMatrixAt(c, m4); im.setColorAt(c, greens[Math.floor(rnd() * greens.length)]); c++;
     }
     im.count = c; g.add(im);
@@ -3417,12 +3456,12 @@ function proceduralPlant(T) {
     const tops = spots.filter(p => p[1] === 0);
     const red = new T.MeshStandardMaterial({ color: '#c45a3a' });
     tops.forEach((p, i) => {
-      if (st >= 3 && st <= 4 && rnd() < 0.07) { const t = new T.Mesh(new T.SphereGeometry(0.009, 8, 6), red); t.position.set(p[0], 0.05 * h0, p[2]); g.add(t); }
+      if (st >= 3 && st <= 4 && rnd() < 0.07) { const t = new T.Mesh(new T.SphereGeometry(0.008, 8, 6), red); t.position.set(p[0], 0.06 * h0, p[2]); g.add(t); }
       if (st >= 5 && rnd() < 0.12) {
         const gr = st === 6 ? 1 : S.fruit, sl = 0.04 + gr * 0.2;
-        const seta = new T.Mesh(new T.CylinderGeometry(0.002, 0.002, sl, 4), new T.MeshStandardMaterial({ color: '#b0603a' })); seta.position.set(p[0], 0.04 + sl / 2, p[2]); g.add(seta);
+        const seta = new T.Mesh(new T.CylinderGeometry(0.002, 0.002, sl, 4), new T.MeshStandardMaterial({ color: '#b0603a' })); seta.position.set(p[0], 0.055 + sl / 2, p[2]); g.add(seta);
         const cap = new T.Mesh(new T.CapsuleGeometry(0.007 + gr * 0.005, 0.018 + gr * 0.012, 4, 8), new T.MeshStandardMaterial({ color: new T.Color('#7fae4a').lerp(new T.Color('#7a5530'), gr) }));
-        cap.position.set(p[0], 0.04 + sl + 0.013, p[2]); if (st === 6) cap.rotation.z = 0.8; g.add(cap);
+        cap.position.set(p[0], 0.055 + sl + 0.013, p[2]); if (st === 6) cap.rotation.z = 0.8; g.add(cap);
       }
     });
     return g;
@@ -3800,6 +3839,7 @@ function frame3D(obj, fresh) {
   m3.controls.target.copy(sph.center);
   if (!touched || fresh) cam.position.copy(sph.center).add(dir.multiplyScalar(dist));
   m3.controls.maxDistance = Math.max(7, dist * 2.2);
+  m3.controls.minDistance = S && S.sp === 'moss' ? 0.25 : 0.8; // мох маленький — к нему можно приблизиться вплотную
   m3.controls.update();
 }
 function setView(v, note) {
