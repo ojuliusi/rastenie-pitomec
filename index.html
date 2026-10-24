@@ -1997,7 +1997,7 @@ function newState(sp = 'angio') {
   return { sp, hour: 6, biomass: 0.6, moisture: sp === 'algae' ? 90 : 60, minerals: 50, starch: 6, hp: 100, rootHP: 100,
     turgor: 0.9, chl: 0.85, lightHist: 0.5, soggy: 0, lean: 0, loc: SPECIES[sp].start, lamp: false, shade: false,
     unlocked: {}, pollinated: false, fruit: 0, lastP: 0, pot: 1, bound: 0,
-    done: false, dead: null, rootHarm: null, cause: null, stageIdx: 0, log: [], cool: {}, iodine: null, xp: 0, gen: 1, lvlUp: 0, disease: null };
+    done: false, dead: null, rootHarm: null, cause: null, stageIdx: 0, lifeShown: 0, log: [], cool: {}, iodine: null, xp: 0, gen: 1, lvlUp: 0, disease: null };
 }
 // Времена года: длина дня, сила солнца, погода на балконе, отопление в квартире
 const SEASONS = {
@@ -2172,12 +2172,11 @@ function step(s) {
     s.stageIdx = st;
     let msg = SP.stages[st][1];
     const gl = genLine(s, st); if (gl) msg += ' 🔄 ' + gl;
-    s.lifePop = true; // при показе покажем схему жизненного цикла
     if (st === 4) { msg += locked('repro', SP.repro.short[0].toUpperCase() + SP.repro.short.slice(1)); reproPopup(s); }
     note(s, 'stage' + st, msg, 'good', 1e9);
     addXP(s, 20);
   }
-  if (s.fruit >= 1 && !s.done) { s.done = true; s.stageIdx = 6; s.lifePop = true; note(s, 'stage6', SP.stages[6][1], 'good', 1e9); addXP(s, 100); }
+  if (s.fruit >= 1 && !s.done) { s.done = true; s.stageIdx = 6; note(s, 'stage6', SP.stages[6][1], 'good', 1e9); addXP(s, 100); }
   if (s.hp <= 0) {
     s.hp = 0; s.dead = deadText(s, s.cause); note(s, 'dead', s.dead, 'warn', 1e9);
     const start = LEVELS[levelOf(s.xp) - 1];
@@ -2222,6 +2221,8 @@ const spOf = P => P && P.sp === 'algae' && P.alga === 'chara' ? CHARA : SPECIES[
 const SPc = () => spOf(S);
 function revive(raw, unlocked) {
   const st = Object.assign(newState(raw.sp), raw);
+  if (raw.lifeShown === undefined) st.lifeShown = st.stageIdx; // для старых сохранений: уже пройденные стадии не показываем заново
+  delete st.lifePop;
   st.unlocked = unlocked;
   if (raw.pot === undefined) st.pot = st.biomass < POTS[1].cap - 2 ? 1 : st.biomass < POTS[2].cap - 2 ? 2 : 3;
   return st;
@@ -3243,7 +3244,8 @@ function render() {
   paneBadges();
   announceNew();
   // новая стадия — сразу показываем, где растение в жизненном цикле (если не мешаем другому окну или обучению)
-  if (s.lifePop && !s.dead && !tour && $('home').hidden && $('settings').hidden && ![...document.querySelectorAll('.modal')].some(m => !m.hidden)) { s.lifePop = false; openLife(true); }
+  // показываем один раз на каждую новую стадию: номер показанной стадии запоминаем и сразу сохраняем
+  if ((s.lifeShown || 0) < s.stageIdx && !s.dead && !tour && $('home').hidden && $('settings').hidden && ![...document.querySelectorAll('.modal')].some(m => !m.hidden)) { s.lifeShown = s.stageIdx; save(); openLife(true); }
 }
 
 // места
