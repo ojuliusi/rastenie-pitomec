@@ -418,6 +418,7 @@ header #openSettings { flex: none; }
 .new-tip::after { border-top-color: #2f6e2c !important; }
 .new-tip.below::after { border-top-color: transparent !important; border-bottom-color: #2f6e2c !important; }
 .new-tip b { color: #fff59a; } .new-tip span { font-weight: 600; opacity: .92; }
+body:has(.modal:not([hidden])) .new-tip, body:has(.home:not([hidden])) .new-tip { display: none; } /* не поверх окон */
 .is-new { animation: newglow 1.2s ease-in-out infinite; }
 @keyframes newpop { from { transform: translateY(6px) scale(.9); opacity: 0; } }
 @keyframes newglow { 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--leaf) 45%, transparent), 0 2px 0 var(--outline); } }
@@ -455,6 +456,7 @@ header #openSettings { flex: none; }
 .pill.gen { border: 0; cursor: pointer; font: inherit; font-size: 13px; font-weight: 700; background: color-mix(in srgb, #3f8f4a 22%, var(--panel)); color: var(--ink); }
 .pill.gen.n { background: color-mix(in srgb, #d9a21b 30%, var(--panel)); }
 .pill.gen::before { content: '🔄'; font-size: 11px; }
+.life-new { margin: 0; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--sun) 22%, transparent); font-weight: 700; }
 .life-legend { display: grid; gap: 4px; font-size: 13px; }
 .life-legend span { display: flex; gap: 8px; align-items: center; } .life-legend i { width: 14px; height: 14px; border-radius: 50%; flex: none; }
 .life-now { margin: 0; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--leaf) 12%, transparent); }
@@ -2152,11 +2154,12 @@ function step(s) {
     s.stageIdx = st;
     let msg = SP.stages[st][1];
     const gl = genLine(s, st); if (gl) msg += ' 🔄 ' + gl;
+    s.lifePop = true; // при показе покажем схему жизненного цикла
     if (st === 4) msg += locked('repro', SP.repro.short[0].toUpperCase() + SP.repro.short.slice(1));
     note(s, 'stage' + st, msg, 'good', 1e9);
     addXP(s, 20);
   }
-  if (s.fruit >= 1 && !s.done) { s.done = true; s.stageIdx = 6; note(s, 'stage6', SP.stages[6][1], 'good', 1e9); addXP(s, 100); }
+  if (s.fruit >= 1 && !s.done) { s.done = true; s.stageIdx = 6; s.lifePop = true; note(s, 'stage6', SP.stages[6][1], 'good', 1e9); addXP(s, 100); }
   if (s.hp <= 0) {
     s.hp = 0; s.dead = deadText(s, s.cause); note(s, 'dead', s.dead, 'warn', 1e9);
     const start = LEVELS[levelOf(s.xp) - 1];
@@ -3220,6 +3223,8 @@ function render() {
   drawScene();
   paneBadges();
   announceNew();
+  // новая стадия — сразу показываем, где растение в жизненном цикле (если не мешаем другому окну или обучению)
+  if (s.lifePop && !s.dead && !tour && $('home').hidden && $('settings').hidden && ![...document.querySelectorAll('.modal')].some(m => !m.hidden)) { s.lifePop = false; openLife(true); }
 }
 
 // места
@@ -4937,11 +4942,11 @@ function renderDiv() {
   $('divPrev').disabled = divStep === 0; $('divNext').disabled = divStep === ph.length - 1;
   document.querySelectorAll('[data-div]').forEach(b => b.setAttribute('aria-pressed', b.dataset.div === divKind));
 }
-function openLife() {
+function openLife(fresh) {
   if (!S) return;
   const L = LIFE[lifeKey(S)], G0 = genOf(S), line = genLine(S, stageOf(S));
   $('lifeTitle').textContent = 'Жизненный цикл · ' + spOf(S).name;
-  $('lifeBody').innerHTML = lifeSVG(S) + `<div class="life-legend"><span><i style="background:#3f8f4a"></i>2n — диплоидное поколение: спорофит (бесполое, образует споры)</span><span><i style="background:#d9a21b"></i>n — гаплоидное поколение: гаметофит (половое, образует гаметы)</span></div>
+  $('lifeBody').innerHTML = (fresh ? `<p class="life-new">🌱 Новая стадия: <b>«${spOf(S).stages[stageOf(S)][0]}»</b>. Посмотри, где теперь твоё растение в жизненном цикле.</p>` : '') + lifeSVG(S) + `<div class="life-legend"><span><i style="background:#3f8f4a"></i>2n — диплоидное поколение: спорофит (бесполое, образует споры)</span><span><i style="background:#d9a21b"></i>n — гаплоидное поколение: гаметофит (половое, образует гаметы)</span></div>
     <p class="life-now"><b>Сейчас: ${G0.w} (${G0.g}).</b> ${line}</p><p class="exp-hint" style="margin:0">${L.dom}</p>
     <p class="exp-hint" style="margin:0">Мейоз уменьшает набор хромосом вдвое (2n → n), оплодотворение снова удваивает его (n + n → 2n). Между ними клетки делятся митозом — набор не меняется: так растут и спорофит, и гаметофит. Важно: у растений гаметы образуются на гаметофите митозом, а мейозом — споры.</p>`;
   renderDiv();
