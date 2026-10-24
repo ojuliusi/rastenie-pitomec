@@ -687,7 +687,7 @@ body:has(.modal:not([hidden])) .new-tip, body:has(.home:not([hidden])) .new-tip 
             <span class="fact-k" id="factK">Знаешь ли ты?</span>
             <b id="factTitle"></b>
             <p id="factText"></p>
-            <button class="btn" id="factOk">Понятно</button>
+            <div class="row"><button class="btn" id="factOk">Понятно</button><button class="btn" id="factLater" hidden>Позже</button></div>
           </div>
         </div>
         <div class="vitals">
@@ -1975,6 +1975,23 @@ function popup(s, k, title, text, tone) {
   s.popups.push({ k, title, text, tone });
   if (s.popups.length > 4) s.popups.shift();
 }
+// всплывающее окно «пора опылить» (у споровых — оплодотворение или рассев спор): кнопка сразу выполняет действие
+const REPRO_WHY = {
+  angio: 'Пыльца с тычинок должна попасть на рыльце пестика. Без опыления не будет оплодотворения — и не завяжется плод с семенами.',
+  gymno: 'Мужские шишки пылят. Пыльца должна долететь до семязачатков женской шишки — у сосны её переносит ветер.',
+  moss: 'Спермии созрели в антеридиях. Чтобы доплыть до яйцеклетки в архегонии, им нужна капля воды.',
+  algae: 'Колония выросла. Отдели кусочек нити — из него вырастет новая колония.',
+  chara: 'Антеридии и оогонии созрели. Сперматозоиды должны доплыть до яйцеклетки — для этого нужна вода.',
+  sporo: 'Споры созрели. Если рассеять их на влажную почву, из них вырастут заростки — гаметофиты.'
+};
+function reproPopup(s) {
+  const SPx = spOf(s), k = s.sp === 'algae' && s.alga === 'chara' ? 'chara' : ['lycopod', 'horsetail', 'fern'].includes(s.sp) ? 'sporo' : s.sp;
+  const title = s.sp === 'angio' ? 'Цветок раскрылся — его можно опылить!' : s.sp === 'gymno' ? 'Сосну можно опылить!' : `Можно: ${SPx.repro.label.toLowerCase()}`;
+  const blk = blockFor(s.sp, 'repro'), ready = has(s, 'repro');
+  popup(s, ['angio', 'gymno'].includes(s.sp) ? 'Пора опылять' : 'Пора размножать', title,
+    REPRO_WHY[k] + (ready ? ` Нажми «${SPx.repro.label}».` : ` Но сначала пройди блок «${blk ? blk.title : 'Размножение'}» — он откроет эту кнопку.`), 'good');
+  s.popups[s.popups.length - 1].act = ready ? 'repro' : 'quizRepro';
+}
 function newState(sp = 'angio') {
   return { sp, hour: 6, biomass: 0.6, moisture: sp === 'algae' ? 90 : 60, minerals: 50, starch: 6, hp: 100, rootHP: 100,
     turgor: 0.9, chl: 0.85, lightHist: 0.5, soggy: 0, lean: 0, loc: SPECIES[sp].start, lamp: false, shade: false,
@@ -2155,7 +2172,7 @@ function step(s) {
     let msg = SP.stages[st][1];
     const gl = genLine(s, st); if (gl) msg += ' 🔄 ' + gl;
     s.lifePop = true; // при показе покажем схему жизненного цикла
-    if (st === 4) msg += locked('repro', SP.repro.short[0].toUpperCase() + SP.repro.short.slice(1));
+    if (st === 4) { msg += locked('repro', SP.repro.short[0].toUpperCase() + SP.repro.short.slice(1)); reproPopup(s); }
     note(s, 'stage' + st, msg, 'good', 1e9);
     addXP(s, 20);
   }
@@ -3190,7 +3207,8 @@ function render() {
     $('factK').textContent = pq.k; $('factTitle').textContent = pq.title; $('factText').textContent = pq.text;
   }
   // у плашки «Нужен блок курса» кнопка сразу ведёт к вопросам
-  $('factOk').textContent = pq && !fc && pq.k === 'Нужен блок курса' ? 'К вопросам блока' : 'Понятно';
+  $('factOk').textContent = pq && !fc && pq.k === 'Нужен блок курса' ? 'К вопросам блока' : pq && !fc && pq.act === 'repro' ? `🌼 ${SPc().repro.label}` : pq && !fc && pq.act === 'quizRepro' ? 'К вопросам блока' : 'Понятно';
+  $('factLater').hidden = !(pq && !fc && pq.act);
   if (fc) {
     const D = DISEASES[s.fact.id];
     $('fact').classList.toggle('reveal', s.fact.kind === 1);
@@ -3302,13 +3320,16 @@ $('cures').addEventListener('click', ev => {
 });
 
 $('factOk').onclick = () => {
-  const toQuiz = !S.fact && S.popups && S.popups[0] && S.popups[0].k === 'Нужен блок курса';
+  const pq = !S.fact && S.popups && S.popups[0], toQuiz = pq && pq.k === 'Нужен блок курса', act = pq && pq.act;
   if (S.fact) S.fact = null; else if (S.popups) S.popups.shift(); render(); save();
   if (toQuiz) openNextQuiz();
+  if (act === 'repro' && stageOf(S) === 4 && !S.pollinated && has(S, 'repro')) $('aRepro').click();
+  if (act === 'quizRepro') { const b = blockFor(S.sp, 'repro'); openNextQuiz(b && b.id); }
 };
+$('factLater').onclick = () => { if (S.popups) S.popups.shift(); render(); save(); };
 // открыть вопросы следующего непройденного блока (сначала блоки по тканям, размножение — в конце)
-function openNextQuiz() {
-  const list = blockList(), b = list.filter(x => x.id !== 'repro').find(x => !isOpen(x.id)) || list.find(x => !isOpen(x.id));
+function openNextQuiz(id) {
+  const list = blockList(), b = (id && list.find(x => x.id === id && !isOpen(x.id))) || list.filter(x => x.id !== 'repro').find(x => !isOpen(x.id)) || list.find(x => !isOpen(x.id));
   if (!b) return;
   showPane('blocks');
   const f = $('quiz-' + b.id); if (!f) return;
