@@ -421,6 +421,33 @@ header #openSettings { flex: none; }
 .is-new { animation: newglow 1.2s ease-in-out infinite; }
 @keyframes newpop { from { transform: translateY(6px) scale(.9); opacity: 0; } }
 @keyframes newglow { 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--leaf) 45%, transparent), 0 2px 0 var(--outline); } }
+/* ===== Стартовая страница ===== */
+.home { position: fixed; inset: 0; z-index: 45; overflow-y: auto; padding: 16px; display: grid; place-items: start center;
+  background: radial-gradient(circle at 20% 10%, color-mix(in srgb, var(--sun) 25%, transparent), transparent 40%), var(--bg); }
+.home[hidden] { display: none; }
+.home-card { width: min(100%, 980px); display: grid; gap: 18px; margin: auto 0; }
+.home-hero { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; align-items: center; background: var(--panel); border: 3px solid var(--outline, var(--line)); border-radius: 26px; padding: 26px; box-shadow: 0 8px 0 var(--outline, var(--line)); }
+.home-kicker { margin: 0; font-weight: 800; color: var(--leaf); text-transform: uppercase; letter-spacing: .06em; font-size: 13px; }
+.home-title { margin: 4px 0 8px; font: 800 clamp(44px, 8vw, 78px)/1 var(--f-display); color: var(--ink); }
+.home-title span { color: var(--leaf); }
+.home-sub { margin: 0 0 16px; font-size: 16px; color: var(--muted); max-width: 46ch; }
+.home-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.home-go { font-size: 18px; padding: 14px 22px; border-radius: 16px; }
+.home #homeFlower { background: #e86a8f !important; border-color: var(--outline, #e86a8f) !important; color: #fff !important; }
+.home-or { margin: 14px 0 6px; font-weight: 700; color: var(--muted); }
+.home-groups { display: flex; flex-wrap: wrap; gap: 8px; }
+.home-groups .btn { padding: 7px 12px; font-size: 14px; }
+.home-small { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.home-art { width: 100%; max-height: 340px; }
+.home-leaf { animation: homeleaf 4s ease-in-out infinite; transform-origin: center; } .home-leaf.l2 { animation-delay: -2s; }
+@keyframes homeleaf { 50% { transform: translateY(-10px) rotate(12deg); } }
+.home-rules { background: var(--panel); border: 3px solid var(--outline, var(--line)); border-radius: 22px; padding: 20px; box-shadow: 0 6px 0 var(--outline, var(--line)); }
+.home-rules[hidden] { display: none; }
+.home-rules h3 { margin: 0 0 12px; font-family: var(--f-display); }
+.rules-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.rule { border: 2px solid var(--line); border-radius: 16px; padding: 12px 14px; background: color-mix(in srgb, var(--leaf) 5%, var(--panel)); }
+.rule b { font-size: 15px; } .rule p { margin: 6px 0 0; font-size: 14px; color: var(--muted); }
+@media (max-width: 720px) { .home-hero { grid-template-columns: 1fr; padding: 18px; } .home-art { order: -1; max-height: 180px; } }
 /* ===== Название — кнопка в главное меню ===== */
 .logo-btn { all: unset; cursor: pointer; border-radius: 10px; transition: transform .15s; }
 .logo-btn:hover { transform: scale(1.04); } .logo-btn:focus-visible { outline: 3px solid var(--leaf); outline-offset: 3px; }
@@ -495,7 +522,7 @@ header #openSettings { flex: none; }
 <div class="wrap">
   <header>
     <div>
-      <h1><button type="button" class="logo-btn" id="logoBtn" aria-label="PetPlant — в главное меню">Pet<span>Plant</span></button></h1>
+      <h1><button type="button" class="logo-btn" id="logoBtn" aria-label="PetPlant — на главную">Pet<span>Plant</span></button></h1>
     </div>
     <nav class="garden" id="garden" aria-label="Мои растения" hidden>
     <span class="row-label">Мои растения</span>
@@ -509,6 +536,61 @@ header #openSettings { flex: none; }
     </button>
   </header>
 
+  <section class="home" id="home" hidden aria-labelledby="homeTitle">
+    <div class="home-card">
+      <div class="home-hero">
+        <div class="home-text">
+          <p class="home-kicker">Биология, которую можно вырастить</p>
+          <h2 class="home-title" id="homeTitle">Pet<span>Plant</span></h2>
+          <p class="home-sub">Посади своё растение и доведи его до потомства. Оно живёт по настоящим законам биологии: отвечает на свет, воду, тепло и соли, болеет и цветёт.</p>
+          <div class="home-actions">
+            <button class="btn primary home-go" id="homeContinue" hidden><span class="dot"></span><span id="homeContinueLbl">Продолжить</span></button>
+            <button class="btn primary home-go" id="homeFlower">🌸 Вырастить цветочек</button>
+          </div>
+          <p class="home-or">…или что-нибудь ещё:</p>
+          <div class="home-groups" id="homeGroups"></div>
+          <div class="home-small">
+            <button class="btn" id="homeRulesBtn" aria-expanded="false" aria-controls="homeRules">📖 Правила</button>
+            <button class="btn" id="homeSettings">⚙️ Настройки</button>
+            <button class="btn" id="homeTour">❓ Обучение</button>
+          </div>
+        </div>
+        <svg class="home-art" viewBox="0 0 320 300" aria-hidden="true">
+          <circle cx="250" cy="62" r="34" fill="#ffd86b"/><g stroke="#ffd86b" stroke-width="6" stroke-linecap="round">
+          <path d="M250 12v-6M250 118v6M200 62h-6M300 62h6M215 27l-4-4M285 97l4 4M285 27l4-4M215 97l-4 4"/></g>
+          <ellipse cx="160" cy="276" rx="140" ry="14" fill="#000" opacity=".12"/>
+          <path d="M150 120 C120 60 70 70 60 40 C100 40 140 60 150 120 Z" fill="#6cbf4a" stroke="#3f6a2a" stroke-width="3"/>
+          <path d="M168 120 C196 70 250 86 262 60 C224 54 182 72 168 120 Z" fill="#82cc5a" stroke="#3f6a2a" stroke-width="3"/>
+          <path d="M160 200 C158 160 156 130 158 96" stroke="#3f8a32" stroke-width="7" fill="none" stroke-linecap="round"/>
+          <g transform="translate(158 92)"><circle r="16" fill="#ffd34d" stroke="#4a3c33" stroke-width="3"/>
+          <g fill="#f07aa0" stroke="#4a3c33" stroke-width="3"><ellipse cx="0" cy="-30" rx="12" ry="16"/><ellipse cx="29" cy="-9" rx="12" ry="16" transform="rotate(72 29 -9)"/><ellipse cx="18" cy="24" rx="12" ry="16" transform="rotate(144 18 24)"/><ellipse cx="-18" cy="24" rx="12" ry="16" transform="rotate(216 -18 24)"/><ellipse cx="-29" cy="-9" rx="12" ry="16" transform="rotate(288 -29 -9)"/></g>
+          <circle r="11" fill="#ffd34d" stroke="#4a3c33" stroke-width="3"/></g>
+          <path d="M92 196 H228 L214 274 Q212 282 204 282 H116 Q108 282 106 274 Z" fill="#d9774a" stroke="#4a3c33" stroke-width="4"/>
+          <rect x="84" y="186" width="152" height="22" rx="8" fill="#e58a5c" stroke="#4a3c33" stroke-width="4"/>
+          <path d="M126 236 q8 -8 16 0 M178 236 q8 -8 16 0" stroke="#4a3c33" stroke-width="4" fill="none" stroke-linecap="round"/>
+          <path d="M146 252 q14 12 28 0" stroke="#4a3c33" stroke-width="4" fill="none" stroke-linecap="round"/>
+          <circle cx="122" cy="250" r="7" fill="#f2a0a0" opacity=".7"/><circle cx="198" cy="250" r="7" fill="#f2a0a0" opacity=".7"/>
+          <g class="home-leaf"><path d="M40 150 q14 -18 28 0 q-14 18 -28 0Z" fill="#9fd178" stroke="#3f6a2a" stroke-width="2.5"/></g>
+          <g class="home-leaf l2"><path d="M262 170 q12 -16 24 0 q-12 16 -24 0Z" fill="#b6e27e" stroke="#3f6a2a" stroke-width="2.5"/></g>
+        </svg>
+      </div>
+      <div class="home-rules" id="homeRules" hidden>
+        <h3>Правила игры</h3>
+        <div class="rules-grid">
+          <div class="rule"><b>🎯 Цель</b><p>Вырасти растение так, чтобы оно дало потомство: семена или споры. Тогда цикл замкнётся.</p></div>
+          <div class="rule"><b>💧 Уход</b><p>Поливай, переставляй горшок на свет или в тень, подкармливай солями. И пересохшая, и залитая почва вредят корням.</p></div>
+          <div class="rule"><b>📟 Приборы</b><p>Свет, температура, влажность почвы, соли и испарение. Держи стрелку в зелёной зоне нормы.</p></div>
+          <div class="rule"><b>📚 Блоки курса</b><p>В каждом блоке 5 вопросов. Без пройденного блока растение не перейдёт на следующую стадию. Блок открывает новые инструменты.</p></div>
+          <div class="rule"><b>🐛 Болезни</b><p>Ошибка в ответе — и на растение нападает болезнь. Осмотри его под лупой, найди возбудителя и вылечи.</p></div>
+          <div class="rule"><b>🧪 Опыты</b><p>Ставь опыты: проба йодом, пакет на побеге и другие. За каждый новый — украшение и интересный факт.</p></div>
+          <div class="rule"><b>🔄 Жизненный цикл</b><p>Значок у стадии показывает, спорофит сейчас или гаметофит. Нажми — увидишь весь цикл, мейоз и митоз.</p></div>
+          <div class="rule"><b>⏰ Время</b><p>Пока игра открыта, идут часы: 1 час — 30 секунд. Закроешь игру — растение подождёт. Можно промотать сутки.</p></div>
+          <div class="rule"><b>🏆 Награды</b><p>Уровни, раскраски горшка, камни для мха и украшения. В конце — финальный тест, ответы увидит учитель.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="card" id="settings" hidden aria-labelledby="hSet">
     <div class="head">
       <div>
@@ -516,7 +598,7 @@ header #openSettings { flex: none; }
         <p class="sub">Вырасти растение так, чтобы оно дало семена или споры. Оно отвечает на свет, воду, жару и удобрения так же, как настоящее. Следи за приборами и читай дневник наблюдений.</p>
         <p class="lead" id="setLead">У каждой группы своя биология: кому-то нужна тень и сырость, кому-то солнце; одни размножаются семенами, другие спорами.</p>
       </div>
-      <button class="btn" id="closeSettings">Закрыть</button>
+      <div class="row"><button class="btn" id="toHome">🏠 На главную</button><button class="btn" id="closeSettings">Закрыть</button></div>
     </div>
     <div class="species" id="species" role="radiogroup" aria-label="Группа растений"></div>
     <div class="crop-set" id="cropSet" hidden>
@@ -4659,7 +4741,7 @@ const HINTS = {
   bChoose: 'Открыть выбор растения',
   addPlant: 'Посадить ещё одно растение',
   helpBtn: 'Показать обучение заново',
-  logoBtn: 'В главное меню: выбор растения и настройки',
+  logoBtn: 'На главную страницу',
   openSettings: 'Выбор растения, имя, время года, тема и режим времени',
   'pt-care': 'Полив, свет, приборы и опыты', 'pt-blocks': 'Блоки курса с вопросами — открывают новые стадии роста', 'pt-log': 'Что происходило с растением'
 };
@@ -5310,13 +5392,36 @@ function openDecor() {
 $('aDecor').onclick = openDecor;
 $('decorClose').onclick = () => { $('decorModal').hidden = true; };
 $('lifeClose').onclick = () => { $('lifeModal').hidden = true; };
-// название игры — кнопка «в главное меню»: закрывает окна и открывает выбор растения и настройки
-$('logoBtn').onclick = () => {
+// ---------- Стартовая страница ----------
+const HOME_ICON = { algae: '🌊', moss: '🪨', lycopod: '🌿', horsetail: '🎋', fern: '☘️', gymno: '🌲', angio: '🌸' };
+$('homeGroups').innerHTML = SP_ORDER.filter(k => k !== 'angio').map(k => `<button class="btn" data-home-sp="${k}">${HOME_ICON[k]} ${SPECIES[k].group}</button>`).join('');
+function showHome() {
   document.querySelectorAll('.modal').forEach(m => m.hidden = true);
   if (tour) try { endTour(); } catch (e) {}
-  if ($('settings').hidden) openSettings(!G || !Object.keys(G.plants || {}).length);
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-};
+  closeSettings();
+  const has = G && Object.keys(G.plants || {}).length;
+  $('homeContinue').hidden = !has;
+  if (has && S) $('homeContinueLbl').textContent = `Продолжить: ${plantTitle(S.key)}`;
+  $('homeFlower').classList.toggle('primary', !has);
+  $('home').hidden = false; $('home').scrollTop = 0;
+  (has ? $('homeContinue') : $('homeFlower')).focus();
+}
+function hideHome() { $('home').hidden = true; }
+function homePick(sp) { // открыть выбор растения с уже отмеченной группой
+  hideHome(); openSettings(!G || !Object.keys(G.plants || {}).length, true);
+  $(`sp-${sp}`).checked = true; syncChoice();
+  $('species').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (!tourDone('welcome')) setTimeout(() => startTour('welcome'), 300);
+}
+$('homeFlower').onclick = () => homePick('angio');
+$('homeGroups').addEventListener('click', ev => { const b = ev.target.closest('[data-home-sp]'); if (b) homePick(b.dataset.homeSp); });
+$('homeContinue').onclick = () => { hideHome(); closeSettings(); showGame(true); render(); if (!tourDone('game')) setTimeout(() => startTour('game'), 500); };
+$('homeSettings').onclick = () => { hideHome(); openSettings(!G || !Object.keys(G.plants || {}).length); };
+$('homeTour').onclick = () => { const has = G && Object.keys(G.plants || {}).length; hideHome(); if (has) { closeSettings(); showGame(true); startTour('game'); } else { openSettings(true); startTour('welcome'); } };
+$('homeRulesBtn').onclick = () => { const r = $('homeRules'), open = r.hidden; r.hidden = !open; $('homeRulesBtn').setAttribute('aria-expanded', open); if (open) r.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+// название игры — кнопка «на главную»
+$('logoBtn').onclick = showHome;
+$('toHome').onclick = showHome;
 document.querySelectorAll('[data-div]').forEach(b => b.onclick = () => { divKind = b.dataset.div; divStep = 0; renderDiv(); });
 $('divPrev').onclick = () => { divStep = Math.max(0, divStep - 1); renderDiv(); };
 $('divNext').onclick = () => { divStep = Math.min(DIV[divKind].length - 1, divStep + 1); renderDiv(); };
@@ -5555,8 +5660,9 @@ function start(data) {
   window.claude?.hot?.snapshot?.(() => ({ G }));
   applyMode();
   setView(VIEW);
-  if (!G) { showGame(false); openSettings(true); if (!tourDone('welcome')) setTimeout(() => startTour('welcome'), 300); }
-  else { showGame(true); renderBlocks(); if (!tourDone('game')) setTimeout(() => startTour('game'), 900); }
+  if (!G) showGame(false);
+  else { showGame(true); renderBlocks(); }
+  showHome(); // каждый вход начинается со стартовой страницы; обучение запускается после выбора на ней
   showPane(pane);
   renderGarden();
   if (!LESSON) {
