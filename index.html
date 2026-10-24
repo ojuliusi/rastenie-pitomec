@@ -2154,9 +2154,11 @@ const plantKeys = () => G ? Object.keys(G.plants).sort((a, b) => SP_ORDER.indexO
 const plantsOf = sp => plantKeys().filter(k => G.plants[k].sp === sp);
 function newKey(sp) { if (!G || !G.plants[sp]) return sp; let n = 2; while (G.plants[sp + '-' + n]) n++; return sp + '-' + n; }
 // подпись растения во вкладках: культура или группа, а если таких несколько — с номером
+// сюрприз: название культуры не показываем, пока не появились бутоны (так же, как в строке над сценой)
+const cropShown = P => P.cropRandom && (P.stageIdx || 0) < 3 ? 'Сюрприз' : cropOf(P).name;
 function plantTitle(k) {
-  const P = G.plants[k], base = P.sp === 'angio' ? cropOf(P).name : P.alga === 'chara' ? 'Хара' : SPECIES[P.sp].group;
-  const same = plantKeys().filter(x => { const Q = G.plants[x]; return Q.sp === P.sp && (Q.sp !== 'angio' || cropOf(Q).name === base); });
+  const P = G.plants[k], base = P.sp === 'angio' ? cropShown(P) : P.alga === 'chara' ? 'Хара' : SPECIES[P.sp].group;
+  const same = plantKeys().filter(x => { const Q = G.plants[x]; return Q.sp === P.sp && (Q.sp !== 'angio' || cropShown(Q) === base); });
   return same.length > 1 ? `${base} ${same.indexOf(k) + 1}` : base;
 }
 const MAX_PLANTS = 12;
@@ -3022,7 +3024,7 @@ function render() {
   const Z = SEASONS[SEASON];
   $('seasonPill').textContent = `${Z.name} · световой день ${Math.round(Z.set - Z.rise)} ч`;
   $('clock').textContent = fmtTime(s.hour, !LESSON && MODE === 'real' ? true : !LESSON && MODE === 'lessons' ? flow * 60 : 0);
-  $('who').innerHTML = `${SP.group}: <b>${s.sp === 'angio' ? (s.stageIdx >= 3 || !s.cropRandom ? cropOf(s).name : 'неизвестно, что вырастет') : SP.name}</b>`;
+  $('who').innerHTML = `${SP.group}: <b>${s.sp === 'angio' ? (cropShown(s) === 'Сюрприз' ? 'неизвестно, что вырастет' : cropShown(s)) : SP.name}</b>`;
   const pill = $('stagePill'); pill.textContent = s.dead ? 'Погибло' : SP.stages[st][0]; pill.classList.toggle('bad', !!s.dead);
   { const G0 = genOf(s, st), gp = $('genPill'); gp.textContent = `${G0.w} · ${G0.g}`; gp.classList.toggle('n', G0.g === 'n'); }
   const lvl = levelOf(s.xp), loX = LEVELS[lvl - 1], hiX = LEVELS[lvl];
