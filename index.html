@@ -421,6 +421,9 @@ header #openSettings { flex: none; }
 .is-new { animation: newglow 1.2s ease-in-out infinite; }
 @keyframes newpop { from { transform: translateY(6px) scale(.9); opacity: 0; } }
 @keyframes newglow { 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--leaf) 45%, transparent), 0 2px 0 var(--outline); } }
+/* ===== Название — кнопка в главное меню ===== */
+.logo-btn { all: unset; cursor: pointer; border-radius: 10px; transition: transform .15s; }
+.logo-btn:hover { transform: scale(1.04); } .logo-btn:focus-visible { outline: 3px solid var(--leaf); outline-offset: 3px; }
 /* ===== Жизненный цикл ===== */
 .pill.gen { border: 0; cursor: pointer; font: inherit; font-size: 13px; font-weight: 700; background: color-mix(in srgb, #3f8f4a 22%, var(--panel)); color: var(--ink); }
 .pill.gen.n { background: color-mix(in srgb, #d9a21b 30%, var(--panel)); }
@@ -492,7 +495,7 @@ header #openSettings { flex: none; }
 <div class="wrap">
   <header>
     <div>
-      <h1>Pet<span>Plant</span></h1>
+      <h1><button type="button" class="logo-btn" id="logoBtn" aria-label="PetPlant — в главное меню">Pet<span>Plant</span></button></h1>
     </div>
     <nav class="garden" id="garden" aria-label="Мои растения" hidden>
     <span class="row-label">Мои растения</span>
@@ -4656,6 +4659,7 @@ const HINTS = {
   bChoose: 'Открыть выбор растения',
   addPlant: 'Посадить ещё одно растение',
   helpBtn: 'Показать обучение заново',
+  logoBtn: 'В главное меню: выбор растения и настройки',
   openSettings: 'Выбор растения, имя, время года, тема и режим времени',
   'pt-care': 'Полив, свет, приборы и опыты', 'pt-blocks': 'Блоки курса с вопросами — открывают новые стадии роста', 'pt-log': 'Что происходило с растением'
 };
@@ -5306,6 +5310,13 @@ function openDecor() {
 $('aDecor').onclick = openDecor;
 $('decorClose').onclick = () => { $('decorModal').hidden = true; };
 $('lifeClose').onclick = () => { $('lifeModal').hidden = true; };
+// название игры — кнопка «в главное меню»: закрывает окна и открывает выбор растения и настройки
+$('logoBtn').onclick = () => {
+  document.querySelectorAll('.modal').forEach(m => m.hidden = true);
+  if (tour) try { endTour(); } catch (e) {}
+  if ($('settings').hidden) openSettings(!G || !Object.keys(G.plants || {}).length);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
 document.querySelectorAll('[data-div]').forEach(b => b.onclick = () => { divKind = b.dataset.div; divStep = 0; renderDiv(); });
 $('divPrev').onclick = () => { divStep = Math.max(0, divStep - 1); renderDiv(); };
 $('divNext').onclick = () => { divStep = Math.min(DIV[divKind].length - 1, divStep + 1); renderDiv(); };
