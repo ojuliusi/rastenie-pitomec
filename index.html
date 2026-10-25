@@ -1997,7 +1997,7 @@ function newState(sp = 'angio') {
   return { sp, hour: 6, biomass: 0.6, moisture: sp === 'algae' ? 90 : 60, minerals: 50, starch: 6, hp: 100, rootHP: 100,
     turgor: 0.9, chl: 0.85, lightHist: 0.5, soggy: 0, lean: 0, loc: SPECIES[sp].start, lamp: false, shade: false,
     unlocked: {}, pollinated: false, fruit: 0, lastP: 0, pot: 1, bound: 0,
-    done: false, dead: null, rootHarm: null, cause: null, stageIdx: 0, lifeShown: 0, log: [], cool: {}, iodine: null, xp: 0, gen: 1, lvlUp: 0, disease: null };
+    done: false, dead: null, rootHarm: null, cause: null, stageIdx: 0, log: [], cool: {}, iodine: null, xp: 0, gen: 1, lvlUp: 0, disease: null };
 }
 // Времена года: длина дня, сила солнца, погода на балконе, отопление в квартире
 const SEASONS = {
@@ -2221,8 +2221,8 @@ const spOf = P => P && P.sp === 'algae' && P.alga === 'chara' ? CHARA : SPECIES[
 const SPc = () => spOf(S);
 function revive(raw, unlocked) {
   const st = Object.assign(newState(raw.sp), raw);
-  if (raw.lifeShown === undefined) st.lifeShown = st.stageIdx; // для старых сохранений: уже пройденные стадии не показываем заново
-  delete st.lifePop;
+  if (raw.lifeNode === undefined) st.lifeNode = LIFE[lifeKey(st)].at[st.stageIdx]; // для старых сохранений: текущий этап цикла уже «показан»
+  delete st.lifePop; delete st.lifeShown;
   st.unlocked = unlocked;
   if (raw.pot === undefined) st.pot = st.biomass < POTS[1].cap - 2 ? 1 : st.biomass < POTS[2].cap - 2 ? 2 : 3;
   return st;
@@ -2277,6 +2277,7 @@ function fresh(sp, crop, key) {
   P.unlocked = G.unlocked;
   if (sp === 'angio') { P.cropRandom = !crop || crop === 'random'; P.crop = P.cropRandom ? CROP_KEYS[Math.floor(Math.random() * CROP_KEYS.length)] : crop; }
   if (sp === 'algae') P.alga = crop === 'chara' ? 'chara' : 'spiro';
+  P.lifeNode = LIFE[lifeKey(P)].at[0]; // этап жизненного цикла, который уже показан
   if (!LESSON && MODE === 'real') { const now = new Date(); now.setMinutes(0, 0, 0); P.hour = now.getHours(); P.lastTs = now.getTime(); }
   const SP = spOf(P);
   note(P, null, `${sp === 'angio' ? `Посадили семя: ${P.cropRandom ? 'что вырастет — сюрприз' : CROPS[P.crop].name.toLowerCase()}.` : SP.tx.start} Место: ${LOC[P.loc].name.toLowerCase()}. ${SP.stages[0][1]}`, 'good');
@@ -3244,8 +3245,9 @@ function render() {
   paneBadges();
   announceNew();
   // новая стадия — сразу показываем, где растение в жизненном цикле (если не мешаем другому окну или обучению)
-  // показываем один раз на каждую новую стадию: номер показанной стадии запоминаем и сразу сохраняем
-  if ((s.lifeShown || 0) < s.stageIdx && !s.dead && !tour && $('home').hidden && $('settings').hidden && ![...document.querySelectorAll('.modal')].some(m => !m.hidden)) { s.lifeShown = s.stageIdx; save(); openLife(true); }
+  // схему показываем, только когда растение перешло к следующему этапу жизненного цикла (а не к любой стадии роста)
+  const lifeNode = LIFE[lifeKey(s)].at[s.stageIdx];
+  if (s.lifeNode !== undefined && lifeNode !== s.lifeNode && !s.dead && !tour && $('home').hidden && $('settings').hidden && ![...document.querySelectorAll('.modal')].some(m => !m.hidden)) { s.lifeNode = lifeNode; save(); openLife(true); }
 }
 
 // места
@@ -4970,7 +4972,7 @@ function openLife(fresh) {
   if (!S) return;
   const L = LIFE[lifeKey(S)], G0 = genOf(S), line = genLine(S, stageOf(S));
   $('lifeTitle').textContent = 'Жизненный цикл · ' + spOf(S).name;
-  $('lifeBody').innerHTML = (fresh ? `<p class="life-new">🌱 Новая стадия: <b>«${spOf(S).stages[stageOf(S)][0]}»</b>. Посмотри, где теперь твоё растение в жизненном цикле.</p>` : '') + lifeSVG(S) + `<div class="life-legend"><span><i style="background:#3f8f4a"></i>2n — диплоидное поколение: спорофит (бесполое, образует споры)</span><span><i style="background:#d9a21b"></i>n — гаплоидное поколение: гаметофит (половое, образует гаметы)</span></div>
+  $('lifeBody').innerHTML = (fresh ? `<p class="life-new">🔄 Новый этап жизненного цикла: <b>«${L.nodes[L.at[S.stageIdx]].t}»</b>. Посмотри, где теперь твоё растение.</p>` : '') + lifeSVG(S) + `<div class="life-legend"><span><i style="background:#3f8f4a"></i>2n — диплоидное поколение: спорофит (бесполое, образует споры)</span><span><i style="background:#d9a21b"></i>n — гаплоидное поколение: гаметофит (половое, образует гаметы)</span></div>
     <p class="life-now"><b>Сейчас: ${G0.w} (${G0.g}).</b> ${line}</p><p class="exp-hint" style="margin:0">${L.dom}</p>
     <p class="exp-hint" style="margin:0">Мейоз уменьшает набор хромосом вдвое (2n → n), оплодотворение снова удваивает его (n + n → 2n). Между ними клетки делятся митозом — набор не меняется: так растут и спорофит, и гаметофит. Важно: у растений гаметы образуются на гаметофите митозом, а мейозом — споры.</p>`;
   renderDiv();
